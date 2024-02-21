@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.css";
-import BootstrapClient from "@/components/BootstrapClient";
 import { Providers } from "./providers";
 import classNames from "classnames";
+import Navbar from "@/components/Navbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,9 +20,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={classNames(inter.className, "container mt-4")}>
-        <Providers>{children}</Providers>
-        <BootstrapClient />
+      <body className={classNames(inter.className, "container mt-4 default-layout")}>
+        <Providers>
+          <Navbar type="instructor" />
+          <div className="px-3 mt-4 ">
+          {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );
