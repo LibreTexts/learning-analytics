@@ -1,3 +1,5 @@
-/* Instruments */
+import globalSettingsReducer from "./slices/globalSettingsSlice";
 
-export const reducer = {};
+export const reducer = {
+  globalSettings: globalSettingsReducer,
+};

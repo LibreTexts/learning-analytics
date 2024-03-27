@@ -1,6 +1,8 @@
+import GenericCard from "@/components/GenericCard";
+
 export default function Home() {
   return (
-    <div>
+    <GenericCard className="">
       <h1 className="text-primary">Learning Analytics</h1>
       <p>Welcome to the Learning Analytics Dashboard for your ADAPT course. </p>
       <hr />
@@ -9,6 +11,6 @@ export default function Home() {
         to the correct dashboard. Please refresh this page to try again or click
         "Contact Us" above to submit a support ticket.
       </p>
-    </div>
+    </GenericCard>
   );
 }
