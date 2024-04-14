@@ -15,7 +15,7 @@ const FERPAPrivacySwitch: React.FC<FERPAPrivacySwitchProps> = () => {
     <CustomToggle
       id="ferpa-privacy-switch"
       label="FERPA Privacy Mode"
-      checked={!ferpaPrivacyState}
+      checked={false}
       disabled={false}
       small={false}
       onChange={() => dispatch(toggleFerpaPrivacy())}

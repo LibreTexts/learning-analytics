@@ -7,6 +7,7 @@ import classNames from "classnames";
 import NavMenu from "@/components/NavMenu";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import DemoModeControls from "@/components/DemoModeControls";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +23,7 @@ export default function RootLayout({
     if (pathname === "/") {
       window.history.replaceState(null, "", "/dashboard");
     }
-  }, [pathname])
+  }, [pathname]);
 
   return (
     <html lang="en">
@@ -33,15 +34,18 @@ export default function RootLayout({
         className={classNames(inter.className, "container mt-4 default-layout")}
       >
         <Providers>
-          <div className="tw-flex tw-flex-row">
-            <div className="tw-flex">
-              <NavMenu
-                mode="instructor"
-                activeKey={pathname === "" ? "/dashboard" : pathname} //Default to dashboard
-              />
+          <>
+            {process.env.NODE_ENV === "development" && <DemoModeControls />}
+            <div className="tw-flex tw-flex-row">
+              <div className="tw-flex tw-flex-col">
+                <NavMenu
+                  mode="instructor"
+                  activeKey={pathname === "" ? "/dashboard" : pathname} //Default to dashboard
+                />
+              </div>
+              <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
             </div>
-            <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
-          </div>
+          </>
         </Providers>
       </body>
     </html>
