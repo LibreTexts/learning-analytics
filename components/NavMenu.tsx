@@ -11,7 +11,7 @@ type NavMenuProps = {
 };
 
 const NavMenu: React.FC<NavMenuProps> = ({ mode, activeKey }) => {
-  const demoSettings = useSelector((state) => state.demoSettings);
+  const globalSettings = useSelector((state) => state.globalSettings);
 
   const isActive = (key: string) => {
     if (activeKey.startsWith("/")) activeKey = activeKey.substring(1);
@@ -55,7 +55,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ mode, activeKey }) => {
       </ListGroup>
       {process.env.NODE_ENV === "development" && (
         <p className="tw-text-center tw-mt-2">
-          Course ID: {demoSettings.adaptId}
+          Course ID: {globalSettings.adaptId}
         </p>
       )}
     </>

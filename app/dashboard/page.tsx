@@ -6,27 +6,28 @@ import BarChart from "@/components/Visualizations/BarChart";
 import Analytics from "@/components/Analytics";
 import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
 import TextbookEngagement from "@/components/Visualizations/TextbookEngagement";
+import SubmissionTimeline from "@/components/Visualizations/SubmissionTimeline";
 
 export async function getData() {
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
 
   const analytics = new Analytics(adapt_id);
 
-  const assignments = await analytics.countAssignments();
+  const assignments = await analytics.getAssignments();
   const enrolled = await analytics.countEnrolledStudents();
 
   const performance = await analytics.getPerformancePerAssignment(
     "0603117dfdf13ead1aed422a3facdd5e"
   );
   return {
-    assignments,
+    assignments: assignments.length,
     enrolled,
     performance,
   };
 }
 
 async function getEngagement() {
-  'use server'
+  "use server";
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
 
   const analytics = new Analytics(adapt_id);
@@ -34,6 +35,17 @@ async function getEngagement() {
   const engagement = await analytics.getTextbookEngagement();
 
   return engagement;
+}
+
+async function getSubmissionTimeline(assignment_id: string) {
+  "use server";
+  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
+
+  const analytics = new Analytics(adapt_id);
+
+  const timeline = await analytics.getSubmissionTimeline(assignment_id);
+
+  return timeline;
 }
 
 export default async function InstructorDashboard() {
@@ -64,25 +76,32 @@ export default async function InstructorDashboard() {
           className="tw-ml-4"
         />
       </div>
-      <VisualizationContainer
+     <VisualizationContainer
         title="Textbook Engagment"
-        description="Student engagement/views with textbook"
+        description="Histogram of student engagement with the textbook."
       >
         <TextbookEngagement getData={getEngagement} />
-      </VisualizationContainer>
+      </VisualizationContainer> 
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
-        studentDropdown
+        dropdown="student"
       >
         <PerfPerAssignment data={data.performance} />
       </VisualizationContainer>
       <VisualizationContainer
         title="ADAPT Performance"
         description="Distribution of student scores by selected assignment"
-        studentDropdown
+        dropdown="student"
       >
         <BarChart />
+      </VisualizationContainer>
+      <VisualizationContainer
+        title="Submission Timeline"
+        description="Timeline of student submissions for selected assignment"
+        dropdown="assignment"
+      >
+        <SubmissionTimeline getData={getSubmissionTimeline}/>
       </VisualizationContainer>
     </GenericPageContainer>
   );

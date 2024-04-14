@@ -35,7 +35,11 @@ export default function RootLayout({
       >
         <Providers>
           <>
-            {process.env.NODE_ENV === "development" && <DemoModeControls />}
+            {process.env.NODE_ENV === "development" && (
+              <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">
+                <DemoModeControls />
+              </div>
+            )}
             <div className="tw-flex tw-flex-row">
               <div className="tw-flex tw-flex-col">
                 <NavMenu

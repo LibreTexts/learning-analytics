@@ -18,6 +18,7 @@ module.exports = {
         "light-gray": "#dee2e6",
         "ultra-light-gray": "#f8f9fa",
         "link-blue": "#0058E6",
+        "libre-blue": "#127BC4"
       },
     },
   },

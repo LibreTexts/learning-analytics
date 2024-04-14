@@ -3,16 +3,21 @@ import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 
+const MARGIN = { top: 20, right: 20, bottom: 20, left: 20 };
+
 interface PerfPerAssignmentProps {
   data: Map<string, Record<string, number>> | undefined;
+  width?: number;
+  height?: number;
 }
 
-function PerfPerAssignment(props: PerfPerAssignmentProps) {
+function PerfPerAssignment({
+  data,
+  width = 1000,
+  height = 400,
+}: PerfPerAssignmentProps) {
   const svgRef = useRef<HTMLDivElement>(null);
 
-  const margin = { top: 30, right: 30, bottom: 30, left: 30 };
-  const width = 1000 - margin.left - margin.right;
-  const height = 250 - margin.top - margin.bottom;
   const subgroups = ["Class Average", "Student Score"];
 
   const [parsed, setParsed] = useState<Map<string, Record<string, number>>>(
@@ -21,8 +26,8 @@ function PerfPerAssignment(props: PerfPerAssignmentProps) {
   const [groups, setGroups] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!props.data) return;
-    parseData(props.data);
+    if (!data) return;
+    parseData(data);
   }, []);
 
   useEffect(() => {
@@ -53,14 +58,17 @@ function PerfPerAssignment(props: PerfPerAssignmentProps) {
     return max;
   };
 
-  const buildChart = () => {
-    const svg = d3
-      .select(svgRef.current)
-      .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
+  function buildChart() {
+    const svg = d3.select(svgRef.current);
+    // .append("svg")
+    // .attr("width", width + margin.left + margin.right)
+    // .attr("height", height + margin.top + margin.bottom)
+
+    svg.selectAll("*").remove(); // Clear existing chart
+
+    svg
       .append("g")
-      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+      .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`);
 
     const xScale = d3.scaleBand().domain(groups).range([0, width]).padding(0.2);
 
@@ -73,7 +81,10 @@ function PerfPerAssignment(props: PerfPerAssignmentProps) {
     const yScale = d3.scaleLinear().domain([0, getMax()]).range([height, 0]);
 
     // Add y-axis
-    //svg.append("g").call(d3.axisLeft(yScale).tickPadding(5));
+    svg
+      .append("g")
+      .call(d3.axisLeft(yScale))
+      .attr("transform", `translate(${MARGIN.left}, 0)`);
 
     const xSubgroup = d3
       .scaleBand()
@@ -107,7 +118,7 @@ function PerfPerAssignment(props: PerfPerAssignmentProps) {
       .attr("width", xSubgroup.bandwidth() / subgroups.length)
       .attr("height", (d) => height - yScale(d.value))
       .attr("fill", (d) => color(d.key) as string);
-  };
+  }
 
   return (
     <VisualizationInnerContainer>

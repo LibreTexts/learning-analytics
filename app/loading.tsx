@@ -10,9 +10,9 @@ const PageLoadingIndicator = () => {
         height={400}
       />
       <div className="tw-flex tw-space-x-6 tw-justify-center tw-items-center tw-mt-8">
-        <div className="tw-h-8 tw-w-8 tw-bg-primary tw-rounded-full tw-animate-bounce"></div>
-        <div className="tw-h-8 tw-w-8 tw-bg-primary tw-rounded-full tw-animate-bounce ![animation-delay:-0.15s]"></div>
-        <div className="tw-h-8 tw-w-8 tw-bg-primary tw-rounded-full tw-animate-bounce"></div>
+        <div className="tw-h-8 tw-w-8 tw-bg-libre-blue tw-rounded-full tw-animate-bounce"></div>
+        <div className="tw-h-8 tw-w-8 tw-bg-libre-blue tw-rounded-full tw-animate-bounce ![animation-delay:-0.15s]"></div>
+        <div className="tw-h-8 tw-w-8 tw-bg-libre-blue tw-rounded-full tw-animate-bounce"></div>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 import connectDB from "@/lib/database";
-import Adapt from "@/lib/models/adapt";
+import Adapt, { IAdapt_Raw } from "@/lib/models/adapt";
 import AdaptCodes from "@/lib/models/adaptCodes";
 import Enrollments from "@/lib/models/enrollments";
 import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
-import { AssignmentAvgScoreCalc } from "@/lib/types";
+import { AssignmentAvgScoreCalc, SubmissionTimeline } from "@/lib/types";
+import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
 
 class Analytics {
@@ -30,7 +31,9 @@ class Analytics {
   //   }
   // }
 
-  public async countAssignments(): Promise<number> {
+  public async getAssignments(): Promise<
+    { _id: string; assignment_name: string }[]
+  > {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
@@ -43,14 +46,26 @@ class Analytics {
         {
           $group: {
             _id: "$assignment_id",
+            assignment_name: {
+              $first: "$assignment_name",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            assignment_name: 1,
           },
         },
       ]);
 
-      return res.length ?? 0;
+      // sort the assignments by name
+      res.sort((a, b) => a.assignment_name.localeCompare(b.assignment_name));
+
+      return res ?? [];
     } catch (err) {
       console.error(err);
-      return 0;
+      return [];
     }
   }
 
@@ -221,6 +236,88 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return undefined;
+    }
+  }
+
+  public async getSubmissionTimeline(
+    assignment_id: string
+  ): Promise<SubmissionTimeline[] | undefined> {
+    try {
+      await connectDB();
+
+      const res = await Adapt.aggregate([
+        {
+          $match: {
+            assignment_id
+          },
+        },
+        {
+          $addFields: {
+            parsedSubmissionTime: {
+              $toDate: "$submission_time",
+            },
+            parsedDue: {
+              $toDate: "$due",
+            },
+          },
+        },
+        {
+          $match: {
+            parsedSubmissionTime: {
+              $gte: new Date("2022-01-01"),
+              $lt: new Date("2022-12-31"),
+            },
+          },
+        },
+        {
+          $project: {
+            id: 1,
+            parsedSubmissionTime: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$parsedSubmissionTime",
+              },
+            },
+            parsedDue: 1,
+          },
+        },
+        {
+          $group: {
+            _id: "$parsedSubmissionTime",
+            count: { $sum: 1 },
+            parsedDue: {
+              $first: "$parsedDue",
+            },
+          },
+        },
+      ]);
+
+      res.sort((a, b) => a._id.localeCompare(b._id));
+
+      return res;
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  }
+
+  public async getStudents(page = 1, limit = 100): Promise<string[]> {
+    try {
+      await connectDB();
+
+      const offset = getPaginationOffset(page, limit);
+
+      const res = await Enrollments.find({
+        class: this.adaptID,
+      })
+        .select("email")
+        .skip(offset)
+        .limit(limit);
+
+      return res.map((d) => d.email);
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   }
 }
