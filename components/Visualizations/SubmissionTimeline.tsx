@@ -1,11 +1,13 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { SubmissionTimeline as SubmissionTimelineType } from "@/lib/types";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualizationhelpers";
+import NoData from "../NoData";
 
 const MARGIN = { top: 20, right: 20, bottom: 50, left: 50 };
 const BUCKET_PADDING = 1;
@@ -20,8 +22,8 @@ type SubmissionTimelineProps = {
 };
 
 const SubmissionTimeline = ({
-  width = 1200,
-  height = 400,
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
   getData,
   selectedId,
 }: SubmissionTimelineProps) => {
@@ -43,6 +45,7 @@ const SubmissionTimeline = ({
     if (!selectedId) return;
     setLoading(true);
     const data = await getData(selectedId);
+    console.log(data);
     setData(data ?? []);
     setLoading(false);
   }
@@ -161,8 +164,11 @@ const SubmissionTimeline = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedId && (
+      {!loading && selectedId && data?.length > 0 && (
         <svg ref={svgRef} width={width} height={height}></svg>
+      )}
+      {!loading && selectedId && (!data || data.length === 0) && (
+        <NoData width={width} height={height} />
       )}
     </VisualizationInnerContainer>
   );

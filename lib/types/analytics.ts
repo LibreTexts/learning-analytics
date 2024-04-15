@@ -8,3 +8,9 @@ export type SubmissionTimeline = {
   count: number;
   parsedDue: Date
 }
+
+export type PerformancePerAssignment = {
+  assignment_id: string;
+  student_score: number;
+  class_avg: number;
+}

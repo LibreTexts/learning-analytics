@@ -15,14 +15,9 @@ export async function getData() {
 
   const assignments = await analytics.getAssignments();
   const enrolled = await analytics.countEnrolledStudents();
-
-  const performance = await analytics.getPerformancePerAssignment(
-    "0603117dfdf13ead1aed422a3facdd5e"
-  );
   return {
     assignments: assignments.length,
     enrolled,
-    performance,
   };
 }
 
@@ -35,6 +30,17 @@ async function getEngagement() {
   const engagement = await analytics.getTextbookEngagement();
 
   return engagement;
+}
+
+async function getPerformancePerAssignment(student_id: string) {
+  "use server";
+  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
+
+  const analytics = new Analytics(adapt_id);
+
+  const performance = await analytics.getPerformancePerAssignment(student_id);
+
+  return performance;
 }
 
 async function getSubmissionTimeline(assignment_id: string) {
@@ -76,7 +82,7 @@ export default async function InstructorDashboard() {
           className="tw-ml-4"
         />
       </div>
-     {/* <VisualizationContainer
+      {/* <VisualizationContainer
         title="Textbook Engagment"
         description="Histogram of student engagement with the textbook."
       >
@@ -87,7 +93,7 @@ export default async function InstructorDashboard() {
         description="Class average vs. selected student's scores"
         dropdown="student"
       >
-        <PerfPerAssignment data={data.performance} />
+        <PerfPerAssignment getData={getPerformancePerAssignment} />
       </VisualizationContainer>
       <VisualizationContainer
         title="ADAPT Performance"
@@ -101,7 +107,7 @@ export default async function InstructorDashboard() {
         description="Timeline of student submissions for selected assignment"
         dropdown="assignment"
       >
-        <SubmissionTimeline getData={getSubmissionTimeline}/>
+        <SubmissionTimeline getData={getSubmissionTimeline} />
       </VisualizationContainer>
     </GenericPageContainer>
   );

@@ -40,6 +40,20 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
+  useEffect(() => {
+    if (selectedId) return;
+
+    // Set the selected ID to the first student or assignment
+    if (students && students.length > 0 && dropdown === "student") {
+      setSelectedId(students[0]);
+    }
+
+    // Set the selected ID to the first assignment
+    if (assignments && assignments.length > 0 && dropdown === "assignment") {
+      setSelectedId(assignments[0]._id);
+    }
+  }, [students, assignments, selectedId]);
+
   async function getStudents() {
     try {
       const res = await axios.get<AnalyticsAPIResponse<string[]>>(
@@ -75,23 +89,17 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   }
 
   const StudentDropdown = () => (
-    <Dropdown>
-      <Dropdown.Toggle
-        variant="light"
-        id="dropdown-basic"
-        disabled={isFetchingStudents}
-      >
-        <PersonFill className="tw-mb-1 tw-mr-1" />
-        {selectedId ? `Student ${selectedId}` : "Select Student"}
-      </Dropdown.Toggle>
-      <Dropdown.Menu>
-        {students?.map((s) => (
-          <Dropdown.Item key={s} onClick={() => setSelectedId(s)}>
-            {s}
-          </Dropdown.Item>
-        ))}
-      </Dropdown.Menu>
-    </Dropdown>
+    <CustomDropdown
+      icon="person"
+      label={selectedId ? `Student ${selectedId}` : "Select Student"}
+      loading={isFetchingStudents}
+    >
+      {students?.map((s) => (
+        <Dropdown.Item key={s} onClick={() => setSelectedId(s)}>
+          {s}
+        </Dropdown.Item>
+      ))}
+    </CustomDropdown>
   );
 
   const AssignmentDropdown = () => (

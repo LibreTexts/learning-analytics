@@ -1,3 +1,4 @@
+import { truncateString } from "@/utils/texthelpers";
 import { useId } from "react";
 import { Dropdown, DropdownProps } from "react-bootstrap";
 import { FileEarmarkTextFill, Person, PersonFill } from "react-bootstrap-icons";
@@ -34,7 +35,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         ) : (
           <PersonFill className="tw-mb-1 tw-mr-1" />
         )}
-        {label}
+        {truncateString(label, 30)}
       </Dropdown.Toggle>
       <Dropdown.Menu>{children}</Dropdown.Menu>
     </Dropdown>

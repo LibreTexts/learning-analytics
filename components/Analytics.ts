@@ -4,7 +4,11 @@ import AdaptCodes from "@/lib/models/adaptCodes";
 import Enrollments from "@/lib/models/enrollments";
 import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
-import { AssignmentAvgScoreCalc, SubmissionTimeline } from "@/lib/types";
+import {
+  AssignmentAvgScoreCalc,
+  PerformancePerAssignment,
+  SubmissionTimeline,
+} from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
 
@@ -101,10 +105,10 @@ class Analytics {
 
   public async getPerformancePerAssignment(
     emailToCompare?: string
-  ): Promise<Map<string, Record<string, number>> | undefined> {
+  ): Promise<PerformancePerAssignment[]> {
     try {
       if (!emailToCompare) {
-        return undefined;
+        return [];
       }
 
       await connectDB();
@@ -143,24 +147,29 @@ class Analytics {
         studentScorePromise,
       ]);
 
-      const map = new Map<string, Record<string, number>>();
+      const classAvgMap = new Map<string, number>();
       classAvg.forEach((d) => {
-        map.set(d._id, {
-          "Class Average": d.avg_score,
-        });
+        classAvgMap.set(d._id, d.avg_score);
       });
 
+      const studentScoreMap = new Map<string, number>();
       studentScore.forEach((d) => {
-        map.set(d._id, {
-          ...map.get(d._id),
-          "Student Score": d.avg_score,
+        studentScoreMap.set(d._id, d.avg_score);
+      });
+
+      const res: PerformancePerAssignment[] = [];
+      classAvgMap.forEach((v, k) => {
+        res.push({
+          assignment_id: k,
+          class_avg: v,
+          student_score: studentScoreMap.get(k) ?? 0,
         });
       });
 
-      return map;
+      return res;
     } catch (err) {
       console.error(err);
-      return undefined;
+      return [];
     }
   }
 
@@ -248,7 +257,7 @@ class Analytics {
       const res = await Adapt.aggregate([
         {
           $match: {
-            assignment_id
+            assignment_id,
           },
         },
         {

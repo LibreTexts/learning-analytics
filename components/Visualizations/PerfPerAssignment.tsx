@@ -1,96 +1,116 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
+import SelectOption from "../SelectOption";
+import VisualizationLoading from "../VisualizationLoading";
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualizationhelpers";
+import { PerformancePerAssignment } from "@/lib/types";
+import { LIBRE_BLUE } from "@/utils/colors";
 
-const MARGIN = { top: 20, right: 20, bottom: 20, left: 20 };
+const MARGIN = { top: 20, right: 20, bottom: 70, left: 50 };
+const BUCKET_PADDING = 1;
 
 interface PerfPerAssignmentProps {
-  data: Map<string, Record<string, number>> | undefined;
   width?: number;
   height?: number;
+  selectedId?: string;
+  getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 }
 
-function PerfPerAssignment({
-  data,
-  width = 1000,
-  height = 400,
-}: PerfPerAssignmentProps) {
-  const svgRef = useRef<HTMLDivElement>(null);
-
-  const subgroups = ["Class Average", "Student Score"];
-
-  const [parsed, setParsed] = useState<Map<string, Record<string, number>>>(
-    new Map()
-  );
-  const [groups, setGroups] = useState<string[]>([]);
+const PerfPerAssignment = ({
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
+  selectedId,
+  getData,
+}: PerfPerAssignmentProps) => {
+  const svgRef = useRef(null);
+  const [data, setData] = useState<PerformancePerAssignment[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!data) return;
-    parseData(data);
-  }, []);
+    handleGetData();
+  }, [selectedId]);
 
   useEffect(() => {
-    if (parsed.size > 0) {
-      buildChart();
+    if (data.length === 0) return;
+    buildChart();
+  }, [width, height, data]);
+
+  async function handleGetData() {
+    try {
+      if (!selectedId) return;
+      setLoading(true);
+      const data = await getData(selectedId);
+      setData(data ?? []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  }, [parsed]);
-
-  function parseData(data: PerfPerAssignmentProps["data"]) {
-    if (!data) return;
-
-    // Determine Groups
-    const _groups = new Set<string>();
-    Array.from(data.keys()).forEach((key) => {
-      _groups.add(key);
-    });
-    setGroups(Array.from(_groups));
-    setParsed(data);
   }
 
-  const getMax = () => {
+  const getMax = useMemo(() => {
     let max = 0;
-    parsed.forEach((d) => {
-      const values = Object.values(d);
-      const _max = Math.max(...(values as number[]));
-      if (_max > max) max = _max;
+    if (data.length === 0) {
+      return 100; // Default value (if no data is present)
+    }
+    data.forEach((d) => {
+      if (d.class_avg > max) max = d.class_avg;
+      if (d.student_score > max) max = d.student_score;
     });
     return max;
-  };
+  }, [data]);
 
   function buildChart() {
+    setLoading(true);
+    const subgroups = ["class_avg", "student_score"];
     const svg = d3.select(svgRef.current);
-    // .append("svg")
-    // .attr("width", width + margin.left + margin.right)
-    // .attr("height", height + margin.top + margin.bottom)
 
     svg.selectAll("*").remove(); // Clear existing chart
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`);
-
-    const xScale = d3.scaleBand().domain(groups).range([0, width]).padding(0.2);
-
-    // Add x-axis
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height})`)
-      .call(d3.axisBottom(xScale).tickSize(0));
-
-    const yScale = d3.scaleLinear().domain([0, getMax()]).range([height, 0]);
-
-    // Add y-axis
-    svg
-      .append("g")
-      .call(d3.axisLeft(yScale))
-      .attr("transform", `translate(${MARGIN.left}, 0)`);
+    const x = d3
+      .scaleBand()
+      .domain(data.map((d) => d.assignment_id))
+      .range([MARGIN.left, width - MARGIN.right])
+      .padding(0.1);
 
     const xSubgroup = d3
       .scaleBand()
       .domain(subgroups)
-      .range([0, xScale.bandwidth()])
+      .range([0, x.bandwidth()])
       .padding(0.01);
+
+    const y = d3
+      .scaleLinear()
+      .range([height - MARGIN.bottom, MARGIN.top])
+      .domain([0, getMax]);
+
+    // Add x-axis
+    svg
+      .append("g")
+      .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-35)")
+      .style("text-anchor", "end")
+      .style("font-size", "8px");
+
+    // Add y-axis
+    svg
+      .append("g")
+      .call(d3.axisLeft(y))
+      .attr("transform", `translate(${MARGIN.left}, 0)`);
+
+    // Add Y axis label:
+    svg
+      .append("text")
+      .attr("text-anchor", "end")
+      .attr("x", `-${height / 3}`)
+      .attr("y", MARGIN.left / 2 - 10)
+      .attr("transform", "rotate(-90)")
+      .text("% score")
+      .style("font-size", "12px");
 
     const color = d3
       .scaleOrdinal()
@@ -98,33 +118,65 @@ function PerfPerAssignment({
       .range(["#e41a1c", "#377eb8"]);
 
     svg
+      .append("g")
       .selectAll("g")
-      .data(parsed.entries())
+      .data(data)
       .enter()
       .append("g")
-      .attr("transform", (d) => `translate(${xScale(d[0])}, 0)`)
+      .attr("transform", (d) => `translate(${x(d.assignment_id)}, 0)`)
       .selectAll("rect")
-      .data((d) =>
-        subgroups.map((key) => ({
-          key,
-          value: d[1][key] !== undefined ? d[1][key] : 0,
-        }))
-      )
+      // @ts-ignore
+      .data((d) => subgroups.map((key) => ({ key, value: d[key] })))
       .enter()
       .append("rect")
-      // @ts-ignore
-      .attr("x", (d) => xSubgroup(d.key))
-      .attr("y", (d) => yScale(d.value))
-      .attr("width", xSubgroup.bandwidth() / subgroups.length)
-      .attr("height", (d) => height - yScale(d.value))
+      .attr("x", (d) => xSubgroup(d.key) ?? 0)
+      .attr("y", (d) => y(d.value))
+      .attr("width", xSubgroup.bandwidth() - BUCKET_PADDING)
+      .attr("height", (d) => height - MARGIN.bottom - y(d.value))
       .attr("fill", (d) => color(d.key) as string);
+
+    // Add one dot in the legend for each name.
+    svg
+      .selectAll("mydots")
+      .data(subgroups)
+      .enter()
+      .append("circle")
+      .attr("cx", (d, i) => MARGIN.left + 10 + i * 100) // 100 is where the first dot appears. 25 is the distance between dots
+      .attr("cy", (d, i) => height - 10)
+      .attr("r", 7)
+      .style("fill", (d) => color(d) as string);
+
+    // Add one dot in the legend for each name.
+    svg
+      .selectAll("mylabels")
+      .data(subgroups)
+      .enter()
+      .append("text")
+      .attr("x", (d, i) => MARGIN.left + 20 + i * 100) // 100 is where the first dot appears. 25 is the distance between dots
+      .attr("y", (d, i) => height - 10)
+      .style("fill", (d) => color(d) as string)
+      .text((d) => d)
+      .attr("text-anchor", "left")
+      .style("alignment-baseline", "middle");
+
+    setLoading(false);
   }
 
   return (
     <VisualizationInnerContainer>
-      <div ref={svgRef}></div>
+      {!selectedId && (
+        <SelectOption
+          width={width}
+          height={height}
+          msg={"Select a student to view their performance per assignment."}
+        />
+      )}
+      {loading && <VisualizationLoading width={width} height={height} />}
+      {!loading && selectedId && (
+        <svg ref={svgRef} width={width} height={height}></svg>
+      )}
     </VisualizationInnerContainer>
   );
-}
+};
 
 export default PerfPerAssignment;
