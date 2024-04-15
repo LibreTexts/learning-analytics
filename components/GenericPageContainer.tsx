@@ -14,7 +14,7 @@ const GenericPageContainer: React.FC<GenericPageContainerProps> = ({
     <div
       className={classNames(
         className,
-        "tw-flex tw-flex-col tw-w-full"
+        "tw-flex tw-flex-col tw-w-full tw-mb-16"
       )}
       {...rest}
     >

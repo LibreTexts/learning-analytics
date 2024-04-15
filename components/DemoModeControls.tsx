@@ -12,9 +12,6 @@ const DemoModeControls = () => {
 
   return (
     <div className="tw-w-1/3 tw-flex tw-flex-col tw-items-center tw-border tw-border-solid tw-border-white tw-rounded-md tw-py-1 tw-mb-8 tw-bg-libre-blue tw-text-white">
-      <p className="tw-text-center tw-font-semibold tw-mb-0">
-        Demonstration Mode:
-      </p>
       <div className="tw-flex tw-flex-row tw-items-center tw-mt-0">
         <p className="tw-text-center tw-mb-0">
           <span className="tw-font-semibold">Viewing as: </span>

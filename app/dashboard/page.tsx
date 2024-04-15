@@ -76,12 +76,12 @@ export default async function InstructorDashboard() {
           className="tw-ml-4"
         />
       </div>
-     <VisualizationContainer
+     {/* <VisualizationContainer
         title="Textbook Engagment"
         description="Histogram of student engagement with the textbook."
       >
         <TextbookEngagement getData={getEngagement} />
-      </VisualizationContainer> 
+      </VisualizationContainer>  */}
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"

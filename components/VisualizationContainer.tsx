@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { AnalyticsAPIResponse } from "@/lib/types";
 import { IAdapt_Raw } from "@/lib/models/adapt";
+import CustomDropdown from "./CustomDropdown";
 
 interface VisualizationContainerProps {
   title: string;
@@ -94,19 +95,17 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   );
 
   const AssignmentDropdown = () => (
-    <Dropdown>
-      <Dropdown.Toggle variant="light" id="dropdown-basic">
-        <FileEarmarkTextFill className="tw-mb-1 tw-mr-1" />
-        {selectedId ? `Assignment ${selectedId}` : "Select Assignment"}
-      </Dropdown.Toggle>
-      <Dropdown.Menu>
-        {assignments?.map((a) => (
-          <Dropdown.Item key={a._id} onClick={() => setSelectedId(a._id)}>
-            {a.assignment_name}
-          </Dropdown.Item>
-        ))}
-      </Dropdown.Menu>
-    </Dropdown>
+    <CustomDropdown
+      icon="file"
+      label={selectedId ? `Assignment ${selectedId}` : "Select Assignment"}
+      loading={isFetchingAssignments}
+    >
+      {assignments?.map((a) => (
+        <Dropdown.Item key={a._id} onClick={() => setSelectedId(a._id)}>
+          {a.assignment_name}
+        </Dropdown.Item>
+      ))}
+    </CustomDropdown>
   );
 
   const childWithProps = cloneElement(children as React.ReactElement, {
