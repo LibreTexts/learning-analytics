@@ -14,3 +14,8 @@ export type PerformancePerAssignment = {
   student_score: number;
   class_avg: number;
 }
+
+export type TextbookInteractionsCount = {
+  date: string;
+  numInteractions: number;
+}

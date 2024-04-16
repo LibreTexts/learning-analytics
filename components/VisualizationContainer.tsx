@@ -1,18 +1,18 @@
 "use client";
 import React, { cloneElement, useEffect, useState } from "react";
-import { Card, Dropdown, Form, InputGroup } from "react-bootstrap";
-import { FileEarmarkTextFill, Person, PersonFill } from "react-bootstrap-icons";
+import { Card, Dropdown } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { AnalyticsAPIResponse } from "@/lib/types";
-import { IAdapt_Raw } from "@/lib/models/adapt";
 import CustomDropdown from "./CustomDropdown";
+import { useSelector } from "@/redux";
 
 interface VisualizationContainerProps {
   title: string;
   description: string;
   dropdown?: "student" | "assignment";
   children: React.ReactNode;
+  studentMode?: boolean;
 }
 
 const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
@@ -20,9 +20,13 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   description,
   dropdown,
   children,
+  studentMode = false,
 }) => {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const globalSettings = useSelector((state) => state.globalSettings);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    studentMode ? globalSettings.studentId : null
+  );
 
   const { data: students, isFetching: isFetchingStudents } = useQuery<string[]>(
     {
@@ -41,7 +45,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   });
 
   useEffect(() => {
-    if (selectedId) return;
+    if (selectedId || studentMode) return;
 
     // Set the selected ID to the first student or assignment
     if (students && students.length > 0 && dropdown === "student") {
@@ -56,6 +60,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
 
   async function getStudents() {
     try {
+      if (studentMode) return [globalSettings.studentId];
       const res = await axios.get<AnalyticsAPIResponse<string[]>>(
         "/api/students"
       );
@@ -118,6 +123,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
 
   const childWithProps = cloneElement(children as React.ReactElement, {
     selectedId,
+    studentMode,
   });
 
   return (

@@ -2,68 +2,88 @@
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
+import { TextbookInteractionsCount } from "@/lib/types";
+import { LIBRE_BLUE } from "@/utils/colors";
+import {
+  DEFAULT_BUCKET_PADDING,
+  DEFAULT_HEIGHT,
+  DEFAULT_MARGINS,
+  DEFAULT_WIDTH,
+} from "@/utils/visualizationhelpers";
+import NoData from "../NoData";
+import VisualizationLoading from "../VisualizationLoading";
 
-const MARGIN = { top: 20, right: 20, bottom: 20, left: 20 };
-const BUCKET_PADDING = 1;
+const MARGIN = DEFAULT_MARGINS;
+const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type TextbookEngagementProps = {
   width?: number;
   height?: number;
-  getData: () => Promise<number[] | undefined>;
+  getData: () => Promise<TextbookInteractionsCount[]>;
 };
 
 const TextbookEngagement = ({
-  width = 1000,
-  height = 400,
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
   getData,
 }: TextbookEngagementProps) => {
   const svgRef = useRef(null);
-  const [data, setData] = useState<number[]>([]);
+  const [data, setData] = useState<TextbookInteractionsCount[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     handleGetData();
   }, []);
 
   useEffect(() => {
+    if (data.length === 0) return;
     drawChart();
   }, [width, height, data]);
 
   async function handleGetData() {
-    const data = await getData();
-    setData(data ?? []);
+    try {
+      setLoading(true);
+      const data = await getData();
+      setData(data ?? []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  const getMaxCount = useMemo(() => {
+    const vals = data.map((d) => d.numInteractions);
+    if (vals.length === 0) return 200; // Default value
+    return Math.max(...vals);
+  }, [data]);
+
   function drawChart() {
+    setLoading(true);
     const svg = d3.select(svgRef.current);
 
     svg.selectAll("*").remove(); // Clear existing chart
 
-    svg
-      .append("g")
-      .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`);
+    const domain = data.map((d) => d.date);
 
     const x = d3
-      .scaleLinear()
-      .domain([0, 100])
+      .scaleBand()
+      .domain(domain)
       .range([MARGIN.left, width - MARGIN.right]);
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
-      .call(d3.axisBottom(x));
-
-    const histogram = d3
-      .bin()
-      .value((d) => d)
-      .domain([0, 100])
-      .thresholds(10);
-
-    const bins = histogram(data ?? []);
-    console.log(bins)
 
     const y = d3
       .scaleLinear()
-      .range([height - MARGIN.bottom, 0])
-      .domain([0, 100]);
+      .range([height - MARGIN.bottom, MARGIN.top])
+      .domain([0, getMaxCount]);
+
+    svg
+      .append("g")
+      .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end")
+      .style("font-size", "8px");
 
     svg
       .append("g")
@@ -72,38 +92,38 @@ const TextbookEngagement = ({
 
     svg
       .selectAll("rect")
-      .data(bins)
+      .data(data)
       .enter()
       .append("rect")
-      .attr("x", 1)
-      .attr(
-        "transform",
-        (d) => `translate(${x(d.x0 ?? 0) + BUCKET_PADDING}, ${y(d.length)})`
-      )
-      .attr("width", (d) => x(d.x1 ?? 0) - x(d.x0 ?? 0) - BUCKET_PADDING)
-      .attr("height", (d) => height - MARGIN.bottom - y(d.length))
-      .style("fill", "orange");
+      .attr("x", (d) => x(d.date) ?? 0)
+      .attr("transform", (d) => `translate(0, ${y(d.numInteractions)})`)
+      .attr("width", x.bandwidth() - BUCKET_PADDING)
+      .attr("height", (d) => height - MARGIN.bottom - y(d.numInteractions))
+      .style("fill", LIBRE_BLUE);
 
-    // Add X axis label:
-    svg
-      .append("text")
-      .attr("text-anchor", "center")
-      .attr("x", width)
-      .attr("y", height)
-      .text("% of Page Read");
-    
+
     // Add Y axis label:
     svg
       .append("text")
-      .attr("text-anchor", "center")
-      .attr("x", 0)
-      .attr("y", MARGIN.top)
-      .text("Frequency");
+      .attr("text-anchor", "end")
+      .attr("x", `-${height / 3}`)
+      .attr("y", MARGIN.left / 2 - 10)
+      .attr("transform", "rotate(-90)")
+      .text("# of Interactions")
+      .style("font-size", "12px");
+
+    setLoading(false);
   }
 
   return (
     <VisualizationInnerContainer>
-      <svg width={width} height={height} ref={svgRef}></svg>
+      {loading && <VisualizationLoading width={width} height={height} />}
+      {!loading && data?.length > 0 && (
+        <svg ref={svgRef} width={width} height={height}></svg>
+      )}
+      {!loading && (!data || data.length === 0) && (
+        <NoData width={width} height={height} />
+      )}
     </VisualizationInnerContainer>
   );
 };

@@ -18,13 +18,6 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
 
-  // Redirect to dashboard if on root
-  useEffect(() => {
-    if (pathname === "/") {
-      window.history.replaceState(null, "", "/dashboard");
-    }
-  }, [pathname]);
-
   return (
     <html lang="en">
       <head>
@@ -42,10 +35,7 @@ export default function RootLayout({
             )}
             <div className="tw-flex tw-flex-row">
               <div className="tw-flex tw-flex-col">
-                <NavMenu
-                  mode="instructor"
-                  activeKey={pathname === "" ? "/dashboard" : pathname} //Default to dashboard
-                />
+                <NavMenu activeKey={pathname} />
               </div>
               <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
             </div>

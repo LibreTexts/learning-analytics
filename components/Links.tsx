@@ -3,7 +3,7 @@
  */
 const Links = {
   CLIENT: {
-    Dashboard: "/dashboard",
+    Dashboard: "/",
     EarlyWarning: "/early-warning",
     RawData: "/raw-data",
   },

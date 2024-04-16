@@ -6,14 +6,14 @@ import { useSelector } from "@/redux";
 const ACTIVE_CLASSES = "tw-bg-light-gray tw-border-none";
 
 type NavMenuProps = {
-  mode: "instructor" | "student";
   activeKey: string;
 };
 
-const NavMenu: React.FC<NavMenuProps> = ({ mode, activeKey }) => {
+const NavMenu: React.FC<NavMenuProps> = ({ activeKey }) => {
   const globalSettings = useSelector((state) => state.globalSettings);
 
   const isActive = (key: string) => {
+    if (activeKey === "/" && key === "dashboard") return true;
     if (activeKey.startsWith("/")) activeKey = activeKey.substring(1);
     return key === activeKey;
   };
@@ -31,7 +31,8 @@ const NavMenu: React.FC<NavMenuProps> = ({ mode, activeKey }) => {
           href={Links.CLIENT.Dashboard}
         >
           <span className="tw-text-link-blue">
-            {mode === "instructor" ? "Instructor" : "Student"} Dashboard
+            {globalSettings.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
+            Dashboard
           </span>
         </ListGroup.Item>
         <ListGroup.Item
@@ -42,7 +43,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ mode, activeKey }) => {
         >
           <span className="tw-text-link-blue">Early Warning</span>
         </ListGroup.Item>
-        {mode === "instructor" && (
+        {globalSettings.viewAs === "instructor" && (
           <ListGroup.Item
             active={isActive("raw-data")}
             className={isActive("raw-data") ? ACTIVE_CLASSES : ""}

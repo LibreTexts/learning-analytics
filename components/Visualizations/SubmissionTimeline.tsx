@@ -1,16 +1,21 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { SubmissionTimeline as SubmissionTimelineType } from "@/lib/types";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
-import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualizationhelpers";
+import {
+  DEFAULT_BUCKET_PADDING,
+  DEFAULT_HEIGHT,
+  DEFAULT_MARGINS,
+  DEFAULT_WIDTH,
+} from "@/utils/visualizationhelpers";
 import NoData from "../NoData";
 
-const MARGIN = { top: 20, right: 20, bottom: 50, left: 50 };
-const BUCKET_PADDING = 1;
+const MARGIN = DEFAULT_MARGINS;
+const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type SubmissionTimelineProps = {
   width?: number;
@@ -42,12 +47,16 @@ const SubmissionTimeline = ({
   }, [width, height, data]);
 
   async function handleGetData() {
-    if (!selectedId) return;
-    setLoading(true);
-    const data = await getData(selectedId);
-    console.log(data);
-    setData(data ?? []);
-    setLoading(false);
+    try {
+      if (!selectedId) return;
+      setLoading(true);
+      const data = await getData(selectedId);
+      setData(data ?? []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const getMaxCount = useMemo(() => {

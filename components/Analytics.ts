@@ -4,10 +4,12 @@ import AdaptCodes from "@/lib/models/adaptCodes";
 import Enrollments from "@/lib/models/enrollments";
 import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
+import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
   AssignmentAvgScoreCalc,
   PerformancePerAssignment,
   SubmissionTimeline,
+  TextbookInteractionsCount,
 } from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
@@ -173,7 +175,7 @@ class Analytics {
     }
   }
 
-  public async getTextbookEngagement(): Promise<number[] | undefined> {
+  public async getTextbookEngagement(): Promise<TextbookInteractionsCount[]> {
     try {
       await connectDB();
       const courseId = await this.getCourseId();
@@ -181,19 +183,16 @@ class Analytics {
         throw new Error("Course ID not found");
       }
 
-      console.log("starting aggregation");
-      console.time("aggregation");
-      const res = await LTAnalytics.aggregate([
+      const res = await TextbookInteractionsByDate.aggregate([
         {
           $match: {
-            "actor.courseName": courseId.toString(),
-            verb: "read",
+            textbookID: courseId,
           },
         },
         {
           $addFields: {
             parsedTimestamp: {
-              $toDate: "$object.timestamp",
+              $toDate: "$date",
             },
           },
         },
@@ -205,46 +204,17 @@ class Analytics {
             },
           },
         },
-        {
-          $addFields: {
-            // Remove the percent symbol using $substr and convert to integer using $toInt
-            parsedPercent: {
-              $toInt: {
-                $substr: [
-                  "$result.percent",
-                  0,
-                  {
-                    $add: [
-                      {
-                        $strLenCP: "$result.percent",
-                      },
-                      -1,
-                    ],
-                  },
-                ],
-              },
-            },
-          },
-        },
       ]);
-      console.timeEnd("aggregation");
-      console.log("aggregation complete");
 
-      // // group by result.percent for every 10% and count the number of occurrences
-      // const map = new Map<string, number>();
-      // res.forEach((d) => {
-      //   const key = Math.floor(d.result.percent / 10) * 10;
-      //   map.set(key.toString(), (map.get(key.toString()) ?? 0) + 1);
-      // });
+      res.sort((a, b) => a.date.localeCompare(b.date));
 
-      const percentages = res
-        .filter((d) => !!d.parsedPercent) // filter out undefined values
-        .map((d) => d.parsedPercent ?? 0); // map to an array of percentages; there should be no undefined values but default to 0 as a fallback
-
-      return percentages;
+      return res.map((d) => ({
+        date: d.date,
+        numInteractions: d.numInteractions,
+      }));
     } catch (err) {
       console.error(err);
-      return undefined;
+      return [];
     }
   }
 
