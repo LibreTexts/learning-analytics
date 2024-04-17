@@ -1,5 +1,5 @@
 import {
-  getData,
+  getInstructorQuickMetrics,
   getPerformancePerAssignment,
   getSubmissionTimeline,
   getTextbookEngagement,
@@ -14,9 +14,11 @@ import SubmissionTimeline from "./Visualizations/SubmissionTimeline";
 import { useEffect, useState } from "react";
 import NoData from "./NoData";
 import TextbookEngagement from "./Visualizations/TextbookEngagement";
+import TextbookActivity from "./Visualizations/TextbookActivity";
+import { InstructorQuickMetrics } from "@/lib/types";
 
 function InstructorDashboard() {
-  const [data, setData] = useState({
+  const [data, setData] = useState<InstructorQuickMetrics>({
     assignments: 0,
     enrolled: 0,
   });
@@ -26,7 +28,7 @@ function InstructorDashboard() {
   }, []);
 
   async function fetchData() {
-    const data = await getData();
+    const data = await getInstructorQuickMetrics();
     setData(data);
   }
 
@@ -63,11 +65,11 @@ function InstructorDashboard() {
         <PerfPerAssignment getData={getPerformancePerAssignment} />
       </VisualizationContainer>
       <VisualizationContainer
-        title="Performance Per Assignment (Textbook)"
-        description="Class average vs. selected student's performance"
+        title="Textbook Activity"
+        description="Class average vs. selected student's activity"
         dropdown="student"
       >
-        <NoData width={1200} height={400} />
+        <TextbookActivity getData={getPerformancePerAssignment} />
       </VisualizationContainer>
       <VisualizationContainer
         title="Performance Per Assignment (Homework)"
@@ -83,12 +85,12 @@ function InstructorDashboard() {
       >
         <SubmissionTimeline getData={getSubmissionTimeline} />
       </VisualizationContainer>
-      <VisualizationContainer
+      {/* <VisualizationContainer
           title="Textbook Engagment"
           description="Number of unique interactions with the textbook by date"
         >
           <TextbookEngagement getData={getTextbookEngagement} />
-        </VisualizationContainer>
+        </VisualizationContainer> */}
       <VisualizationContainer
         title="ADAPT Performance"
         description="Distribution of student scores by selected assignment"

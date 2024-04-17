@@ -3,7 +3,7 @@ import classNames from "classnames";
 
 interface SmallMetricCardProps {
   title: string;
-  value: number;
+  value: number | string;
   unit: string;
   className?: string;
 }
@@ -23,7 +23,12 @@ const SmallMetricCard: React.FC<SmallMetricCardProps> = ({
     >
       <h3 className="tw-text-lg tw-font-semibold">{title}</h3>
       <p className="tw-text-6xl tw-font-semibold tw-text-center">
-        {new Intl.NumberFormat().format(value)}
+        {
+          // If the value is a string, return it as is
+          typeof value === "string"
+            ? value
+            : new Intl.NumberFormat().format(value)
+        }
       </p>
       <p className="tw-text-sm tw-mb-0 tw-text-slate-400">{unit}</p>
     </Card>

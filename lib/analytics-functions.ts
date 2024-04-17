@@ -1,8 +1,9 @@
 "use server";
 
-import Analytics from "@/components/Analytics";
+import Analytics from "@/lib/Analytics";
+import { InstructorQuickMetrics, StudentQuickMetrics } from "./types";
 
-export async function getData() {
+export async function getInstructorQuickMetrics(): Promise<InstructorQuickMetrics> {
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
   const analytics = new Analytics(adapt_id);
 
@@ -12,6 +13,29 @@ export async function getData() {
     assignments: assignments.length,
     enrolled,
   };
+}
+
+export async function getStudentQuickMetrics(
+  student_id: string
+): Promise<StudentQuickMetrics> {
+  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
+  const analytics = new Analytics(adapt_id);
+
+  const textbookEngagement = await analytics.getStudentTextbookEngagement(
+    student_id
+  );
+  return {
+    textbookEngagement,
+  };
+}
+
+export async function getAssignments() {
+  const adaptId = process.env.NEXT_PUBLIC_ADAPT_ID;
+  const analytics = new Analytics(adaptId);
+
+  const assignments = await analytics.getAssignments();
+
+  return assignments;
 }
 
 export async function getTextbookEngagement() {

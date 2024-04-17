@@ -13,6 +13,8 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualizationhelpers";
 import NoData from "../NoData";
+import { ICalcADAPTSubmissionsByDate_Raw } from "@/lib/models/calcADAPTSubmissionsByDate";
+import { format } from "date-fns";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -23,7 +25,7 @@ type SubmissionTimelineProps = {
   selectedId?: string;
   getData: (
     assignment_id: string
-  ) => Promise<SubmissionTimelineType[] | undefined>;
+  ) => Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined>;
 };
 
 const SubmissionTimeline = ({
@@ -34,7 +36,7 @@ const SubmissionTimeline = ({
 }: SubmissionTimelineProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
-  const [data, setData] = useState<SubmissionTimelineType[]>([]);
+  const [data, setData] = useState<ICalcADAPTSubmissionsByDate_Raw[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -71,7 +73,13 @@ const SubmissionTimeline = ({
 
     svg.selectAll("*").remove(); // Clear existing chart
 
-    const domain = data.map((d) => d._id);
+    const domain = data.map((d) => format(d.date, "MM/dd/yyyy"));
+    const dueDate = format(data[0].dueDate, "MM/dd/yyyy");
+
+    // check if dueDate is in the domain
+    if (!domain.includes(dueDate)) {
+      domain.push(dueDate);
+    }
 
     const x = d3
       .scaleBand()
@@ -83,6 +91,7 @@ const SubmissionTimeline = ({
       .range([height - MARGIN.bottom, MARGIN.top])
       .domain([0, getMaxCount]);
 
+    // Add X axis
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
@@ -92,10 +101,21 @@ const SubmissionTimeline = ({
       .style("text-anchor", "end")
       .style("font-size", "8px");
 
+    // Add Y axis
     svg
       .append("g")
       .call(d3.axisLeft(y))
       .attr("transform", `translate(${MARGIN.left}, 0)`);
+
+    // Add a vertical line for the due date
+    svg
+      .append("line")
+      .attr("x1", x(dueDate) ?? 0 + x.bandwidth() / 2)
+      .attr("x2", x(dueDate) ?? 0 + x.bandwidth() / 2)
+      .attr("y1", MARGIN.top)
+      .attr("y2", height - MARGIN.bottom)
+      .style("stroke", "red")
+      .style("stroke-dasharray", "4");
 
     // Create tool tip
     const tooltip = d3
@@ -132,7 +152,7 @@ const SubmissionTimeline = ({
       .data(data)
       .enter()
       .append("rect")
-      .attr("x", (d) => x(d._id) ?? 0)
+      .attr("x", (d) => x(format(d.date, "MM/dd/yyyy")) ?? 0)
       .attr("transform", (d) => `translate(0, ${y(d.count)})`)
       .attr("width", x.bandwidth() - BUCKET_PADDING)
       .attr("height", (d) => height - MARGIN.bottom - y(d.count))

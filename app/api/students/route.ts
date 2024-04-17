@@ -1,4 +1,4 @@
-import Analytics from "@/components/Analytics";
+import Analytics from "@/lib/Analytics";
 
 export async function GET() {
   try {

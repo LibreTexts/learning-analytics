@@ -4,31 +4,26 @@ import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
-import {
-  DEFAULT_BUCKET_PADDING,
-  DEFAULT_HEIGHT,
-  DEFAULT_MARGINS,
-  DEFAULT_WIDTH,
-} from "@/utils/visualizationhelpers";
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualizationhelpers";
 import { PerformancePerAssignment } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 
-const MARGIN = DEFAULT_MARGINS;
-const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
+const MARGIN = { top: 20, right: 20, bottom: 70, left: 50 };
+const BUCKET_PADDING = 1;
 
-interface PerfPerAssignmentProps {
+interface TextbookActivityProps {
   width?: number;
   height?: number;
   selectedId?: string;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 }
 
-const PerfPerAssignment = ({
+const TextbookActivity = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   selectedId,
   getData,
-}: PerfPerAssignmentProps) => {
+}: TextbookActivityProps) => {
   const svgRef = useRef(null);
   const [data, setData] = useState<PerformancePerAssignment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,8 +64,8 @@ const PerfPerAssignment = ({
 
   function buildChart() {
     setLoading(true);
-    const subgroups = ["class_avg", "student_score"];
-    const subgroupsPretty = ["Class Average", "Student Score"];
+    const subgroups = ["class_avg", "student_activity"];
+    const subgroupsPretty = ["Class Average", "Student Activity"];
     const svg = d3.select(svgRef.current);
 
     svg.selectAll("*").remove(); // Clear existing chart
@@ -121,7 +116,7 @@ const PerfPerAssignment = ({
     const color = d3
       .scaleOrdinal()
       .domain(subgroups)
-      .range(["#e41a1c", LIBRE_BLUE]);
+      .range(["#e41a1c", "#377eb8"]);
 
     svg
       .append("g")
@@ -174,7 +169,7 @@ const PerfPerAssignment = ({
         <SelectOption
           width={width}
           height={height}
-          msg={"Select a student to view their performance per assignment."}
+          msg={"Select a student to compare their textbook activity."}
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
@@ -185,4 +180,4 @@ const PerfPerAssignment = ({
   );
 };
 
-export default PerfPerAssignment;
+export default TextbookActivity;

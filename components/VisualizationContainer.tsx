@@ -6,6 +6,8 @@ import axios from "axios";
 import { AnalyticsAPIResponse } from "@/lib/types";
 import CustomDropdown from "./CustomDropdown";
 import { useSelector } from "@/redux";
+import { truncateString } from "@/utils/texthelpers";
+import { getAssignments } from "@/lib/analytics-functions";
 
 interface VisualizationContainerProps {
   title: string;
@@ -28,20 +30,26 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     studentMode ? globalSettings.studentId : null
   );
 
-  const { data: students, isFetching: isFetchingStudents } = useQuery<string[]>(
-    {
-      queryKey: ["students"],
-      queryFn: getStudents,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    }
-  );
+  const {
+    data: students,
+    isFetching: isFetchingStudents,
+    status: studentsStatus,
+  } = useQuery<string[]>({
+    queryKey: ["students"],
+    queryFn: getStudents,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnWindowFocus: false,
+  });
 
-  const { data: assignments, isFetching: isFetchingAssignments } = useQuery<
-    { _id: string; assignment_name: string }[]
-  >({
+  const {
+    data: assignments,
+    isFetching: isFetchingAssignments,
+    status: assignmentsStatus,
+  } = useQuery<{ _id: string; assignment_name: string }[]>({
     queryKey: ["assignments"],
-    queryFn: getAssignments,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: fetchAssignments,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -76,17 +84,20 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     }
   }
 
-  async function getAssignments() {
+  async function fetchAssignments() {
     try {
-      const res = await axios.get<
-        AnalyticsAPIResponse<{ _id: string; assignment_name: string }[]>
-      >("/api/assignments");
+      // const res = await axios.get<
+      //   AnalyticsAPIResponse<{ _id: string; assignment_name: string }[]>
+      // >("/api/assignments");
 
-      if (res.data.error) {
-        throw new Error(res.data.error);
-      }
+      // if (res.data.error) {
+      //   throw new Error(res.data.error);
+      // }
 
-      return res.data.data ?? [];
+      //return res.data.data ?? [];
+
+      const data = await getAssignments();
+      return data;
     } catch (err) {
       console.error(err);
       return [];
@@ -96,12 +107,16 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   const StudentDropdown = () => (
     <CustomDropdown
       icon="person"
-      label={selectedId ? `Student ${selectedId}` : "Select Student"}
-      loading={isFetchingStudents}
+      label={
+        selectedId
+          ? `Student ${truncateString(selectedId, 10)}`
+          : "Select Student"
+      }
+      loading={studentsStatus === "pending"}
     >
       {students?.map((s) => (
         <Dropdown.Item key={s} onClick={() => setSelectedId(s)}>
-          {s}
+          {truncateString(s, 20)}
         </Dropdown.Item>
       ))}
     </CustomDropdown>
@@ -111,7 +126,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     <CustomDropdown
       icon="file"
       label={selectedId ? `Assignment ${selectedId}` : "Select Assignment"}
-      loading={isFetchingAssignments}
+      loading={assignmentsStatus === "pending"}
     >
       {assignments?.map((a) => (
         <Dropdown.Item key={a._id} onClick={() => setSelectedId(a._id)}>

@@ -1,6 +1,7 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface ITextbookInteractionsByDate_Raw {
+  actor: string;
   numInteractions: number;
   date: string;
   textbookID: string;
@@ -13,6 +14,7 @@ export interface ITextbookInteractionsByDate
 const TextbookInteractionsByDateSchema =
   new Schema<ITextbookInteractionsByDate>(
     {
+      actor: String,
       numInteractions: Number,
       date: String,
       textbookID: String,

@@ -13,6 +13,12 @@ import {
 } from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
+import calcADAPTSubmissionsByDate, {
+  ICalcADAPTSubmissionsByDate,
+  ICalcADAPTSubmissionsByDate_Raw,
+} from "./models/calcADAPTSubmissionsByDate";
+import { sortStringsWithNumbers } from "@/utils/texthelpers";
+import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
 
 class Analytics {
   private adaptID: number;
@@ -68,7 +74,12 @@ class Analytics {
       // sort the assignments by name
       res.sort((a, b) => a.assignment_name.localeCompare(b.assignment_name));
 
-      return res ?? [];
+      return (
+        res.map((d) => ({
+          _id: d._id,
+          assignment_name: d.assignment_name,
+        })) ?? []
+      );
     } catch (err) {
       console.error(err);
       return [];
@@ -168,6 +179,8 @@ class Analytics {
         });
       });
 
+      res.sort((a, b) => a.assignment_id.localeCompare(b.assignment_id));
+
       return res;
     } catch (err) {
       console.error(err);
@@ -206,7 +219,7 @@ class Analytics {
         },
       ]);
 
-      res.sort((a, b) => a.date.localeCompare(b.date));
+      // res.sort((a, b) => a.date.localeCompare(b.date));
 
       return res.map((d) => ({
         date: d.date,
@@ -220,60 +233,27 @@ class Analytics {
 
   public async getSubmissionTimeline(
     assignment_id: string
-  ): Promise<SubmissionTimeline[] | undefined> {
+  ): Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined> {
     try {
       await connectDB();
 
-      const res = await Adapt.aggregate([
-        {
-          $match: {
-            assignment_id,
-          },
-        },
-        {
-          $addFields: {
-            parsedSubmissionTime: {
-              $toDate: "$submission_time",
-            },
-            parsedDue: {
-              $toDate: "$due",
-            },
-          },
-        },
-        {
-          $match: {
-            parsedSubmissionTime: {
-              $gte: new Date("2022-01-01"),
-              $lt: new Date("2022-12-31"),
-            },
-          },
-        },
-        {
-          $project: {
-            id: 1,
-            parsedSubmissionTime: {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: "$parsedSubmissionTime",
-              },
-            },
-            parsedDue: 1,
-          },
-        },
-        {
-          $group: {
-            _id: "$parsedSubmissionTime",
-            count: { $sum: 1 },
-            parsedDue: {
-              $first: "$parsedDue",
-            },
-          },
-        },
-      ]);
+      const res = await calcADAPTSubmissionsByDate.find({
+        courseID: this.adaptID.toString(),
+        assignmentID: assignment_id,
+      });
 
-      res.sort((a, b) => a._id.localeCompare(b._id));
+      res.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
 
-      return res;
+      // Convert to POJO
+      return res.map((d) => ({
+        courseID: d.courseID,
+        assignmentID: d.assignmentID,
+        date: d.date,
+        dueDate: d.dueDate,
+        count: d.count,
+      }));
     } catch (err) {
       console.error(err);
       return undefined;
@@ -297,6 +277,27 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return [];
+    }
+  }
+
+  public async getStudentTextbookEngagement(student_id: string): Promise<number> {
+    try {
+      await connectDB();
+
+      const courseId = await this.getCourseId();
+      if (!courseId) {
+        throw new Error("Course ID not found");
+      }
+
+      const res = await calcTextbookActivityTime.findOne({
+        actor: student_id,
+        textbookID: courseId,
+      });
+
+      return res?.activity_time ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
     }
   }
 }

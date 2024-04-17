@@ -9,6 +9,6 @@ export default function Dashboard() {
   return globalSettings.viewAs === "instructor" ? (
     <InstructorDashboard />
   ) : (
-    <StudentDashboard />
+    <StudentDashboard student_id={globalSettings.studentId} />
   );
 }
