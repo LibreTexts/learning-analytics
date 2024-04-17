@@ -6,8 +6,8 @@ import { Providers } from "./providers";
 import classNames from "classnames";
 import NavMenu from "@/components/NavMenu";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
 import DemoModeControls from "@/components/DemoModeControls";
+import { useSelector } from "@/redux";
 
 const inter = Inter({ subsets: ["latin"] });
 

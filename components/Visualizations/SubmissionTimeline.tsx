@@ -11,7 +11,7 @@ import {
   DEFAULT_HEIGHT,
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
-} from "@/utils/visualizationhelpers";
+} from "@/utils/visualization-helpers";
 import NoData from "../NoData";
 import { ICalcADAPTSubmissionsByDate_Raw } from "@/lib/models/calcADAPTSubmissionsByDate";
 import { format } from "date-fns";

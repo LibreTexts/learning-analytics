@@ -4,7 +4,7 @@ export async function GET() {
   try {
     const adaptId = process.env.NEXT_PUBLIC_ADAPT_ID;
     const analytics = new Analytics(adaptId);
-    const students = await analytics.getStudents();
+    const students = await analytics.getStudents(1, 100, false);
 
     return Response.json({ data: students });
   } catch (err) {

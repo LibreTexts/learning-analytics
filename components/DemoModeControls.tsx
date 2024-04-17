@@ -1,6 +1,6 @@
 import { useSelector } from "@/redux";
 import { toggleViewAs, setAdaptId } from "@/redux/slices/globalSettingsSlice";
-import { capitalizeFirstLetter } from "@/utils/texthelpers";
+import { capitalizeFirstLetter } from "@/utils/text-helpers";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 

@@ -1,4 +1,4 @@
-import { truncateString } from "@/utils/texthelpers";
+import { truncateString } from "@/utils/text-helpers";
 import { useId } from "react";
 import { Dropdown, DropdownProps } from "react-bootstrap";
 import { FileEarmarkTextFill, Person, PersonFill } from "react-bootstrap-icons";
@@ -23,19 +23,19 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   return (
     <Dropdown {...props} id={id}>
       <Dropdown.Toggle variant="light" disabled={disabled || loading}>
-        {loading ? (
-          <div
-            className="spinner-border spinner-border-sm tw-mb-1 tw-mr-1"
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        ) : icon === "file" ? (
-          <FileEarmarkTextFill className="tw-mb-1 tw-mr-1" />
-        ) : (
-          <PersonFill className="tw-mb-1 tw-mr-1" />
-        )}
-        {truncateString(label, 30)}
+          {loading ? (
+            <div
+              className="spinner-border spinner-border-sm tw-mr-1"
+              role="status"
+            >
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          ) : icon === "file" ? (
+            <FileEarmarkTextFill className="tw-mb-1 tw-mr-1" />
+          ) : (
+            <PersonFill className="tw-mb-1 tw-mr-1" />
+          )}
+          {truncateString(label, 30)}
       </Dropdown.Toggle>
       <Dropdown.Menu>{children}</Dropdown.Menu>
     </Dropdown>

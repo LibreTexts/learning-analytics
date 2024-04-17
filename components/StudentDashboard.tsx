@@ -1,3 +1,4 @@
+'use client'
 import { getPerformancePerAssignment, getStudentQuickMetrics } from "@/lib/analytics-functions";
 import GenericPageContainer from "./GenericPageContainer";
 import PageHeader from "./PageHeader";
@@ -6,7 +7,7 @@ import PerfPerAssignment from "./Visualizations/PerfPerAssignment";
 import SmallMetricCard from "./SmallMetricCard";
 import { useEffect, useState } from "react";
 import { StudentQuickMetrics } from "@/lib/types";
-import { minutesToPrettyHours } from "@/utils/texthelpers";
+import { minutesToPrettyHours } from "@/utils/text-helpers";
 
 interface StudentDashboardProps {
   student_id: string;

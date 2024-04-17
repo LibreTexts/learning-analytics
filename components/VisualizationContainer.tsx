@@ -1,13 +1,12 @@
 "use client";
-import React, { cloneElement, useEffect, useState } from "react";
+import React, { cloneElement, useEffect, useMemo, useState } from "react";
 import { Card, Dropdown } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { AnalyticsAPIResponse } from "@/lib/types";
 import CustomDropdown from "./CustomDropdown";
 import { useSelector } from "@/redux";
-import { truncateString } from "@/utils/texthelpers";
-import { getAssignments } from "@/lib/analytics-functions";
+import { truncateString } from "@/utils/text-helpers";
+import { getAssignments, getStudents } from "@/lib/analytics-functions";
+import { IDWithName } from "@/lib/types";
 
 interface VisualizationContainerProps {
   title: string;
@@ -34,9 +33,9 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     data: students,
     isFetching: isFetchingStudents,
     status: studentsStatus,
-  } = useQuery<string[]>({
+  } = useQuery<IDWithName[]>({
     queryKey: ["students"],
-    queryFn: getStudents,
+    queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
   });
@@ -45,7 +44,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     data: assignments,
     isFetching: isFetchingAssignments,
     status: assignmentsStatus,
-  } = useQuery<{ _id: string; assignment_name: string }[]>({
+  } = useQuery<IDWithName[]>({
     queryKey: ["assignments"],
     queryFn: fetchAssignments,
     staleTime: 1000 * 60 * 15, // 15 minutes
@@ -57,34 +56,43 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
 
     // Set the selected ID to the first student or assignment
     if (students && students.length > 0 && dropdown === "student") {
-      setSelectedId(students[0]);
+      setSelectedId(students[0].id);
     }
 
     // Set the selected ID to the first assignment
     if (assignments && assignments.length > 0 && dropdown === "assignment") {
-      setSelectedId(assignments[0]._id);
+      setSelectedId(assignments[0].id);
     }
   }, [students, assignments, selectedId]);
 
-  async function getStudents() {
+  async function fetchStudents(): Promise<IDWithName[]> {
     try {
-      if (studentMode) return [globalSettings.studentId];
-      const res = await axios.get<AnalyticsAPIResponse<string[]>>(
-        "/api/students"
-      );
+      if (studentMode)
+        return [
+          {
+            id: globalSettings.studentId,
+            name: globalSettings.studentId,
+          },
+        ];
+      // const res = await axios.get<AnalyticsAPIResponse<string[]>>(
+      //   "/api/students"
+      // );
 
-      if (res.data.error) {
-        throw new Error(res.data.error);
-      }
+      // if (res.data.error) {
+      //   throw new Error(res.data.error);
+      // }
 
-      return res.data.data ?? [];
+      // return res.data.data ?? [];
+
+      const data = await getStudents(1, 100, false);
+      return data;
     } catch (err) {
       console.error(err);
       return [];
     }
   }
 
-  async function fetchAssignments() {
+  async function fetchAssignments(): Promise<IDWithName[]> {
     try {
       // const res = await axios.get<
       //   AnalyticsAPIResponse<{ _id: string; assignment_name: string }[]>
@@ -104,19 +112,30 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     }
   }
 
+  const selectedItemPretty = useMemo(() => {
+    if (!selectedId) return "";
+    if (dropdown === "student") {
+      const found = students?.find((s) => s.id === selectedId)?.name;
+      return found ? truncateString(found, 20) : "Unknown";
+    }
+
+    if (dropdown === "assignment") {
+      const found = assignments?.find((a) => a.id === selectedId)?.name;
+      return found ? truncateString(found, 20) : "Unknown";
+    }
+
+    return "";
+  }, [selectedId, students, assignments]);
+
   const StudentDropdown = () => (
     <CustomDropdown
       icon="person"
-      label={
-        selectedId
-          ? `Student ${truncateString(selectedId, 10)}`
-          : "Select Student"
-      }
+      label={selectedId ? selectedItemPretty : "Select Student"}
       loading={studentsStatus === "pending"}
     >
       {students?.map((s) => (
-        <Dropdown.Item key={s} onClick={() => setSelectedId(s)}>
-          {truncateString(s, 20)}
+        <Dropdown.Item key={s.id} onClick={() => setSelectedId(s.id)}>
+          {truncateString(s.name, 20)}
         </Dropdown.Item>
       ))}
     </CustomDropdown>
@@ -125,12 +144,12 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   const AssignmentDropdown = () => (
     <CustomDropdown
       icon="file"
-      label={selectedId ? `Assignment ${selectedId}` : "Select Assignment"}
+      label={selectedId ? selectedItemPretty : "Select Assignment"}
       loading={assignmentsStatus === "pending"}
     >
       {assignments?.map((a) => (
-        <Dropdown.Item key={a._id} onClick={() => setSelectedId(a._id)}>
-          {a.assignment_name}
+        <Dropdown.Item key={a.id} onClick={() => setSelectedId(a.id)}>
+          {a.name}
         </Dropdown.Item>
       ))}
     </CustomDropdown>

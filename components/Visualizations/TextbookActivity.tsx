@@ -4,7 +4,7 @@ import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
-import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualizationhelpers";
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
 import { PerformancePerAssignment } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 

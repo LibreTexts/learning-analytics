@@ -1,7 +1,11 @@
 "use server";
 
 import Analytics from "@/lib/Analytics";
-import { InstructorQuickMetrics, StudentQuickMetrics } from "./types";
+import {
+  IDWithName,
+  InstructorQuickMetrics,
+  StudentQuickMetrics,
+} from "./types";
 
 export async function getInstructorQuickMetrics(): Promise<InstructorQuickMetrics> {
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
@@ -34,7 +38,6 @@ export async function getAssignments() {
   const analytics = new Analytics(adaptId);
 
   const assignments = await analytics.getAssignments();
-
   return assignments;
 }
 
@@ -54,6 +57,19 @@ export async function getPerformancePerAssignment(student_id: string) {
   const performance = await analytics.getPerformancePerAssignment(student_id);
 
   return performance;
+}
+
+export async function getStudents(
+  page: number,
+  limit: number,
+  privacyMode: boolean
+) {
+  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
+  const analytics = new Analytics(adapt_id);
+
+  const students = await analytics.getStudents(page, limit, privacyMode);
+
+  return students;
 }
 
 export async function getSubmissionTimeline(assignment_id: string) {

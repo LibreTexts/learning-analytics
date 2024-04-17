@@ -9,7 +9,7 @@ import {
   DEFAULT_HEIGHT,
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
-} from "@/utils/visualizationhelpers";
+} from "@/utils/visualization-helpers";
 import { PerformancePerAssignment } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 

@@ -7,6 +7,7 @@ import LTAnalytics from "@/lib/models/ltanalytics";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
   AssignmentAvgScoreCalc,
+  IDWithName,
   PerformancePerAssignment,
   SubmissionTimeline,
   TextbookInteractionsCount,
@@ -17,8 +18,9 @@ import calcADAPTSubmissionsByDate, {
   ICalcADAPTSubmissionsByDate,
   ICalcADAPTSubmissionsByDate_Raw,
 } from "./models/calcADAPTSubmissionsByDate";
-import { sortStringsWithNumbers } from "@/utils/texthelpers";
+import { sortStringsWithNumbers } from "@/utils/text-helpers";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
+import { decryptStudent } from "@/utils/data-helpers";
 
 class Analytics {
   private adaptID: number;
@@ -43,9 +45,7 @@ class Analytics {
   //   }
   // }
 
-  public async getAssignments(): Promise<
-    { _id: string; assignment_name: string }[]
-  > {
+  public async getAssignments(): Promise<IDWithName[]> {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
@@ -76,8 +76,8 @@ class Analytics {
 
       return (
         res.map((d) => ({
-          _id: d._id,
-          assignment_name: d.assignment_name,
+          id: d._id,
+          name: d.assignment_name,
         })) ?? []
       );
     } catch (err) {
@@ -260,7 +260,11 @@ class Analytics {
     }
   }
 
-  public async getStudents(page = 1, limit = 100): Promise<string[]> {
+  public async getStudents(
+    page = 1,
+    limit = 100,
+    privacyMode = true
+  ): Promise<IDWithName[]> {
     try {
       await connectDB();
 
@@ -273,14 +277,28 @@ class Analytics {
         .skip(offset)
         .limit(limit);
 
-      return res.map((d) => d.email);
+      if (privacyMode) {
+        return res.map((d) => ({
+          id: d.email,
+          name: d.email,
+        }));
+      }
+
+      return await Promise.all(
+        res.map(async (d) => ({
+          id: d.email,
+          name: await decryptStudent(d.email),
+        }))
+      );
     } catch (err) {
       console.error(err);
       return [];
     }
   }
 
-  public async getStudentTextbookEngagement(student_id: string): Promise<number> {
+  public async getStudentTextbookEngagement(
+    student_id: string
+  ): Promise<number> {
     try {
       await connectDB();
 

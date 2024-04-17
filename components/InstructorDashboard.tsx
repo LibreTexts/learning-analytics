@@ -1,5 +1,4 @@
 import {
-  getInstructorQuickMetrics,
   getPerformancePerAssignment,
   getSubmissionTimeline,
   getTextbookEngagement,
@@ -15,48 +14,16 @@ import { useEffect, useState } from "react";
 import NoData from "./NoData";
 import TextbookEngagement from "./Visualizations/TextbookEngagement";
 import TextbookActivity from "./Visualizations/TextbookActivity";
-import { InstructorQuickMetrics } from "@/lib/types";
+import InstructorQuickMetrics from "./InstructorQuickMetrics";
 
-function InstructorDashboard() {
-  const [data, setData] = useState<InstructorQuickMetrics>({
-    assignments: 0,
-    enrolled: 0,
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    const data = await getInstructorQuickMetrics();
-    setData(data);
-  }
-
+async function InstructorDashboard() {
   return (
     <GenericPageContainer>
       <PageHeader
         title="Instructor Dashboard"
         subtitle="View analytics and data visualizations for your course. Click on a visualization to view more details."
       />
-      <div className="tw-flex tw-flex-row tw-justify-between">
-        <SmallMetricCard
-          title="Assignments"
-          value={data.assignments}
-          unit="Active Assignments"
-        />
-        <SmallMetricCard
-          title="Total Page Views"
-          value={1225}
-          unit="Textbook Total Page Views"
-          className="tw-ml-4"
-        />
-        <SmallMetricCard
-          title="Enrolled Students"
-          value={data.enrolled}
-          unit="Active Students in Course"
-          className="tw-ml-4"
-        />
-      </div>
+      <InstructorQuickMetrics />
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
