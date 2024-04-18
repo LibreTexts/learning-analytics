@@ -56,6 +56,16 @@ const NavMenu = () => {
             <span className="tw-text-link-blue">Raw Data</span>
           </ListGroup.Item>
         )}
+        {globalState.viewAs === "instructor" && (
+          <ListGroup.Item
+            active={isActive("course-settings")}
+            className={isActive("course-settings") ? ACTIVE_CLASSES : ""}
+            action
+            href={Links.CLIENT.CourseSettings}
+          >
+            <span className="tw-text-link-blue">Course Settings</span>
+          </ListGroup.Item>
+        )}
       </ListGroup>
       {process.env.NODE_ENV === "development" && (
         <p className="tw-text-center tw-mt-2">

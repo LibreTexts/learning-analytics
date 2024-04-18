@@ -99,7 +99,7 @@ const PerfPerAssignment = ({
       .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
       .call(d3.axisBottom(x))
       .selectAll("text")
-      .attr("transform", "rotate(-45)")
+      .attr("transform", "rotate(-55)")
       .style("text-anchor", "end")
       .style("font-size", "8px");
 

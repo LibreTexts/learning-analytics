@@ -11,8 +11,15 @@ export async function getInstructorQuickMetrics(): Promise<InstructorQuickMetric
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
   const analytics = new Analytics(adapt_id);
 
-  const assignments = await analytics.getAssignments();
-  const enrolled = await analytics.countEnrolledStudents();
+  const promises = [
+    analytics.getAssignments(),
+    analytics.countEnrolledStudents(),
+  ];
+
+  const res = await Promise.all(promises);
+  const assignments = res[0] as IDWithName[];
+  const enrolled = res[1] as number;
+
   return {
     assignments: assignments.length,
     enrolled,
@@ -25,11 +32,19 @@ export async function getStudentQuickMetrics(
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
   const analytics = new Analytics(adapt_id);
 
-  const textbookEngagement = await analytics.getStudentTextbookEngagement(
-    student_id
-  );
+  const promises = [
+    analytics.getStudentTextbookEngagement(student_id),
+    analytics.getStudentAssignmentsCount(student_id),
+    analytics.getStudentAverageScore(student_id),
+  ];
+
+  const [textbookEngagement, assignmentsCount, averageScore] =
+    await Promise.all(promises);
+
   return {
     textbookEngagement,
+    assignmentsCount,
+    averageScore,
   };
 }
 
@@ -67,7 +82,6 @@ export async function getStudents(
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
   const analytics = new Analytics(adapt_id);
 
-  console.log("privacyMode", privacyMode)
   const students = await analytics.getStudents(page, limit, privacyMode);
 
   return students;

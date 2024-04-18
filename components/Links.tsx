@@ -6,6 +6,7 @@ const Links = {
     Dashboard: "/",
     EarlyWarning: "/early-warning",
     RawData: "/raw-data",
+    CourseSettings: "/course-settings",
   },
   API: {},
 };

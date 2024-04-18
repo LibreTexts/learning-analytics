@@ -27,4 +27,6 @@ export type InstructorQuickMetrics = {
 
 export type StudentQuickMetrics = {
   textbookEngagement: number;
+  assignmentsCount: number;
+  averageScore: number;
 };

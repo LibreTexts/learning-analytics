@@ -21,6 +21,8 @@ import calcADAPTSubmissionsByDate, {
 import { sortStringsWithNumbers } from "@/utils/text-helpers";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
 import { decryptStudent } from "@/utils/data-helpers";
+import CalcADAPTAssignments from "./models/calcADAPTAssignments";
+import CalcADAPTAverageScore from "./models/calcADAPTAverageScore";
 
 class Analytics {
   private adaptID: number;
@@ -312,7 +314,39 @@ class Analytics {
         textbookID: courseId,
       });
 
-      return res?.activity_time ?? 0;
+      return Math.ceil(res?.activity_time / 60) ?? 0; // Convert seconds to minutes
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getStudentAssignmentsCount(student_id: string): Promise<number> {
+    try {
+      await connectDB();
+
+      const res = await CalcADAPTAssignments.findOne({
+        actor: student_id,
+        courseID: this.adaptID.toString(),
+      });
+
+      return res?.assignments_count ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getStudentAverageScore(student_id: string): Promise<number> {
+    try {
+      await connectDB();
+
+      const res = await CalcADAPTAverageScore.findOne({
+        actor: student_id,
+        courseID: this.adaptID.toString(),
+      });
+
+      return res?.avg_score ?? 0;
     } catch (err) {
       console.error(err);
       return 0;
