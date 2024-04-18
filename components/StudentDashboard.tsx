@@ -1,34 +1,14 @@
-'use client'
-import { getPerformancePerAssignment, getStudentQuickMetrics } from "@/lib/analytics-functions";
-import GenericPageContainer from "./GenericPageContainer";
-import PageHeader from "./PageHeader";
-import VisualizationContainer from "./VisualizationContainer";
-import PerfPerAssignment from "./Visualizations/PerfPerAssignment";
-import SmallMetricCard from "./SmallMetricCard";
-import { useEffect, useState } from "react";
-import { StudentQuickMetrics } from "@/lib/types";
-import { minutesToPrettyHours } from "@/utils/text-helpers";
+import { getPerformancePerAssignment } from "@/lib/analytics-functions";
+import GenericPageContainer from "@/components/GenericPageContainer";
+import PageHeader from "@/components/PageHeader";
+import VisualizationContainer from "@/components/VisualizationContainer";
+import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
+import { useAtom } from "jotai";
+import { globalStateAtom } from "@/state/globalState";
+import StudentQuickMetrics from "@/components/StudentQuickMetrics";
 
-interface StudentDashboardProps {
-  student_id: string;
-}
-
-function StudentDashboard({
-  student_id,
-}: StudentDashboardProps) {
-  const [data, setData] = useState<StudentQuickMetrics>({
-    textbookEngagement: 0,
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
-    if(!student_id) return console.error("No student ID provided.");
-    const data = await getStudentQuickMetrics(student_id);
-    setData(data);
-  }
+const StudentDashboard = () => {
+  const [globalState] = useAtom(globalStateAtom);
 
   return (
     <GenericPageContainer>
@@ -36,13 +16,7 @@ function StudentDashboard({
         title="Student Dashboard"
         subtitle="View your performance and engagement with the course material."
       />
-      <div className="tw-flex tw-flex-row tw-justify-between">
-        <SmallMetricCard
-          title="Textbook Engagement"
-          value={minutesToPrettyHours(data.textbookEngagement)}
-          unit="Total Time Spent"
-        />
-      </div>
+      <StudentQuickMetrics studentId={globalState.studentId} />
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Your scores vs. class average for each assignment."
@@ -59,6 +33,6 @@ function StudentDashboard({
       </VisualizationContainer>
     </GenericPageContainer>
   );
-}
+};
 
 export default StudentDashboard;

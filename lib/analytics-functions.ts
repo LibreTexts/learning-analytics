@@ -67,6 +67,7 @@ export async function getStudents(
   const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
   const analytics = new Analytics(adapt_id);
 
+  console.log("privacyMode", privacyMode)
   const students = await analytics.getStudents(page, limit, privacyMode);
 
   return students;

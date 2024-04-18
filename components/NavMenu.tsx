@@ -1,22 +1,25 @@
 "use client";
 import { ListGroup } from "react-bootstrap";
 import Links from "./Links";
-import { useSelector } from "@/redux";
+import { useAtom } from "jotai";
+import { globalStateAtom } from "@/state/globalState";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 
 const ACTIVE_CLASSES = "tw-bg-light-gray tw-border-none";
 
-type NavMenuProps = {
-  activeKey: string;
-};
+const NavMenu = () => {
+  const [globalState] = useAtom(globalStateAtom);
+  const pathname = usePathname();
 
-const NavMenu: React.FC<NavMenuProps> = ({ activeKey }) => {
-  const globalSettings = useSelector((state) => state.globalSettings);
-
-  const isActive = (key: string) => {
-    if (activeKey === "/" && key === "dashboard") return true;
-    if (activeKey.startsWith("/")) activeKey = activeKey.substring(1);
-    return key === activeKey;
-  };
+  const isActive = useMemo(() => {
+    return (key: string) => {
+      if (pathname === "/" && key === "dashboard") return true;
+      let _pathname;
+      if (pathname.startsWith("/")) _pathname = pathname.substring(1);
+      return key === _pathname;
+    };
+  }, [pathname]);
 
   return (
     <>
@@ -31,7 +34,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ activeKey }) => {
           href={Links.CLIENT.Dashboard}
         >
           <span className="tw-text-link-blue">
-            {globalSettings.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
+            {globalState.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
             Dashboard
           </span>
         </ListGroup.Item>
@@ -43,7 +46,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ activeKey }) => {
         >
           <span className="tw-text-link-blue">Early Warning</span>
         </ListGroup.Item>
-        {globalSettings.viewAs === "instructor" && (
+        {globalState.viewAs === "instructor" && (
           <ListGroup.Item
             active={isActive("raw-data")}
             className={isActive("raw-data") ? ACTIVE_CLASSES : ""}
@@ -56,7 +59,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ activeKey }) => {
       </ListGroup>
       {process.env.NODE_ENV === "development" && (
         <p className="tw-text-center tw-mt-2">
-          Course ID: {globalSettings.adaptId}
+          Course ID: {globalState.adaptId}
         </p>
       )}
     </>

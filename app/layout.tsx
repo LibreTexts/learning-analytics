@@ -1,13 +1,10 @@
-"use client";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "bootstrap/dist/css/bootstrap.css";
 import { Providers } from "./providers";
 import classNames from "classnames";
 import NavMenu from "@/components/NavMenu";
-import { usePathname } from "next/navigation";
 import DemoModeControls from "@/components/DemoModeControls";
-import { useSelector } from "@/redux";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,8 +13,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-
   return (
     <html lang="en">
       <head>
@@ -35,7 +30,7 @@ export default function RootLayout({
             )}
             <div className="tw-flex tw-flex-row">
               <div className="tw-flex tw-flex-col">
-                <NavMenu activeKey={pathname} />
+                <NavMenu />
               </div>
               <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
             </div>

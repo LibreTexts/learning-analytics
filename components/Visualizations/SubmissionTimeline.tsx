@@ -23,6 +23,7 @@ type SubmissionTimelineProps = {
   width?: number;
   height?: number;
   selectedId?: string;
+  studentMode?: boolean;
   getData: (
     assignment_id: string
   ) => Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined>;

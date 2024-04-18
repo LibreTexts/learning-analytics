@@ -1,24 +1,35 @@
 "use client";
-import { useDispatch, useSelector } from "@/redux/store";
-import { toggleFerpaPrivacy } from "@/redux/slices/globalSettingsSlice";
 import CustomToggle from "./CustomToggle";
+import { useAtom } from "jotai";
+import { globalStateAtom } from "@/state/globalState";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FERPAPrivacySwitchProps {}
 
 const FERPAPrivacySwitch: React.FC<FERPAPrivacySwitchProps> = () => {
-  const ferpaPrivacyState = useSelector(
-    (state) => state.globalSettings.ferpaPrivacy
-  );
-  const dispatch = useDispatch();
+  const [globalState, setGlobalState] = useAtom(globalStateAtom);
+  const queryClient = useQueryClient();
+
+  const handleToggle = () => {
+    setGlobalState((prev) => ({
+      ...prev,
+      ferpaPrivacy: !prev.ferpaPrivacy,
+    }));
+
+    // Remove the students query to force an immediate refetch
+    queryClient.removeQueries({
+      queryKey: ["students"],
+    });
+  };
 
   return (
     <CustomToggle
       id="ferpa-privacy-switch"
       label="FERPA Privacy Mode"
-      checked={false}
+      checked={!globalState.ferpaPrivacy}
       disabled={false}
       small={false}
-      onChange={() => dispatch(toggleFerpaPrivacy())}
+      onChange={handleToggle}
     />
   );
 };

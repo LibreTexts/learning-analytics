@@ -1,14 +1,15 @@
-'use client'
+"use client";
 import InstructorDashboard from "@/components/InstructorDashboard";
 import StudentDashboard from "@/components/StudentDashboard";
-import { useSelector } from "@/redux";
+import { globalStateAtom } from "@/state/globalState";
+import { useAtom } from "jotai";
 
-export default async function Dashboard() {
-  const globalSettings = useSelector((state) => state.globalSettings);
+const Dashboard = () => {
+  const [globalState] = useAtom(globalStateAtom);
 
-  return globalSettings.viewAs === "instructor" ? (
-    <InstructorDashboard />
-  ) : (
-    <StudentDashboard student_id={globalSettings.viewAs} />
-  );
-}
+  if (globalState.viewAs === "instructor") {
+    return <InstructorDashboard />;
+  }
+  return <StudentDashboard />;
+};
+export default Dashboard;

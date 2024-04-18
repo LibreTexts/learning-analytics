@@ -3,20 +3,25 @@ import {
   getSubmissionTimeline,
   getTextbookEngagement,
 } from "@/lib/analytics-functions";
-import GenericPageContainer from "./GenericPageContainer";
-import PageHeader from "./PageHeader";
-import SmallMetricCard from "./SmallMetricCard";
-import VisualizationContainer from "./VisualizationContainer";
-import BarChart from "./Visualizations/BarChart";
-import PerfPerAssignment from "./Visualizations/PerfPerAssignment";
-import SubmissionTimeline from "./Visualizations/SubmissionTimeline";
+import GenericPageContainer from "@/components/GenericPageContainer";
+import PageHeader from "@/components/PageHeader";
+import SmallMetricCard from "@/components/SmallMetricCard";
+import VisualizationContainer from "@/components/VisualizationContainer";
+import BarChart from "@/components/Visualizations/BarChart";
+import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
+import SubmissionTimeline from "@/components/Visualizations/SubmissionTimeline";
 import { useEffect, useState } from "react";
-import NoData from "./NoData";
-import TextbookEngagement from "./Visualizations/TextbookEngagement";
-import TextbookActivity from "./Visualizations/TextbookActivity";
-import InstructorQuickMetrics from "./InstructorQuickMetrics";
+import NoData from "@/components/NoData";
+import TextbookEngagement from "@/components/Visualizations/TextbookEngagement";
+import TextbookActivity from "@/components/Visualizations/TextbookActivity";
+import InstructorQuickMetrics from "@/components/InstructorQuickMetrics";
+import {
+  HydrationBoundary,
+  QueryClient,
+  dehydrate,
+} from "@tanstack/react-query";
 
-async function InstructorDashboard() {
+const InstructorDashboard = () => {
   return (
     <GenericPageContainer>
       <PageHeader
@@ -53,11 +58,11 @@ async function InstructorDashboard() {
         <SubmissionTimeline getData={getSubmissionTimeline} />
       </VisualizationContainer>
       {/* <VisualizationContainer
-          title="Textbook Engagment"
-          description="Number of unique interactions with the textbook by date"
-        >
-          <TextbookEngagement getData={getTextbookEngagement} />
-        </VisualizationContainer> */}
+              title="Textbook Engagment"
+              description="Number of unique interactions with the textbook by date"
+            >
+              <TextbookEngagement getData={getTextbookEngagement} />
+            </VisualizationContainer> */}
       <VisualizationContainer
         title="ADAPT Performance"
         description="Distribution of student scores by selected assignment"
@@ -85,6 +90,6 @@ async function InstructorDashboard() {
       </VisualizationContainer>
     </GenericPageContainer>
   );
-}
+};
 
 export default InstructorDashboard;

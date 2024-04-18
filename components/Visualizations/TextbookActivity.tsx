@@ -15,6 +15,7 @@ interface TextbookActivityProps {
   width?: number;
   height?: number;
   selectedId?: string;
+  studentMode?: boolean;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 }
 

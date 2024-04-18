@@ -19,6 +19,8 @@ const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 type TextbookEngagementProps = {
   width?: number;
   height?: number;
+  selectedId?: string;
+  studentMode?: boolean;
   getData: () => Promise<TextbookInteractionsCount[]>;
 };
 
@@ -100,7 +102,6 @@ const TextbookEngagement = ({
       .attr("width", x.bandwidth() - BUCKET_PADDING)
       .attr("height", (d) => height - MARGIN.bottom - y(d.numInteractions))
       .style("fill", LIBRE_BLUE);
-
 
     // Add Y axis label:
     svg

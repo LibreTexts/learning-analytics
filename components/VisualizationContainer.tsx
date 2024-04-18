@@ -3,10 +3,11 @@ import React, { cloneElement, useEffect, useMemo, useState } from "react";
 import { Card, Dropdown } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CustomDropdown from "./CustomDropdown";
-import { useSelector } from "@/redux";
 import { truncateString } from "@/utils/text-helpers";
 import { getAssignments, getStudents } from "@/lib/analytics-functions";
 import { IDWithName } from "@/lib/types";
+import { useAtom } from "jotai";
+import { globalStateAtom } from "@/state/globalState";
 
 interface VisualizationContainerProps {
   title: string;
@@ -23,28 +24,21 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   children,
   studentMode = false,
 }) => {
-  const queryClient = useQueryClient();
-  const globalSettings = useSelector((state) => state.globalSettings);
+  const [globalState] = useAtom(globalStateAtom);
   const [selectedId, setSelectedId] = useState<string | null>(
-    studentMode ? globalSettings.studentId : null
+    studentMode ? globalState.studentId : null
   );
 
-  const {
-    data: students,
-    isFetching: isFetchingStudents,
-    status: studentsStatus,
-  } = useQuery<IDWithName[]>({
+  const { data: students, status: studentsStatus } = useQuery<IDWithName[]>({
     queryKey: ["students"],
     queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
   });
 
-  const {
-    data: assignments,
-    isFetching: isFetchingAssignments,
-    status: assignmentsStatus,
-  } = useQuery<IDWithName[]>({
+  const { data: assignments, status: assignmentsStatus } = useQuery<
+    IDWithName[]
+  >({
     queryKey: ["assignments"],
     queryFn: fetchAssignments,
     staleTime: 1000 * 60 * 15, // 15 minutes
@@ -67,24 +61,15 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
 
   async function fetchStudents(): Promise<IDWithName[]> {
     try {
-      if (studentMode)
+      if (studentMode) {
         return [
           {
-            id: globalSettings.studentId,
-            name: globalSettings.studentId,
+            id: globalState.studentId,
+            name: globalState.studentId,
           },
         ];
-      // const res = await axios.get<AnalyticsAPIResponse<string[]>>(
-      //   "/api/students"
-      // );
-
-      // if (res.data.error) {
-      //   throw new Error(res.data.error);
-      // }
-
-      // return res.data.data ?? [];
-
-      const data = await getStudents(1, 100, false);
+      }
+      const data = await getStudents(1, 100, globalState.ferpaPrivacy);
       return data;
     } catch (err) {
       console.error(err);
@@ -94,16 +79,6 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
 
   async function fetchAssignments(): Promise<IDWithName[]> {
     try {
-      // const res = await axios.get<
-      //   AnalyticsAPIResponse<{ _id: string; assignment_name: string }[]>
-      // >("/api/assignments");
-
-      // if (res.data.error) {
-      //   throw new Error(res.data.error);
-      // }
-
-      //return res.data.data ?? [];
-
       const data = await getAssignments();
       return data;
     } catch (err) {
