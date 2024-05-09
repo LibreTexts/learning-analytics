@@ -38,14 +38,16 @@ const NavMenu = () => {
             Dashboard
           </span>
         </ListGroup.Item>
-        <ListGroup.Item
-          active={isActive("early-warning")}
-          className={isActive("early-warning") ? ACTIVE_CLASSES : ""}
-          action
-          href={Links.CLIENT.EarlyWarning}
-        >
-          <span className="tw-text-link-blue">Early Warning</span>
-        </ListGroup.Item>
+        {globalState.viewAs === "instructor" && (
+          <ListGroup.Item
+            active={isActive("early-warning")}
+            className={isActive("early-warning") ? ACTIVE_CLASSES : ""}
+            action
+            href={Links.CLIENT.EarlyWarning}
+          >
+            <span className="tw-text-link-blue">Early Warning</span>
+          </ListGroup.Item>
+        )}
         {globalState.viewAs === "instructor" && (
           <ListGroup.Item
             active={isActive("raw-data")}

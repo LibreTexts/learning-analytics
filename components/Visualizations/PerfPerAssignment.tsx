@@ -19,7 +19,7 @@ const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 interface PerfPerAssignmentProps {
   width?: number;
   height?: number;
-  selectedId?: string;
+  selectedAssignmentId?: string;
   studentMode?: boolean;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 }
@@ -27,7 +27,7 @@ interface PerfPerAssignmentProps {
 const PerfPerAssignment = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
-  selectedId,
+  selectedAssignmentId,
   getData,
 }: PerfPerAssignmentProps) => {
   const svgRef = useRef(null);
@@ -36,7 +36,7 @@ const PerfPerAssignment = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedId]);
+  }, [selectedAssignmentId]);
 
   useEffect(() => {
     if (data.length === 0) return;
@@ -45,9 +45,9 @@ const PerfPerAssignment = ({
 
   async function handleGetData() {
     try {
-      if (!selectedId) return;
+      if (!selectedAssignmentId) return;
       setLoading(true);
-      const data = await getData(selectedId);
+      const data = await getData(selectedAssignmentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -171,7 +171,7 @@ const PerfPerAssignment = ({
 
   return (
     <VisualizationInnerContainer>
-      {!selectedId && (
+      {!selectedAssignmentId && (
         <SelectOption
           width={width}
           height={height}
@@ -179,7 +179,7 @@ const PerfPerAssignment = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedId && (
+      {!loading && selectedAssignmentId && (
         <svg ref={svgRef} width={width} height={height}></svg>
       )}
     </VisualizationInnerContainer>

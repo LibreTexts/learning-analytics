@@ -11,7 +11,7 @@ const StudentQuickMetrics = ({ studentId }: { studentId: string }) => {
   });
 
   return (
-    <div className="tw-flex tw-flex-row tw-justify-between">
+    <div className="tw-flex tw-flex-row tw-justify-start">
       <SmallMetricCard
         title="Assignments Completed"
         value={data?.assignmentsCount ?? 0}
@@ -19,16 +19,11 @@ const StudentQuickMetrics = ({ studentId }: { studentId: string }) => {
         loading={status === "pending"}
       />
       <SmallMetricCard
-        title="Textbook Engagement"
-        value={minutesToPrettyHours(data?.textbookEngagement ?? 0)}
-        unit="Total Time Spent"
-        loading={status === "pending"}
-      />
-      <SmallMetricCard
         title="Average Score"
         value={`${data?.averageScore ?? 0}%`}
         unit="Per Assignment"
         loading={status === "pending"}
+        className="tw-ml-36"
       />
     </div>
   );

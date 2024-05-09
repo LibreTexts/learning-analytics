@@ -6,6 +6,7 @@ import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
 import { useAtom } from "jotai";
 import { globalStateAtom } from "@/state/globalState";
 import StudentQuickMetrics from "@/components/StudentQuickMetrics";
+import NoData from "@/components/NoData";
 
 const StudentDashboard = () => {
   const [globalState] = useAtom(globalStateAtom);
@@ -29,7 +30,7 @@ const StudentDashboard = () => {
         description="Compare your engagement with the course material to the class average."
         studentMode
       >
-        <PerfPerAssignment getData={getPerformancePerAssignment} />
+        <NoData width={1200} height={400}/>
       </VisualizationContainer>
     </GenericPageContainer>
   );

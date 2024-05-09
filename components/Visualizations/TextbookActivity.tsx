@@ -14,7 +14,7 @@ const BUCKET_PADDING = 1;
 interface TextbookActivityProps {
   width?: number;
   height?: number;
-  selectedId?: string;
+  selectedStudentId?: string;
   studentMode?: boolean;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 }
@@ -22,7 +22,7 @@ interface TextbookActivityProps {
 const TextbookActivity = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
-  selectedId,
+  selectedStudentId,
   getData,
 }: TextbookActivityProps) => {
   const svgRef = useRef(null);
@@ -31,7 +31,7 @@ const TextbookActivity = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedId]);
+  }, [selectedStudentId]);
 
   useEffect(() => {
     if (data.length === 0) return;
@@ -40,9 +40,9 @@ const TextbookActivity = ({
 
   async function handleGetData() {
     try {
-      if (!selectedId) return;
+      if (!selectedStudentId) return;
       setLoading(true);
-      const data = await getData(selectedId);
+      const data = await getData(selectedStudentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -166,7 +166,7 @@ const TextbookActivity = ({
 
   return (
     <VisualizationInnerContainer>
-      {!selectedId && (
+      {!selectedStudentId && (
         <SelectOption
           width={width}
           height={height}
@@ -174,7 +174,7 @@ const TextbookActivity = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedId && (
+      {!loading && selectedStudentId && (
         <svg ref={svgRef} width={width} height={height}></svg>
       )}
     </VisualizationInnerContainer>

@@ -2,7 +2,7 @@
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { SubmissionTimeline as SubmissionTimelineType } from "@/lib/types";
+import { SubmissionTimeline as ADAPTPerformanceType } from "@/lib/types";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
@@ -13,31 +13,27 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
-import { ICalcADAPTSubmissionsByDate_Raw } from "@/lib/models/calcADAPTSubmissionsByDate";
-import { format } from "date-fns";
 
-const MARGIN = DEFAULT_MARGINS;
+const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
-type SubmissionTimelineProps = {
+type ADAPTPerformanceProps = {
   width?: number;
   height?: number;
   selectedAssignmentId?: string;
   studentMode?: boolean;
-  getData: (
-    assignment_id: string
-  ) => Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined>;
+  getData: (assignment_id: string) => Promise<number[]>;
 };
 
-const SubmissionTimeline = ({
+const ADAPTPerformance = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   getData,
   selectedAssignmentId,
-}: SubmissionTimelineProps) => {
+}: ADAPTPerformanceProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
-  const [data, setData] = useState<ICalcADAPTSubmissionsByDate_Raw[]>([]);
+  const [data, setData] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -63,7 +59,7 @@ const SubmissionTimeline = ({
   }
 
   const getMaxCount = useMemo(() => {
-    const vals = data.map((d) => d.count);
+    const vals = data.map((d) => d);
     if (vals.length === 0) return 200; // Default value
     return Math.max(...vals);
   }, [data]);
@@ -74,17 +70,17 @@ const SubmissionTimeline = ({
 
     svg.selectAll("*").remove(); // Clear existing chart
 
-    const domain = data.map((d) => format(d.date, "MM/dd/yyyy"));
-    const dueDate = format(data[0].dueDate, "MM/dd/yyyy");
+    const bucketGenerator = d3
+      .bin()
+      .value((d) => d)
+      .domain([0, 100])
+      .thresholds(10);
 
-    // check if dueDate is in the domain
-    if (!domain.includes(dueDate)) {
-      domain.push(dueDate);
-    }
+    const buckets = bucketGenerator(data);
 
     const x = d3
-      .scaleBand()
-      .domain(domain)
+      .scaleLinear()
+      .domain([0, 100])
       .range([MARGIN.left, width - MARGIN.right]);
 
     const y = d3
@@ -108,67 +104,58 @@ const SubmissionTimeline = ({
       .call(d3.axisLeft(y))
       .attr("transform", `translate(${MARGIN.left}, 0)`);
 
-    // Add a vertical line for the due date
-    svg
-      .append("line")
-      .attr("x1", x(dueDate) ?? 0 + x.bandwidth() / 2)
-      .attr("x2", x(dueDate) ?? 0 + x.bandwidth() / 2)
-      .attr("y1", MARGIN.top)
-      .attr("y2", height - MARGIN.bottom)
-      .style("stroke", "red")
-      .style("stroke-dasharray", "4");
-
-    // Create tool tip
+    // // Create tool tip
     const tooltip = d3
       .select(containerRef.current)
       .append("div")
       .style("position", "absolute")
+      .style("bottom", height - MARGIN.bottom + "px")
+      .style("right", MARGIN.right + 10 + "px")
       .style("opacity", 0)
       .attr("class", "tooltip")
       .style("background-color", "white")
       .style("border", "solid")
       .style("border-width", "1px")
       .style("border-radius", "5px")
-      .style("padding", "10px");
+      .style("padding", "10px")
+      // .attr("transform", `translate(${MARGIN.left}, -${height - MARGIN.bottom})`);
 
     // Three function that change the tooltip when user hover / move / leave a cell
-    const mouseover = (e: any, d: SubmissionTimelineType) => {
-      const key = d._id;
-      const value = d.count;
+    const mouseover = (e: any, d: d3.Bin<number, number>) => {
       tooltip
-        .html("Date: " + key + "<br>" + "Submissions: " + value)
+        .html("Score Range: " + d.x0 + "% - " + d.x1 + '%' + "<br>" + "Count: " + d.length)
         .style("opacity", 1)
         .style("visibility", "visible");
     };
-    const mousemove = (e: any, d: SubmissionTimelineType) => {
-      console.log(e.pageX, e.pageY);
-      tooltip.style("left", e.pageX + "px").style("top", e.pageY - 5 + "px");
+    const mousemove = (e: any, d: d3.Bin<number, number>) => {
+      //tooltip.style("left", e.pageX + "px").style("top", e.pageY - 5 + "px");
     };
-    const mouseleave = (d: SubmissionTimelineType) => {
+    const mouseleave = (d: ADAPTPerformanceType) => {
       tooltip.style("opacity", 0);
     };
 
     svg
       .selectAll("rect")
-      .data(data)
+      .data(buckets)
       .enter()
       .append("rect")
-      .attr("x", (d) => x(format(d.date, "MM/dd/yyyy")) ?? 0)
-      .attr("transform", (d) => `translate(0, ${y(d.count)})`)
-      .attr("width", x.bandwidth() - BUCKET_PADDING)
-      .attr("height", (d) => height - MARGIN.bottom - y(d.count))
-      .style("fill", LIBRE_BLUE);
-    // .on("mouseover", mouseover)
-    // .on("mousemove", mousemove)
-    // .on("mouseleave", mouseleave);
+      .attr("x", (d) => x(d.x0 ?? 0) ?? 0)
+      .attr("y", (d) => y(d.length) ?? 0)
+      .attr("width", (d) => x(d.x1 ?? 0) - x(d.x0 ?? 0) - BUCKET_PADDING)
+      .attr("height", (d) => height - MARGIN.bottom - y(d.length))
+      .on("mouseover", mouseover)
+      .on("mousemove", mousemove)
+      .on("mouseleave", mouseleave)
+      .style("fill", LIBRE_BLUE)
 
+    
     // Add X axis label:
     svg
       .append("text")
       .attr("text-anchor", "end")
       .attr("x", width / 2 + MARGIN.left)
       .attr("y", MARGIN.top)
-      .text("Submission Date")
+      .text("Score Range (%)")
       .style("font-size", "12px");
 
     // Add Y axis label:
@@ -195,7 +182,9 @@ const SubmissionTimeline = ({
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && selectedAssignmentId && data?.length > 0 && (
-        <svg ref={svgRef} width={width} height={height}></svg>
+        <svg ref={svgRef} width={width} height={height}>
+          <g className="tooltip-area"></g>
+        </svg>
       )}
       {!loading && selectedAssignmentId && (!data || data.length === 0) && (
         <NoData width={width} height={height} />
@@ -204,4 +193,4 @@ const SubmissionTimeline = ({
   );
 };
 
-export default SubmissionTimeline;
+export default ADAPTPerformance;

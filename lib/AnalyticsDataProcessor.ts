@@ -4,6 +4,8 @@ import connectDB from "./database";
 import { debugADP } from "@/utils/misc";
 import ADAPT from "./models/adapt";
 import Gradebook from "./models/gradebook";
+import useADAPTAxios from "@/hooks/useADAPTAxios";
+import { ADAPT_CourseScoresAPIResponse } from "./types";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -12,7 +14,9 @@ class AnalyticsDataProcessor {
     //await this.compressADAPTAssignments();
     //await this.compressADAPTAverageScore();
     //await this.compressADAPTInteractionDays();
-    await this.compressADAPTSubmissions();
+    await this.compressADAPTGradeDistribution();
+    //await this.compressADAPTSubmissions();
+    //await this.compressADAPTScores();
     //await this.compressTextbookActivityTime();
     //await this.compressTexbookInteractions();
   }
@@ -83,42 +87,45 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTAverageScore]: Starting aggregation...");
-      await Gradebook.aggregate([
-        {
-          $group: {
-            _id: {
-              courseID: "$class",
-              actor: "$email",
-            },
-            scores: {
-              $push: "$assignment_percent",
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            courseID: "$_id.courseID",
-            actor: "$_id.actor",
-            avg_score: {
-              $round: [
-                {
-                  $avg: "$scores",
-                },
-                2,
-              ],
+      await Gradebook.aggregate(
+        [
+          {
+            $group: {
+              _id: {
+                courseID: "$class",
+                actor: "$email",
+              },
+              scores: {
+                $push: "$assignment_percent",
+              },
             },
           },
-        },
-        {
-          $merge: {
-            into: "calcADAPTAverageScore",
-            on: ["actor", "courseID"],
-            whenMatched: "replace",
-            whenNotMatched: "insert",
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id.courseID",
+              actor: "$_id.actor",
+              avg_score: {
+                $round: [
+                  {
+                    $avg: "$scores",
+                  },
+                  2,
+                ],
+              },
+            },
           },
-        },
-      ]);
+          {
+            $merge: {
+              into: "calcADAPTAverageScore",
+              on: ["actor", "courseID"],
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
 
       debugADP("[compressADAPTAverageScore]: Finished aggregation.");
       return true;
@@ -126,6 +133,134 @@ class AnalyticsDataProcessor {
       debugADP(
         err.message ??
           "Unknown error occured while compressing ADAPT average scores"
+      );
+      return false;
+    }
+  }
+
+  private async compressADAPTScores(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressADAPTScores]: Starting aggregation...");
+      await Gradebook.aggregate(
+        [
+          {
+            $match: {
+              level_name: {
+                $exists: true,
+                $ne: "",
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: "adapt",
+              localField: "level_name",
+              foreignField: "assignment_name",
+              as: "assignmentInfo",
+            },
+          },
+          {
+            $addFields: {
+              assignmentInfo: {
+                $arrayElemAt: ["$assignmentInfo", 0],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                courseID: "$class",
+                assignmentID: "$assignmentInfo.assignment_id",
+              },
+              scores: {
+                $push: "$assignment_percent",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id.courseID",
+              assignmentID: "$_id.assignmentID",
+              scores: 1,
+            },
+          },
+          {
+            $merge: {
+              into: "calcADAPTScores",
+              on: ["courseID", "assignmentID"],
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
+
+      debugADP("[compressADAPTScores]: Finished aggregation.");
+
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ?? "Unknown error occured while compressing ADAPT scores"
+      );
+      return false;
+    }
+  }
+
+  private async compressADAPTGradeDistribution(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      await Gradebook.aggregate(
+        [
+          {
+            $group: {
+              _id: {
+                class: "$class",
+                email: "$email",
+              },
+              newestDocument: {
+                $last: "$$ROOT",
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$_id.class",
+              grades: {
+                $push: "$newestDocument.overall_course_grade",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id",
+              grades: "$grades",
+            },
+          },
+          {
+            $merge: {
+              into: "calcADAPTGradeDistribution",
+              on: "courseID",
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
+
+      debugADP("[compressADAPTGradeDistribution]: Finished aggregation.");
+
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ??
+          "Unknown error occured while compressing ADAPT grade distribution"
       );
       return false;
     }
@@ -210,71 +345,74 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTSubmissions]: Starting aggregation...");
-      await ADAPT.aggregate([
-        {
-          $match: {
-            submission_time: {
-              $exists: true,
-              $ne: "",
+      await ADAPT.aggregate(
+        [
+          {
+            $match: {
+              submission_time: {
+                $exists: true,
+                $ne: "",
+              },
+              due: {
+                $exists: true,
+                $ne: "",
+              },
             },
-            due: {
-              $exists: true,
-              $ne: "",
-            }
           },
-        },
-        {
-          $addFields: {
-            submissionDay: {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: {
-                  $toDate: "$submission_time",
+          {
+            $addFields: {
+              submissionDay: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: {
+                    $toDate: "$submission_time",
+                  },
                 },
               },
             },
           },
-        },
-        {
-          $group: {
-            _id: {
-              courseID: "$course_id",
-              assignmentID: "$assignment_id",
-              date: "$submissionDay",
-            },
-            submissions: {
-              $addToSet: "$id",
-            },
-            dueDate: {
-              $first: "$due",
-            }
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            courseID: "$_id.courseID",
-            assignmentID: "$_id.assignmentID",
-            date: {
-              $toDate: "$_id.date",
-            },
-            dueDate: {
-              $toDate: "$dueDate",
-            },
-            count: {
-              $size: "$submissions",
+          {
+            $group: {
+              _id: {
+                courseID: "$course_id",
+                assignmentID: "$assignment_id",
+                date: "$submissionDay",
+              },
+              submissions: {
+                $addToSet: "$id",
+              },
+              dueDate: {
+                $first: "$due",
+              },
             },
           },
-        },
-        {
-          $merge: {
-            into: "calcADAPTSubmissionsByDate",
-            on: ["courseID", "assignmentID", "date"],
-            whenMatched: "replace",
-            whenNotMatched: "insert",
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id.courseID",
+              assignmentID: "$_id.assignmentID",
+              date: {
+                $toDate: "$_id.date",
+              },
+              dueDate: {
+                $toDate: "$dueDate",
+              },
+              count: {
+                $size: "$submissions",
+              },
+            },
           },
-        },
-      ]);
+          {
+            $merge: {
+              into: "calcADAPTSubmissionsByDate",
+              on: ["courseID", "assignmentID", "date"],
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
 
       debugADP(`[compressADAPTSubmissions]: Finished aggregation.`);
 
@@ -293,54 +431,57 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressTextbookActivityTime]: Starting aggregation...");
-      await LTAnalytics.aggregate([
-        {
-          $match: {
-            "actor.id": {
-              $exists: true,
-              $ne: "",
-            },
-            "actor.courseName": {
-              $exists: true,
-              $ne: "",
-            },
-            "object.timeMe": {
-              $exists: true,
-            },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              actor: "$actor.id",
-              textbookID: "$actor.courseName",
-            },
-            time: {
-              $push: "$object.timeMe",
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            actor: "$_id.actor",
-            textbookID: "$_id.textbookID",
-            activity_time: {
-              $ceil: {
-                $sum: "$time",
+      await LTAnalytics.aggregate(
+        [
+          {
+            $match: {
+              "actor.id": {
+                $exists: true,
+                $ne: "",
+              },
+              "actor.courseName": {
+                $exists: true,
+                $ne: "",
+              },
+              "object.timeMe": {
+                $exists: true,
               },
             },
           },
-        },
-        {
-          $merge: {
-            into: "calcTextbookActivityTime",
-            on: ["actor", "textbookID"],
-            whenMatched: "replace",
-            whenNotMatched: "insert",
+          {
+            $group: {
+              _id: {
+                actor: "$actor.id",
+                textbookID: "$actor.courseName",
+              },
+              time: {
+                $push: "$object.timeMe",
+              },
+            },
           },
-        },
-      ]);
+          {
+            $project: {
+              _id: 0,
+              actor: "$_id.actor",
+              textbookID: "$_id.textbookID",
+              activity_time: {
+                $ceil: {
+                  $sum: "$time",
+                },
+              },
+            },
+          },
+          {
+            $merge: {
+              into: "calcTextbookActivityTime",
+              on: ["actor", "textbookID"],
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
 
       debugADP(`[compressTextbookActivityTime]: Finished aggregation.`);
       return true;

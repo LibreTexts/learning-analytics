@@ -37,7 +37,9 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
           )}
           {truncateString(label, 30)}
       </Dropdown.Toggle>
-      <Dropdown.Menu>{children}</Dropdown.Menu>
+      <Dropdown.Menu
+      className="tw-max-h-80 tw-overflow-y-auto tw-overflow-x-hidden"
+      >{children}</Dropdown.Menu>
     </Dropdown>
   );
 };

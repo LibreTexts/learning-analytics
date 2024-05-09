@@ -19,7 +19,7 @@ const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 type TextbookEngagementProps = {
   width?: number;
   height?: number;
-  selectedId?: string;
+  selectedStudentId?: string;
   studentMode?: boolean;
   getData: () => Promise<TextbookInteractionsCount[]>;
 };

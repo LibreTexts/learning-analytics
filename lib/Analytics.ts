@@ -23,6 +23,10 @@ import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
 import { decryptStudent } from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
 import CalcADAPTAverageScore from "./models/calcADAPTAverageScore";
+import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
+import CourseAnalyticsSettings, {
+  ICourseAnalyticsSettings_Raw,
+} from "./models/courseAnalyticsSettings";
 
 class Analytics {
   private adaptID: number;
@@ -115,6 +119,62 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return undefined;
+    }
+  }
+
+  public async getADAPTPerformance(assignment_id: string): Promise<number[]> {
+    try {
+      await connectDB();
+
+      console.log("Assignment ID: ", assignment_id);
+
+      const assignment = await Adapt.findOne({
+        assignment_id: assignment_id,
+      });
+
+      if (!assignment || !assignment.assignment_name) {
+        throw new Error("Assignment not found");
+      }
+
+      console.log("found assignment: ", assignment.assignment_name);
+
+      const res = await Gradebook.aggregate([
+        {
+          $match: {
+            class: this.adaptID.toString(),
+            level_name: assignment.assignment_name,
+          },
+        },
+        {
+          $group: {
+            _id: "$level_name",
+            scores: {
+              $push: "$assignment_percent",
+            },
+          },
+        },
+      ]);
+
+      const scores = res[0].scores as number[];
+
+      return scores;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getGradeDistribution(): Promise<string[]> {
+    try {
+      const res = await calcADAPTGradeDistribution.find({
+        courseID: this.adaptID.toString(),
+      });
+
+      const grades = (res[0].grades as string[]) || [];
+      return grades;
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   }
 
@@ -350,6 +410,27 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return 0;
+    }
+  }
+
+  public async updateCourseAnalyticsSettings(
+    newSettings: Partial<ICourseAnalyticsSettings_Raw>
+  ): Promise<boolean> {
+    try {
+      await connectDB();
+
+      const res = await CourseAnalyticsSettings.updateOne(
+        {
+          courseID: this.adaptID.toString(),
+        },
+        newSettings,
+        { upsert: true } // if course settings do not exist, create a new doc
+      );
+
+      return res.modifiedCount === 1;
+    } catch (err) {
+      console.error(err);
+      return false;
     }
   }
 }
