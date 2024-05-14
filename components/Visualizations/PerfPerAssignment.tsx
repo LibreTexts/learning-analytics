@@ -1,5 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
@@ -10,44 +16,74 @@ import {
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
-import { PerformancePerAssignment } from "@/lib/types";
+import { PerformancePerAssignment, VisualizationBaseProps } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import VisualizationTable from "../VisualizationTableView";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
-interface PerfPerAssignmentProps {
-  width?: number;
-  height?: number;
-  selectedAssignmentId?: string;
-  studentMode?: boolean;
+type PerfPerAssignmentProps = VisualizationBaseProps & {
+  selectedStudentId?: string;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
-}
+};
 
-const PerfPerAssignment = ({
+const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
-  selectedAssignmentId,
+  tableView = false,
+  selectedStudentId,
   getData,
-}: PerfPerAssignmentProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const svgRef = useRef(null);
   const [data, setData] = useState<PerformancePerAssignment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    handleGetData();
-  }, [selectedAssignmentId]);
+  const columnHelper = createColumnHelper<PerformancePerAssignment>();
+  const table = useReactTable<PerformancePerAssignment>({
+    data: data,
+    columns: [
+      columnHelper.accessor("assignment_id", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Assignment ID",
+      }),
+      columnHelper.accessor("student_score", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Student Score",
+      }),
+      columnHelper.accessor("class_avg", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Class Average",
+      }),
+    ],
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   useEffect(() => {
-    if (data.length === 0) return;
+    handleGetData();
+  }, [selectedStudentId]);
+
+  useEffect(() => {
+    if (data.length === 0 || tableView) return;
     buildChart();
-  }, [width, height, data]);
+  }, [width, height, tableView, data]);
 
   async function handleGetData() {
     try {
-      if (!selectedAssignmentId) return;
+      if (!selectedStudentId) return;
       setLoading(true);
-      const data = await getData(selectedAssignmentId);
+      const data = await getData(selectedStudentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -171,7 +207,7 @@ const PerfPerAssignment = ({
 
   return (
     <VisualizationInnerContainer>
-      {!selectedAssignmentId && (
+      {!selectedStudentId && (
         <SelectOption
           width={width}
           height={height}
@@ -179,8 +215,50 @@ const PerfPerAssignment = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedAssignmentId && (
-        <svg ref={svgRef} width={width} height={height}></svg>
+      {!loading && selectedStudentId && (
+        <div className="tw-w-full">
+          {tableView ? (
+            <VisualizationTable
+              headRender={() =>
+                table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="tw-p-3 tw-text-sm tw-border-r"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))
+              }
+              bodyRender={() =>
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:tw-bg-slate-100">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="tw-p-3 tw-border">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              }
+            />
+          ) : (
+            <svg ref={svgRef} width={width} height={height}>
+              <g className="tooltip-area"></g>
+            </svg>
+          )}
+        </div>
       )}
     </VisualizationInnerContainer>
   );

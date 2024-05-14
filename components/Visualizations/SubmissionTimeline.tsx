@@ -1,8 +1,17 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
-import { SubmissionTimeline as SubmissionTimelineType } from "@/lib/types";
+import {
+  SubmissionTimeline as SubmissionTimelineType,
+  VisualizationBaseProps,
+} from "@/lib/types";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
@@ -19,9 +28,7 @@ import { format } from "date-fns";
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
-type SubmissionTimelineProps = {
-  width?: number;
-  height?: number;
+type SubmissionTimelineProps = VisualizationBaseProps & {
   selectedAssignmentId?: string;
   studentMode?: boolean;
   getData: (
@@ -29,12 +36,17 @@ type SubmissionTimelineProps = {
   ) => Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined>;
 };
 
-const SubmissionTimeline = ({
+const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   getData,
   selectedAssignmentId,
-}: SubmissionTimelineProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
   const [data, setData] = useState<ICalcADAPTSubmissionsByDate_Raw[]>([]);
@@ -141,7 +153,6 @@ const SubmissionTimeline = ({
         .style("visibility", "visible");
     };
     const mousemove = (e: any, d: SubmissionTimelineType) => {
-      console.log(e.pageX, e.pageY);
       tooltip.style("left", e.pageX + "px").style("top", e.pageY - 5 + "px");
     };
     const mouseleave = (d: SubmissionTimelineType) => {

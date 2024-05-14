@@ -6,6 +6,8 @@ import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
+  ActivityAccessed,
+  ArrayElement,
   AssignmentAvgScoreCalc,
   IDWithName,
   PerformancePerAssignment,
@@ -27,6 +29,9 @@ import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
 import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
 } from "./models/courseAnalyticsSettings";
+import CalcADAPTAllAssignments, {
+  ICalcADAPTAllAssignments_Raw,
+} from "./models/calcADAPTAllAssignments";
 
 class Analytics {
   private adaptID: number;
@@ -122,11 +127,59 @@ class Analytics {
     }
   }
 
-  public async getADAPTPerformance(assignment_id: string): Promise<number[]> {
+  public async getADAPTActivity(student_id: string): Promise<ActivityAccessed> {
     try {
       await connectDB();
 
-      console.log("Assignment ID: ", assignment_id);
+      const allAssignmentData = await CalcADAPTAllAssignments.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      const studentAssignmentData = await CalcADAPTAssignments.findOne({
+        actor: student_id,
+        courseID: this.adaptID.toString(),
+      });
+
+      if (!allAssignmentData) {
+        throw new Error("Assignment data not found");
+      }
+
+      if (!studentAssignmentData) {
+        return {
+          seen: [],
+          unseen: allAssignmentData.assignments,
+        };
+      }
+
+      const { seen, unseen } = allAssignmentData.assignments.reduce(
+        (acc: ActivityAccessed, curr: IDWithName) => {
+          const obj = { id: curr.id, name: curr.name };
+          if (studentAssignmentData.assignments.includes(curr.id)) {
+            acc.seen.push(obj);
+          } else {
+            acc.unseen.push(obj);
+          }
+          return acc;
+        },
+        { seen: [], unseen: [] }
+      );
+
+      return {
+        seen,
+        unseen,
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        seen: [],
+        unseen: [],
+      };
+    }
+  }
+
+  public async getADAPTPerformance(assignment_id: string): Promise<number[]> {
+    try {
+      await connectDB();
 
       const assignment = await Adapt.findOne({
         assignment_id: assignment_id,
@@ -135,8 +188,6 @@ class Analytics {
       if (!assignment || !assignment.assignment_name) {
         throw new Error("Assignment not found");
       }
-
-      console.log("found assignment: ", assignment.assignment_name);
 
       const res = await Gradebook.aggregate([
         {

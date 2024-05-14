@@ -1,8 +1,14 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
-import { TextbookInteractionsCount } from "@/lib/types";
+import { TextbookInteractionsCount, VisualizationBaseProps } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 import {
   DEFAULT_BUCKET_PADDING,
@@ -16,19 +22,22 @@ import VisualizationLoading from "../VisualizationLoading";
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
-type TextbookEngagementProps = {
-  width?: number;
-  height?: number;
+type TextbookEngagementProps = VisualizationBaseProps & {
   selectedStudentId?: string;
   studentMode?: boolean;
   getData: () => Promise<TextbookInteractionsCount[]>;
 };
 
-const TextbookEngagement = ({
+const TextbookEngagement: React.FC<TextbookEngagementProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   getData,
-}: TextbookEngagementProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const svgRef = useRef(null);
   const [data, setData] = useState<TextbookInteractionsCount[]>([]);
   const [loading, setLoading] = useState(false);

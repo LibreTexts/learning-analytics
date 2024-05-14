@@ -1,30 +1,39 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
-import { PerformancePerAssignment } from "@/lib/types";
+import { PerformancePerAssignment, VisualizationBaseProps } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 
 const MARGIN = { top: 20, right: 20, bottom: 70, left: 50 };
 const BUCKET_PADDING = 1;
 
-interface TextbookActivityProps {
-  width?: number;
-  height?: number;
+type TextbookActivityProps = VisualizationBaseProps & {
   selectedStudentId?: string;
   studentMode?: boolean;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
-}
+};
 
-const TextbookActivity = ({
+const TextbookActivity: React.FC<TextbookActivityProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   selectedStudentId,
   getData,
-}: TextbookActivityProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const svgRef = useRef(null);
   const [data, setData] = useState<PerformancePerAssignment[]>([]);
   const [loading, setLoading] = useState(false);

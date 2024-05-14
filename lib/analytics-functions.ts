@@ -2,6 +2,7 @@
 
 import Analytics from "@/lib/Analytics";
 import {
+  ActivityAccessed,
   IDWithName,
   InstructorQuickMetrics,
   StudentQuickMetrics,
@@ -47,6 +48,15 @@ export async function getStudentQuickMetrics(
     assignmentsCount,
     averageScore,
   };
+}
+
+export async function getActivityAccessed(student_id: string): Promise<ActivityAccessed>{
+  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
+  const analytics = new Analytics(adapt_id);
+
+  const activityAccessed = await analytics.getADAPTActivity(student_id);
+
+  return activityAccessed;
 }
 
 export async function getADAPTPerformance(assignment_id: string) {

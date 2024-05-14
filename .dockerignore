@@ -1,0 +1,20 @@
+# Configuration and environment
+**/config/
+.env
+
+# Dependencies/modules
+**/node_modules/
+
+# Build/distribution files
+**/build/
+**/dist/
+
+# Version control
+**/.git/
+.gitignore
+
+# IDE files
+.vscode
+
+# macOS files
+**/.DS_Store

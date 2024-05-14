@@ -1,12 +1,14 @@
 "use client";
-import React, { cloneElement } from "react";
+import React, { cloneElement, useRef, useState } from "react";
 import { Card } from "react-bootstrap";
 import { useAtom } from "jotai";
 import { globalStateAtom } from "@/state/globalState";
 import {
   Download as IconDownload,
   Table as IconTable,
+  BarChart as IconBarChart,
 } from "react-bootstrap-icons";
+import { VisualizationInnerRef } from "@/lib/types";
 
 interface VisualizationContainerProps {
   title: string;
@@ -21,16 +23,42 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   children,
   studentMode = false,
 }) => {
+  const innerRef = useRef<VisualizationInnerRef | null>(null);
   const [globalState] = useAtom(globalStateAtom);
+  const [tableView, setTableView] = useState(false);
 
   const childWithProps = cloneElement(children as React.ReactElement, {
     selectedStudentId: globalState.studentId,
     selectedAssignmentId: globalState.assignmentId,
     studentMode,
+    tableView,
+    innerRef,
   });
 
+  const handleDownloadImg = () => {
+    if (!innerRef.current) return;
+    const svg = innerRef.current.getSVG();
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const svgSize = svg.getBoundingClientRect();
+    canvas.width = svgSize.width;
+    canvas.height = svgSize.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+      const a = document.createElement("a");
+      a.download = "visualization.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
   return (
-    <Card className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2">
+    <Card className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-w-full">
       <div className="tw-flex tw-flex-row tw-justify-between">
         <div className="tw-flex tw-flex-col">
           <h3 className="tw-text-2xl tw-font-semibold tw-mb-1">{title}</h3>
@@ -46,11 +74,19 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
           </p>
         </div>
         <div className="tw-flex tw-flex-row tw-justify-end tw-basis-1/3">
-          <button className="tw-underline tw-rounded-md tw-border tw-border-slate-400">
-            <IconDownload />
-          </button>
-          <button className="tw-underline tw-ml-2 tw-rounded-md tw-border tw-border-slate-400">
-            <IconTable />
+          {!tableView && (
+            <button
+              className="tw-underline tw-rounded-md tw-border tw-border-slate-400"
+              onClick={handleDownloadImg}
+            >
+              <IconDownload />
+            </button>
+          )}
+          <button
+            className="tw-underline tw-ml-2 tw-rounded-md tw-border tw-border-slate-400"
+            onClick={() => setTableView(!tableView)}
+          >
+            {tableView ? <IconBarChart /> : <IconTable />}
           </button>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import { IDWithName } from "./misc";
+
 export type AssignmentAvgScoreCalc = {
   _id: string;
   avg_score: number;
@@ -29,4 +31,9 @@ export type StudentQuickMetrics = {
   textbookEngagement: number;
   assignmentsCount: number;
   averageScore: number;
+};
+
+export type ActivityAccessed = {
+  seen: IDWithName[];
+  unseen: IDWithName[];
 };

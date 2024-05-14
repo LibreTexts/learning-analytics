@@ -28,6 +28,7 @@ async function connectDB() {
       .connect(DATABASE_URL, {})
       .then((mongoose) => {
         console.log("Connected to MongoDB");
+        mongoose.set("debug", process.env.NODE_ENV === "development")
         return mongoose.connection;
       })
       .catch((err) => {

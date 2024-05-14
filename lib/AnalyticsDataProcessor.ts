@@ -11,14 +11,79 @@ class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
+    await this.compressADAPTAllAssignments();
     //await this.compressADAPTAssignments();
     //await this.compressADAPTAverageScore();
     //await this.compressADAPTInteractionDays();
-    await this.compressADAPTGradeDistribution();
+    //await this.compressADAPTGradeDistribution();
     //await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
     //await this.compressTextbookActivityTime();
     //await this.compressTexbookInteractions();
+  }
+
+  private async compressADAPTAllAssignments(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressADAPTAllAssignments]: Starting aggregation...");
+      await ADAPT.aggregate(
+        [
+          {
+            $group: {
+              _id: {
+                course_id: "$course_id",
+                assignment_id: "$assignment_id",
+              },
+              assignment_name: {
+                $first: "$assignment_name",
+              },
+              assignments: {
+                $addToSet: "$assignment_id",
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$_id.course_id",
+              assignments: {
+                $addToSet: {
+                  id: "$_id.assignment_id",
+                  name: "$assignment_name",
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id",
+              assignments: 1,
+            },
+          },
+          {
+            $merge: {
+              into: "calcADAPTAllAssignments",
+              on: "courseID",
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        {
+          allowDiskUse: true,
+        }
+      );
+
+      debugADP(`[compressADAPTAllAssignments]: Finished aggregation.`);
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ??
+          "Unknown error occured while compressing ADAPT all assignments"
+      );
+      return false;
+    }
   }
 
   private async compressADAPTAssignments(): Promise<boolean> {

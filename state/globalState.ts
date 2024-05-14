@@ -14,8 +14,8 @@ type GlobalStateSetAction = SetStateAction<GlobalState>;
 export const initGlobalStateAtom = atom({
   ferpaPrivacy: false,
   adaptId: "220",
-  viewAs: "instructor",
-  studentId: "07acf33097069bd3d3e51a5d31f66b57ece0fcda3c308068ba8c9e7aa3b7a310",
+  viewAs: "student",
+  studentId: "65cedf714ba02470a7350d8e799c7aadff680fdbfc40f2e0e06ed6bc0323e3d5",
   assignmentId: "",
   courseID: "",
   shareGradeDistribution: false,

@@ -1,6 +1,12 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
@@ -11,6 +17,7 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
+import { VisualizationBaseProps } from "@/lib/types";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -20,17 +27,20 @@ type GradeBucket = {
   count: number;
 };
 
-type GradeDistributionProps = {
-  width?: number;
-  height?: number;
+type GradeDistributionProps = VisualizationBaseProps & {
   getData: () => Promise<string[]>;
 };
 
-const GradeDistribution = ({
+const GradeDistribution: React.FC<GradeDistributionProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   getData,
-}: GradeDistributionProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
   const [data, setData] = useState<GradeBucket[]>([]);

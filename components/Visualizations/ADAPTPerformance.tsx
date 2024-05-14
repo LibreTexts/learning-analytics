@@ -1,8 +1,17 @@
 "use client";
 import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
-import { SubmissionTimeline as ADAPTPerformanceType } from "@/lib/types";
+import {
+  SubmissionTimeline as ADAPTPerformanceType,
+  VisualizationBaseProps,
+} from "@/lib/types";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { LIBRE_BLUE } from "@/utils/colors";
@@ -17,20 +26,23 @@ import NoData from "../NoData";
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
-type ADAPTPerformanceProps = {
-  width?: number;
-  height?: number;
+type ADAPTPerformanceProps = VisualizationBaseProps & {
   selectedAssignmentId?: string;
   studentMode?: boolean;
   getData: (assignment_id: string) => Promise<number[]>;
 };
 
-const ADAPTPerformance = ({
+const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   getData,
   selectedAssignmentId,
-}: ADAPTPerformanceProps) => {
+  innerRef,
+}) => {
+  useImperativeHandle(innerRef, () => ({
+    getSVG: () => svgRef.current,
+  }));
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
   const [data, setData] = useState<number[]>([]);
@@ -117,13 +129,22 @@ const ADAPTPerformance = ({
       .style("border", "solid")
       .style("border-width", "1px")
       .style("border-radius", "5px")
-      .style("padding", "10px")
-      // .attr("transform", `translate(${MARGIN.left}, -${height - MARGIN.bottom})`);
+      .style("padding", "10px");
+    // .attr("transform", `translate(${MARGIN.left}, -${height - MARGIN.bottom})`);
 
     // Three function that change the tooltip when user hover / move / leave a cell
     const mouseover = (e: any, d: d3.Bin<number, number>) => {
       tooltip
-        .html("Score Range: " + d.x0 + "% - " + d.x1 + '%' + "<br>" + "Count: " + d.length)
+        .html(
+          "Score Range: " +
+            d.x0 +
+            "% - " +
+            d.x1 +
+            "%" +
+            "<br>" +
+            "Count: " +
+            d.length
+        )
         .style("opacity", 1)
         .style("visibility", "visible");
     };
@@ -146,9 +167,8 @@ const ADAPTPerformance = ({
       .on("mouseover", mouseover)
       .on("mousemove", mousemove)
       .on("mouseleave", mouseleave)
-      .style("fill", LIBRE_BLUE)
+      .style("fill", LIBRE_BLUE);
 
-    
     // Add X axis label:
     svg
       .append("text")

@@ -1,4 +1,4 @@
-import { getPerformancePerAssignment } from "@/lib/analytics-functions";
+import { getActivityAccessed, getPerformancePerAssignment } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
 import VisualizationContainer from "@/components/VisualizationContainer";
@@ -6,7 +6,7 @@ import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
 import { useAtom } from "jotai";
 import { globalStateAtom } from "@/state/globalState";
 import StudentQuickMetrics from "@/components/StudentQuickMetrics";
-import NoData from "@/components/NoData";
+import ActivityAccessed from "./Visualizations/ActivityAccessed";
 
 const StudentDashboard = () => {
   const [globalState] = useAtom(globalStateAtom);
@@ -27,10 +27,10 @@ const StudentDashboard = () => {
       </VisualizationContainer>
       <VisualizationContainer
         title="Activity Accessed"
-        description="Compare your engagement with the course material to the class average."
+        description="Compare your engagement with the course material."
         studentMode
       >
-        <NoData width={1200} height={400}/>
+        <ActivityAccessed getData={getActivityAccessed} />
       </VisualizationContainer>
     </GenericPageContainer>
   );
