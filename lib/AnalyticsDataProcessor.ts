@@ -6,20 +6,22 @@ import ADAPT from "./models/adapt";
 import Gradebook from "./models/gradebook";
 import useADAPTAxios from "@/hooks/useADAPTAxios";
 import { ADAPT_CourseScoresAPIResponse } from "./types";
+import textbookInteractionsByDate from "./models/textbookInteractionsByDate";
 
 class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
-    await this.compressADAPTAllAssignments();
+    //await this.compressADAPTAllAssignments();
     //await this.compressADAPTAssignments();
     //await this.compressADAPTAverageScore();
     //await this.compressADAPTInteractionDays();
     //await this.compressADAPTGradeDistribution();
     //await this.compressADAPTSubmissions();
-    //await this.compressADAPTScores();
+    await this.compressADAPTScores();
     //await this.compressTextbookActivityTime();
-    //await this.compressTexbookInteractions();
+    //await this.compressTexbookInteractionsByDate();
+    //await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
   }
 
   private async compressADAPTAllAssignments(): Promise<boolean> {
@@ -212,45 +214,32 @@ class AnalyticsDataProcessor {
         [
           {
             $match: {
-              level_name: {
+              assignment_id: {
                 $exists: true,
-                $ne: "",
-              },
-            },
-          },
-          {
-            $lookup: {
-              from: "adapt",
-              localField: "level_name",
-              foreignField: "assignment_name",
-              as: "assignmentInfo",
-            },
-          },
-          {
-            $addFields: {
-              assignmentInfo: {
-                $arrayElemAt: ["$assignmentInfo", 0],
-              },
-            },
+                $ne: null
+              }
+            }
           },
           {
             $group: {
               _id: {
                 courseID: "$class",
-                assignmentID: "$assignmentInfo.assignment_id",
+                assignmentID: "$assignment_id"
               },
               scores: {
-                $push: "$assignment_percent",
-              },
-            },
+                $push: "$assignment_percent"
+              }
+            }
           },
           {
             $project: {
               _id: 0,
               courseID: "$_id.courseID",
-              assignmentID: "$_id.assignmentID",
-              scores: 1,
-            },
+              assignmentID: {
+                $toString: "$_id.assignmentID"
+              },
+              scores: 1
+            }
           },
           {
             $merge: {
@@ -559,11 +548,11 @@ class AnalyticsDataProcessor {
     }
   }
 
-  private async compressTexbookInteractions(): Promise<boolean> {
+  private async compressTexbookInteractionsByDate(): Promise<boolean> {
     try {
       await connectDB();
 
-      debugADP("[compressTextbookInteractions]: Starting aggregation...");
+      debugADP("[compressTextbookInteractionsByDate]: Starting aggregation...");
       await LTAnalytics.aggregate(
         [
           {
@@ -615,13 +604,63 @@ class AnalyticsDataProcessor {
         ],
         { allowDiskUse: true }
       );
-      debugADP(`[compressTextbookInteractions]: Finished aggregation.`);
+      debugADP(`[compressTextbookInteractionsByDate]: Finished aggregation.`);
 
       return true;
     } catch (err: any) {
       debugADP(
         err.message ??
           "Unknown error occured while compressing textbook interactions"
+      );
+      return false;
+    }
+  }
+
+  // Should be ran after compressing textbookInteractionsByDate
+  private async compressTextbookNumInteractions(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressTextbookNumInteractions]: Starting aggregation...");
+      await textbookInteractionsByDate.aggregate(
+        [
+          {
+            $group: {
+              _id: {
+                actor: "$actor",
+                textbookID: "$textbookID",
+              },
+              totalInteractions: {
+                $sum: "$numInteractions",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              actor: "$_id.actor",
+              textbookID: "$_id.textbookID",
+              totalInteractions: "$totalInteractions",
+            },
+          },
+          {
+            $merge: {
+              into: "calcTextbookNumInteractions",
+              on: ["actor", "textbookID"],
+              whenMatched: "replace",
+              whenNotMatched: "insert",
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
+
+      debugADP(`[compressTextbookNumInteractions]: Finished aggregation.`);
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ??
+          "Unknown error occured while compressing textbook num interactions"
       );
       return false;
     }
