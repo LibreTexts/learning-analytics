@@ -2,12 +2,6 @@ import mongoose from "mongoose";
 
 const DATABASE_URL = process.env.MONGOOSE_URI;
 
-if (!DATABASE_URL) {
-  throw new Error(
-    "Please define the MONGOOSE_URI environment variable inside .env.local"
-  );
-}
-
 let cached = global.mongooseClient;
 
 if (!cached) {

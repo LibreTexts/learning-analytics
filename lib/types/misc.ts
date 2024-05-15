@@ -15,7 +15,7 @@ export type VisualizationBaseProps = {
   width?: number;
   height?: number;
   tableView?: boolean;
-  innerRef: React.RefObject<VisualizationInnerRef>;
+  innerRef?: React.RefObject<VisualizationInnerRef>;
 }
 
 export type VisualizationInnerRef = {
