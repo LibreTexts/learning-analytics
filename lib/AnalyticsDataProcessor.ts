@@ -5,8 +5,15 @@ import { debugADP } from "@/utils/misc";
 import ADAPT from "./models/adapt";
 import Gradebook from "./models/gradebook";
 import useADAPTAxios from "@/hooks/useADAPTAxios";
-import { ADAPT_CourseScoresAPIResponse } from "./types";
+import { IDWithName } from "./types";
 import textbookInteractionsByDate from "./models/textbookInteractionsByDate";
+import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
+import calcADAPTScores from "./models/calcADAPTScores";
+import ewsCourseSummary, {
+  IEWSCourseSummary_Raw,
+} from "./models/ewsCourseSummary";
+import calcADAPTInteractionDays from "./models/calcADAPTInteractionDays";
+import calcADAPTAssignments from "./models/calcADAPTAssignments";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -18,10 +25,11 @@ class AnalyticsDataProcessor {
     //await this.compressADAPTInteractionDays();
     //await this.compressADAPTGradeDistribution();
     //await this.compressADAPTSubmissions();
-    await this.compressADAPTScores();
+    //await this.compressADAPTScores();
     //await this.compressTextbookActivityTime();
     //await this.compressTexbookInteractionsByDate();
     //await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
+    await this.writeEWSCourseSummary();
   }
 
   private async compressADAPTAllAssignments(): Promise<boolean> {
@@ -216,30 +224,30 @@ class AnalyticsDataProcessor {
             $match: {
               assignment_id: {
                 $exists: true,
-                $ne: null
-              }
-            }
+                $ne: null,
+              },
+            },
           },
           {
             $group: {
               _id: {
                 courseID: "$class",
-                assignmentID: "$assignment_id"
+                assignmentID: "$assignment_id",
               },
               scores: {
-                $push: "$assignment_percent"
-              }
-            }
+                $push: "$assignment_percent",
+              },
+            },
           },
           {
             $project: {
               _id: 0,
               courseID: "$_id.courseID",
               assignmentID: {
-                $toString: "$_id.assignmentID"
+                $toString: "$_id.assignmentID",
               },
-              scores: 1
-            }
+              scores: 1,
+            },
           },
           {
             $merge: {
@@ -661,6 +669,185 @@ class AnalyticsDataProcessor {
       debugADP(
         err.message ??
           "Unknown error occured while compressing textbook num interactions"
+      );
+      return false;
+    }
+  }
+
+  private async writeEWSCourseSummary(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      const coursesWAssignments = await calcADAPTAllAssignments.find();
+      const courseAssignmentMap = new Map<string, string[]>();
+      coursesWAssignments.forEach((course) => {
+        course.assignments.forEach((assignment: IDWithName) => {
+          if (courseAssignmentMap.has(course.courseID)) {
+            courseAssignmentMap.get(course.courseID)?.push(assignment.id);
+          } else {
+            courseAssignmentMap.set(course.courseID, [assignment.id]);
+          }
+        });
+      });
+
+      // for each course + assignment, find the scores from calcADAPTScores collection and calculate the average score
+      const aggScores = await calcADAPTScores.aggregate(
+        [
+          {
+            $match: {
+              $or: Array.from(courseAssignmentMap.entries()).map(
+                ([courseID, assignmentIDs]) => ({
+                  courseID: courseID,
+                  assignmentID: { $in: assignmentIDs },
+                })
+              ),
+            },
+          },
+          {
+            $unwind: "$scores",
+          },
+          {
+            $group: {
+              _id: {
+                courseID: "$courseID",
+                assignmentID: "$assignmentID",
+              },
+              averageScore: { $avg: "$scores" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              courseID: "$_id.courseID",
+              assignmentID: "$_id.assignmentID",
+              averageScore: 1,
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      );
+
+      const calculateAvgCoursePercent = (scores: any[]) => {
+        // filter out null, undefined and NaN values
+        scores = scores.filter((score) => score.averageScore);
+        const sum = scores.reduce(
+          (acc: number, score: { averageScore: number }) =>
+            acc + score.averageScore,
+          0
+        );
+        return sum / scores.length || 0;
+      };
+
+      const courseSummaries: IEWSCourseSummary_Raw[] = [];
+      for (const [courseID, assignmentIDs] of Array.from(
+        courseAssignmentMap.entries()
+      )) {
+        const courseScores = aggScores.filter(
+          (score: { courseID: string; assignmentID: string }) =>
+            score.courseID === courseID &&
+            assignmentIDs.includes(score.assignmentID)
+        );
+
+        const courseSummary: IEWSCourseSummary_Raw = {
+          course_id: courseID,
+          assignments: courseScores.map(
+            (score: { assignmentID: string; averageScore: number }) => ({
+              assignment_id: score.assignmentID,
+              avg_score: score.averageScore,
+            })
+          ),
+          avg_course_percent: calculateAvgCoursePercent(courseScores),
+          avg_interaction_days: 0,
+          avg_percent_seen: 0,
+        };
+
+        courseSummaries.push(courseSummary);
+      }
+
+      const interactionDays = await calcADAPTInteractionDays.aggregate([
+        {
+          $group: {
+            _id: "$courseID",
+            avg_interaction_days: {
+              $avg: {
+                $size: "$days",
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            courseID: "$_id",
+            avg_interaction_days: 1,
+          },
+        },
+      ]);
+
+      interactionDays.forEach((course) => {
+        const courseSummary = courseSummaries.find(
+          (summary) => summary.course_id === course.courseID
+        );
+        if (courseSummary) {
+          courseSummary.avg_interaction_days = course.avg_interaction_days;
+        }
+      });
+
+      /* for percent seen, from calcADAPTAllAssignments, we can get the number of assignments for each course
+      and from calcADAPTAssignments, we can get the number of assignments completed by each student in each course.
+      Then, we can calculate the average percent seen for each course. */
+
+      const courseAssignments = await calcADAPTAllAssignments.find();
+      const courseAssignmentsMap = new Map<string, number>();
+      courseAssignments.forEach((course) => {
+        courseAssignmentsMap.set(course.courseID, course.assignments.length);
+      });
+
+      const courseAssignmentsCompleted = await calcADAPTAssignments.aggregate([
+        {
+          $group: {
+            _id: "$courseID",
+            avg_percent_seen: { $avg: "$assignments_count" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            courseID: "$_id",
+            avg_percent_seen: 1,
+          },
+        },
+      ]);
+
+      courseAssignmentsCompleted.forEach((course) => {
+        const courseSummary = courseSummaries.find(
+          (summary) => summary.course_id === course.courseID
+        );
+        if (courseSummary) {
+          courseSummary.avg_percent_seen = course.avg_percent_seen;
+        }
+      });
+
+      // filter missing course_id
+      const filteredCourseSummaries = courseSummaries.filter(
+        (summary) => summary.course_id
+      );
+
+      // Write the course summaries to the database
+      await ewsCourseSummary.bulkWrite(
+        filteredCourseSummaries.map((summary) => ({
+          updateOne: {
+            filter: { course_id: summary.course_id },
+            update: summary,
+            upsert: true,
+          },
+        }))
+      );
+
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ?? "Unknown error occured while writing EWS course summary"
       );
       return false;
     }

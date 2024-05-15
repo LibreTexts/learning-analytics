@@ -1,6 +1,6 @@
 import connectDB from "@/lib/database";
 import Adapt, { IAdapt_Raw } from "@/lib/models/adapt";
-import AdaptCodes from "@/lib/models/adaptCodes";
+import AdaptCodes from "@/lib/models/adaptCourses";
 import Enrollments from "@/lib/models/enrollments";
 import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
@@ -24,7 +24,7 @@ import { sortStringsWithNumbers } from "@/utils/text-helpers";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
 import { decryptStudent } from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
-import CalcADAPTAverageScore from "./models/calcADAPTAverageScore";
+import CalcADAPTActorAvgScore from "./models/calcADAPTActorAvgScore";
 import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
 import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
@@ -102,7 +102,7 @@ class Analytics {
       await connectDB();
 
       const res = await Enrollments.countDocuments({
-        class: this.adaptID,
+        courseID: this.adaptID.toString(),
       });
 
       return res ?? 0;
@@ -384,7 +384,7 @@ class Analytics {
       const offset = getPaginationOffset(page, limit);
 
       const res = await Enrollments.find({
-        class: this.adaptID,
+        courseID: this.adaptID.toString(),
       })
         .select("email")
         .skip(offset)
@@ -452,7 +452,7 @@ class Analytics {
     try {
       await connectDB();
 
-      const res = await CalcADAPTAverageScore.findOne({
+      const res = await CalcADAPTActorAvgScore.findOne({
         actor: student_id,
         courseID: this.adaptID.toString(),
       });
