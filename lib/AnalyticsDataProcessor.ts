@@ -12,8 +12,12 @@ import calcADAPTScores from "./models/calcADAPTScores";
 import ewsCourseSummary, {
   IEWSCourseSummary_Raw,
 } from "./models/ewsCourseSummary";
+import ewsActorSummary, {
+  IEWSActorSummary_Raw,
+} from "./models/ewsActorSummary";
 import calcADAPTInteractionDays from "./models/calcADAPTInteractionDays";
 import calcADAPTAssignments from "./models/calcADAPTAssignments";
+import enrollments from "./models/enrollments";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -30,6 +34,7 @@ class AnalyticsDataProcessor {
     //await this.compressTexbookInteractionsByDate();
     //await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
     await this.writeEWSCourseSummary();
+    await this.writeEWSActorSummary();
   }
 
   private async compressADAPTAllAssignments(): Promise<boolean> {
@@ -101,24 +106,29 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTAssignments]: Starting aggregation...");
-      await ADAPT.aggregate(
+      await Gradebook.aggregate(
         [
           {
             $match: {
               assignment_id: {
                 $exists: true,
-                $ne: "",
+                $nin: [null, ""],
               },
             },
           },
           {
             $group: {
               _id: {
-                courseID: "$course_id",
-                actor: "$anon_student_id",
+                courseID: "$class",
+                actor: "$email",
               },
               assignments: {
-                $addToSet: "$assignment_id",
+                $addToSet: {
+                  assignment_id: {
+                    $toString: "$assignment_id",
+                  },
+                  score: "$assignment_percent",
+                },
               },
             },
           },
@@ -130,6 +140,18 @@ class AnalyticsDataProcessor {
               assignments: 1,
               assignments_count: {
                 $size: "$assignments",
+              },
+            },
+          },
+          {
+            $match: {
+              actor: {
+                $exists: true,
+                $nin: [null, ""],
+              },
+              courseID: {
+                $exists: true,
+                $nin: [null, ""],
               },
             },
           },
@@ -678,6 +700,7 @@ class AnalyticsDataProcessor {
     try {
       await connectDB();
 
+      debugADP("[writeEWSCourseSummary]: Starting aggregation...");
       const coursesWAssignments = await calcADAPTAllAssignments.find();
       const courseAssignmentMap = new Map<string, string[]>();
       coursesWAssignments.forEach((course) => {
@@ -844,10 +867,220 @@ class AnalyticsDataProcessor {
         }))
       );
 
+      debugADP(`[writeEWSCourseSummary]: Finished writing course summaries.`);
       return true;
     } catch (err: any) {
       debugADP(
         err.message ?? "Unknown error occured while writing EWS course summary"
+      );
+      return false;
+    }
+  }
+
+  private async writeEWSActorSummary(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[writeEWSActorSummary]: Starting aggregation...");
+      const actors = await enrollments.aggregate([
+        {
+          $group: {
+            _id: {
+              email: "$email",
+              courseID: "$courseID",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            actor_id: "$_id.email",
+            course_id: "$_id.courseID",
+          },
+        },
+      ]);
+
+      const actorWCourses = new Map<string, string[]>();
+      actors.forEach((actor) => {
+        if (actorWCourses.has(actor.actor_id)) {
+          actorWCourses.get(actor.actor_id)?.push(actor.course_id);
+        } else {
+          actorWCourses.set(actor.actor_id, [actor.course_id]);
+        }
+      });
+
+      const actorAssignments = await calcADAPTAssignments.aggregate(
+        [
+          {
+            $match: {
+              $or: Array.from(actorWCourses.entries()).map(
+                ([actorID, courseIDs]) => ({
+                  actor: actorID,
+                  courseID: { $in: courseIDs },
+                })
+              ),
+            },
+          },
+        ],
+        {
+          allowDiskUse: true,
+        }
+      );
+
+      const actorSummaries: IEWSActorSummary_Raw[] = [];
+      for (const [actorID, courseIDs] of Array.from(actorWCourses.entries())) {
+        for (const courseID of courseIDs) {
+          const actorCourseAssignments = actorAssignments.filter(
+            (assignment: { actor: string; courseID: string }) =>
+              assignment.actor === actorID && assignment.courseID === courseID
+          );
+
+          const actorSummary: IEWSActorSummary_Raw = {
+            actor_id: actorID,
+            course_id: courseID,
+            assignments:
+              actorCourseAssignments
+                .at(0)
+                ?.assignments.map(
+                  (assignment: { assignment_id: string; score: number }) => ({
+                    assignment_id: assignment.assignment_id,
+                    score: isNaN(assignment.score) ? 0 : assignment.score,
+                  })
+                ) || [],
+            percent_seen: 0,
+            interaction_days: 0,
+            course_percent: 0,
+          };
+
+          actorSummaries.push(actorSummary);
+        }
+      }
+
+      const interactionDays = await calcADAPTInteractionDays.aggregate([
+        {
+          $group: {
+            _id: {
+              actor: "$actor",
+              courseID: "$courseID",
+            },
+            interaction_days: {
+              $sum: {
+                $size: "$days",
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            actor_id: "$_id.actor",
+            course_id: "$_id.courseID",
+            interaction_days: 1,
+          },
+        },
+      ]);
+
+      interactionDays.forEach((interaction) => {
+        const actorSummary = actorSummaries.find(
+          (summary) =>
+            summary.actor_id === interaction.actor_id &&
+            summary.course_id === interaction.course_id
+        );
+        if (actorSummary) {
+          actorSummary.interaction_days = interaction.interaction_days;
+        }
+      });
+
+      const courseAssignments = await calcADAPTAllAssignments.aggregate([
+        {
+          $group: {
+            _id: "$courseID",
+            assignments_count: {
+              $sum: {
+                $size: "$assignments",
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            courseID: "$_id",
+            assignments_count: 1,
+          },
+        },
+      ]);
+
+      const courseAssignmentsMap = new Map<string, number>();
+      courseAssignments.forEach((course) => {
+        courseAssignmentsMap.set(course.courseID, course.assignments_count);
+      });
+
+      actorSummaries.forEach((actorSummary) => {
+        const courseID = actorSummary.course_id;
+        const assignmentsCount = courseAssignmentsMap.get(courseID) ?? 0;
+        actorSummary.percent_seen =
+          (actorSummary.assignments.length / assignmentsCount) * 100 || 0;
+      });
+
+      // For course_percent, find the latest gradebook entry for each actor in each course and use the overall_course_percent
+      const latestGradebookEntries = await Gradebook.aggregate([
+        {
+          $group: {
+            _id: {
+              actor: "$email",
+              courseID: "$class",
+            },
+            newestDocument: {
+              $last: "$$ROOT",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            actor_id: "$_id.actor",
+            course_id: "$_id.courseID",
+            course_percent: "$newestDocument.overall_course_percent",
+          },
+        },
+      ]);
+
+      latestGradebookEntries.forEach((entry) => {
+        const actorSummary = actorSummaries.find(
+          (summary) =>
+            summary.actor_id === entry.actor_id &&
+            summary.course_id === entry.course_id
+        );
+        if (actorSummary) {
+          actorSummary.course_percent = entry.course_percent;
+        }
+      });
+
+      // filter missing actor_id and course_id
+      const filteredActorSummaries = actorSummaries.filter(
+        (summary) => summary.actor_id && summary.course_id
+      );
+
+      // Write the actor summaries to the database
+      await ewsActorSummary.bulkWrite(
+        filteredActorSummaries.map((summary) => ({
+          updateOne: {
+            filter: {
+              actor_id: summary.actor_id,
+              course_id: summary.course_id,
+            },
+            update: summary,
+            upsert: true,
+          },
+        }))
+      );
+
+      debugADP(`[writeEWSActorSummary]: Finished writing actor summaries.`);
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ?? "Unknown error occured while writing EWS actor summary"
       );
       return false;
     }

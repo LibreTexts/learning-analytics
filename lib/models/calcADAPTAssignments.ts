@@ -3,7 +3,7 @@ import { Document, Schema, model, models } from "mongoose";
 export interface ICalcADAPTAssignments_Raw {
   actor: string;
   courseID: string;
-  assignments: string[];
+  assignments: { assignment_id: string; score: number }[];
   assignments_count: number;
 }
 
@@ -15,7 +15,12 @@ const CalcADAPTAssignmentsSchema = new Schema<ICalcADAPTAssignments>(
   {
     actor: String,
     courseID: String,
-    assignments: [String],
+    assignments: [
+      {
+        assignment_id: String,
+        score: Number,
+      },
+    ],
     assignments_count: Number,
   },
   {
