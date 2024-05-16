@@ -65,4 +65,6 @@ const AdaptSchema = new Schema<IAdapt>(
   }
 );
 
+AdaptSchema.index({ assignment_id: 1 });
+
 export default models.Adapt || model<IAdapt>("Adapt", AdaptSchema, "adapt");

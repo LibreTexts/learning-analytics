@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 
 export interface IEnrollmentsRaw {
   email: string;
-  class: number;
+  courseID: number;
   created_at: string;
 }
 
@@ -12,7 +12,7 @@ export interface IEnrollments extends IEnrollmentsRaw, Document {}
 const EnrollmentsSchema = new Schema<IEnrollments>(
   {
     email: String,
-    class: Number,
+    courseID: Number,
     created_at: String,
   },
   {
