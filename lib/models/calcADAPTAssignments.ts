@@ -30,7 +30,7 @@ const CalcADAPTAssignmentsSchema = new Schema<ICalcADAPTAssignments>(
 
 CalcADAPTAssignmentsSchema.index({ actor: 1, courseID: 1 }, { unique: true });
 
-export default models.CalcADAPTAssignments ||
+export default models?.CalcADAPTAssignments ||
   model<ICalcADAPTAssignments>(
     "CalcADAPTAssignments",
     CalcADAPTAssignmentsSchema,

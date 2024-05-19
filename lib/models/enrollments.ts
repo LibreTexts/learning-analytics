@@ -12,7 +12,7 @@ export interface IEnrollments extends IEnrollmentsRaw, Document {}
 const EnrollmentsSchema = new Schema<IEnrollments>(
   {
     email: String,
-    courseID: Number,
+    courseID: String,
     created_at: String,
   },
   {

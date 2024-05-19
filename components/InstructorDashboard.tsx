@@ -25,7 +25,7 @@ import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
 import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
 
-const InstructorDashboard = () => {
+const InstructorDashboard = ({course_id}:{course_id: string}) => {
   return (
     <GenericPageContainer>
       <PageHeader
@@ -40,7 +40,7 @@ const InstructorDashboard = () => {
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
       >
-        <PerfPerAssignment getData={getPerformancePerAssignment} />
+        <PerfPerAssignment getData={(student_id) => getPerformancePerAssignment(course_id, student_id)} />
       </VisualizationContainer>
       {/* <VisualizationContainer
         title="Textbook Activity"
@@ -59,7 +59,7 @@ const InstructorDashboard = () => {
         title="Submission Timeline"
         description="Timeline of student submissions for selected assignment"
       >
-        <SubmissionTimeline getData={getSubmissionTimeline} />
+        <SubmissionTimeline getData={(assignment_id) => getSubmissionTimeline(course_id, assignment_id)} />
       </VisualizationContainer>
       {/* <VisualizationContainer
               title="Textbook Engagment"
@@ -71,13 +71,13 @@ const InstructorDashboard = () => {
         title="ADAPT Performance"
         description="Distribution of student scores by selected assignment"
       >
-        <ADAPTPerformance getData={getADAPTPerformance} />
+        <ADAPTPerformance getData={(assignment_id) => getADAPTPerformance(course_id, assignment_id)} />
       </VisualizationContainer>
       <VisualizationContainer
         title="Grade Distribution"
         description="Distribution of student scores across all assignments"
       >
-        <GradeDistribution getData={getGradeDistribution} />
+        <GradeDistribution getData={() => getGradeDistribution(course_id)} />
       </VisualizationContainer>
       <VisualizationContainer
         title="Learning Curve"

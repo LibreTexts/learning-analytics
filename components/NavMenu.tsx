@@ -71,7 +71,7 @@ const NavMenu = () => {
       </ListGroup>
       {process.env.NODE_ENV === "development" && (
         <p className="tw-text-center tw-mt-2">
-          Course ID: {globalState.adaptId}
+          Course ID: {globalState.courseID}
         </p>
       )}
     </>

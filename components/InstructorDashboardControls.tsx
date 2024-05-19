@@ -14,7 +14,7 @@ const InstructorDashboardControls = () => {
   const elementRef = useRef<HTMLDivElement>(null);
 
   const { data: students, status: studentsStatus } = useQuery<IDWithName[]>({
-    queryKey: ["students"],
+    queryKey: ["students", globalState.courseID, globalState.ferpaPrivacy],
     queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
@@ -23,7 +23,7 @@ const InstructorDashboardControls = () => {
   const { data: assignments, status: assignmentsStatus } = useQuery<
     IDWithName[]
   >({
-    queryKey: ["assignments"],
+    queryKey: ["assignments", globalState.courseID],
     queryFn: fetchAssignments,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
@@ -45,7 +45,8 @@ const InstructorDashboardControls = () => {
 
   async function fetchStudents(): Promise<IDWithName[]> {
     try {
-      const data = await getStudents(1, 100, globalState.ferpaPrivacy);
+      if(!globalState.courseID) return [];
+      const data = await getStudents(globalState.courseID, 1, 100, globalState.ferpaPrivacy);
       return data;
     } catch (err) {
       console.error(err);
@@ -55,7 +56,8 @@ const InstructorDashboardControls = () => {
 
   async function fetchAssignments(): Promise<IDWithName[]> {
     try {
-      const data = await getAssignments();
+      if(!globalState.courseID) return [];
+      const data = await getAssignments(globalState.courseID);
       return data;
     } catch (err) {
       console.error(err);

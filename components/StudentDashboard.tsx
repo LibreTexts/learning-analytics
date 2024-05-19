@@ -8,7 +8,7 @@ import { globalStateAtom } from "@/state/globalState";
 import StudentQuickMetrics from "@/components/StudentQuickMetrics";
 import ActivityAccessed from "./Visualizations/ActivityAccessed";
 
-const StudentDashboard = () => {
+const StudentDashboard = ({course_id}:{course_id: string}) => {
   const [globalState] = useAtom(globalStateAtom);
 
   return (
@@ -23,14 +23,14 @@ const StudentDashboard = () => {
         description="Your scores vs. class average for each assignment."
         studentMode
       >
-        <PerfPerAssignment getData={getPerformancePerAssignment} />
+        <PerfPerAssignment getData={(student_id) => getPerformancePerAssignment(course_id, student_id)} />
       </VisualizationContainer>
       <VisualizationContainer
         title="Activity Accessed"
         description="Compare your engagement with the course material."
         studentMode
       >
-        <ActivityAccessed getData={getActivityAccessed} />
+        <ActivityAccessed getData={(student_id) => getActivityAccessed(course_id, student_id)} />
       </VisualizationContainer>
     </GenericPageContainer>
   );

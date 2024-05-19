@@ -7,7 +7,10 @@ import ToastContainer from "../ToastContainer";
 import { Controller, useForm } from "react-hook-form";
 
 interface StudentPermissionsProps {
-  saveData: (data: Partial<GlobalState>) => Promise<void> | void;
+  saveData: (
+    course_id: string,
+    data: Partial<GlobalState>
+  ) => Promise<void> | void;
 }
 
 const StudentPermissions: React.FC<StudentPermissionsProps> = ({
@@ -33,7 +36,7 @@ const StudentPermissions: React.FC<StudentPermissionsProps> = ({
     try {
       setLoading(true);
 
-      await saveData({
+      await saveData(globalState.courseID, {
         shareGradeDistribution: getValues().shareGradeDistribution,
       });
 
@@ -102,9 +105,7 @@ const StudentPermissions: React.FC<StudentPermissionsProps> = ({
           <Toast.Header>
             <strong className="me-auto">Success!</strong>
           </Toast.Header>
-          <Toast.Body
-          
-          >Settings saved successfully.</Toast.Body>
+          <Toast.Body>Settings saved successfully.</Toast.Body>
         </Toast>
       </ToastContainer>
     </>

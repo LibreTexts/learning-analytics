@@ -6,7 +6,7 @@ import { useState } from "react";
 
 const DemoModeControls = () => {
   const [globalState, setGlobalState] = useAtom(globalStateAtom);
-  const [courseId, setCourseId] = useState(globalState.adaptId);
+  // const [courseId, setCourseId] = useState(globalState.adaptId);
 
   return (
     <div className="tw-w-1/3 tw-flex tw-flex-col tw-items-center tw-border tw-border-solid tw-border-white tw-rounded-md tw-py-1 tw-mb-8 tw-bg-libre-blue tw-text-white">
@@ -26,7 +26,7 @@ const DemoModeControls = () => {
             Toggle
           </button>
         </p>
-        <form
+        {/* <form
           onSubmit={(e) => {
             e.preventDefault();
             setGlobalState((prev) => ({
@@ -53,7 +53,7 @@ const DemoModeControls = () => {
               className="tw-ml-2 tw-bg-gray-200 tw-rounded-md tw-text-xs tw-w-16 tw-text-center"
             />
           </p>
-        </form>
+        </form> */}
       </div>
     </div>
   );
