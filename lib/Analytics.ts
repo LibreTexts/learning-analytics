@@ -39,7 +39,7 @@ class Analytics {
     if (!_adaptID) {
       throw new Error("ADAPT ID is required");
     }
-    const parsed = parseInt(_adaptID.trim());
+    const parsed = parseInt(_adaptID.toString().trim());
     if (isNaN(parsed)) {
       throw new Error("Invalid ADAPT ID");
     }

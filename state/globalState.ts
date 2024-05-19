@@ -3,7 +3,7 @@ import { SetStateAction, atom } from "jotai";
 
 export type GlobalState = {
   ferpaPrivacy: boolean;
-  adaptId: string;
+  role: string;
   viewAs: string;
   studentId: string;
   assignmentId: string;
@@ -13,7 +13,7 @@ type GlobalStateSetAction = SetStateAction<GlobalState>;
 
 export const initGlobalStateAtom = atom({
   ferpaPrivacy: false,
-  adaptId: "",
+  role: "student",
   viewAs: "student",
   studentId: "",
   assignmentId: "",

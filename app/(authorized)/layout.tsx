@@ -1,18 +1,25 @@
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import "bootstrap/dist/css/bootstrap.css";
 import { Providers } from "./providers";
 import classNames from "classnames";
 import NavMenu from "@/components/NavMenu";
 import DemoModeControls from "@/components/DemoModeControls";
+import { validateRequest } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { user } = await validateRequest();
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <html lang="en">
       <head>
