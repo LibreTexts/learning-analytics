@@ -33,7 +33,7 @@ class AnalyticsDataProcessor {
     //await this.compressTextbookActivityTime();
     //await this.compressTexbookInteractionsByDate();
     //await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    await this.writeEWSCourseSummary();
+    // await this.writeEWSCourseSummary();
     await this.writeEWSActorSummary();
   }
 
@@ -928,6 +928,7 @@ class AnalyticsDataProcessor {
       );
 
       const actorSummaries: IEWSActorSummary_Raw[] = [];
+      const assignmentsByActorIdCourseId = new Map<string, any[]>();
       for (const [actorID, courseIDs] of Array.from(actorWCourses.entries())) {
         for (const courseID of courseIDs) {
           const actorCourseAssignments = actorAssignments.filter(
@@ -938,19 +939,21 @@ class AnalyticsDataProcessor {
           const actorSummary: IEWSActorSummary_Raw = {
             actor_id: actorID,
             course_id: courseID,
-            assignments:
-              actorCourseAssignments
-                .at(0)
-                ?.assignments.map(
-                  (assignment: { assignment_id: string; score: number }) => ({
-                    assignment_id: assignment.assignment_id,
-                    score: isNaN(assignment.score) ? 0 : assignment.score,
-                  })
-                ) || [],
             percent_seen: 0,
             interaction_days: 0,
             course_percent: 0,
           };
+          assignmentsByActorIdCourseId.set(
+            `${actorID}:${courseID}`,
+            actorCourseAssignments
+              .at(0)
+              ?.assignments.map(
+                (assignment: { assignment_id: string; score: number }) => ({
+                  assignment_id: assignment.assignment_id,
+                  score: isNaN(assignment.score) ? 0 : assignment.score,
+                })
+              ) || [],
+          );
 
           actorSummaries.push(actorSummary);
         }
@@ -1019,8 +1022,9 @@ class AnalyticsDataProcessor {
       actorSummaries.forEach((actorSummary) => {
         const courseID = actorSummary.course_id;
         const assignmentsCount = courseAssignmentsMap.get(courseID) ?? 0;
+        const foundAssignments = assignmentsByActorIdCourseId.get(`${actorSummary.actor_id}:${courseID}`);
         actorSummary.percent_seen =
-          (actorSummary.assignments.length / assignmentsCount) * 100 || 0;
+          ((foundAssignments?.length ?? 0) / assignmentsCount) * 100 || 0;
       });
 
       // For course_percent, find the latest gradebook entry for each actor in each course and use the overall_course_percent
