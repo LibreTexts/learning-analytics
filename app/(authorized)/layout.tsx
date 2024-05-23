@@ -7,6 +7,7 @@ import NavMenu from "@/components/NavMenu";
 import DemoModeControls from "@/components/DemoModeControls";
 import { validateRequest } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import SessionToContextProvider from "@/components/SessionToContextProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,7 +30,7 @@ export default async function RootLayout({
         className={classNames(inter.className, "container mt-4 default-layout")}
       >
         <Providers>
-          <>
+          <SessionToContextProvider>
             {process.env.NODE_ENV === "development" && (
               <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">
                 <DemoModeControls />
@@ -41,7 +42,7 @@ export default async function RootLayout({
               </div>
               <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
             </div>
-          </>
+          </SessionToContextProvider>
         </Providers>
       </body>
     </html>

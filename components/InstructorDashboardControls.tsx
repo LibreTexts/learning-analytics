@@ -1,16 +1,16 @@
+'use client'
 import { Card, Dropdown } from "react-bootstrap";
 import CustomDropdown from "./CustomDropdown";
 import { truncateString } from "@/utils/text-helpers";
 
 import { getAssignments, getStudents } from "@/lib/analytics-functions";
-import { useAtom } from "jotai";
 import { useQuery } from "@tanstack/react-query";
 import { IDWithName } from "@/lib/types";
 import { useEffect, useMemo, useRef } from "react";
-import { globalStateAtom } from "@/state/globalState";
+import { useGlobalContext } from "@/state/globalContext";
 
 const InstructorDashboardControls = () => {
-  const [globalState, setGlobalState] = useAtom(globalStateAtom);
+  const [globalState, setGlobalState] = useGlobalContext();
   const elementRef = useRef<HTMLDivElement>(null);
 
   const { data: students, status: studentsStatus } = useQuery<IDWithName[]>({

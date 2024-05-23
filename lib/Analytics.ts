@@ -7,6 +7,7 @@ import LTAnalytics from "@/lib/models/ltanalytics";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
   ActivityAccessed,
+  AnalyticsRawData,
   ArrayElement,
   AssignmentAvgScoreCalc,
   IDWithName,
@@ -32,6 +33,7 @@ import CourseAnalyticsSettings, {
 import CalcADAPTAllAssignments, {
   ICalcADAPTAllAssignments_Raw,
 } from "./models/calcADAPTAllAssignments";
+import ewsActorSummary from "./models/ewsActorSummary";
 
 class Analytics {
   private adaptID: number;
@@ -482,6 +484,56 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return false;
+    }
+  }
+
+  public async getRawData(): Promise<AnalyticsRawData[]> {
+    try {
+      await connectDB();
+
+      const res = await ewsActorSummary.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const actorIds = res.map((d) => d.actor_id);
+
+      const avgScores = await CalcADAPTActorAvgScore.find({
+        courseID: this.adaptID.toString(),
+        actor: { $in: actorIds },
+      });
+
+      // Calculate course percentile and quartile
+      const allScores = res.map((d) => d.course_percent);
+      const sortedScores = allScores.sort((a, b) => a - b);
+
+      const getPercentile = (score: number) =>
+        (sortedScores.indexOf(score) / allScores.length) * 100;
+
+      const getQuartile = (score: number) => {
+        const quartile = Math.floor(
+          (sortedScores.indexOf(score) / allScores.length) * 4
+        );
+        return quartile === 4 ? 3 : quartile;
+      };
+
+      const data = res.map((d) => ({
+        actor_id: d.actor_id,
+        name: d.actor_id,
+        pagesAccessed: 0,
+        uniqueInteractionDays: d.interaction_days,
+        avgPercentAssignment:
+          avgScores.find((a) => a.actor === d.actor_id)?.avg_score ?? 0,
+        percentSeen: d.percent_seen,
+        coursePercent: d.course_percent,
+        // round percentile to two decimal places
+        classPercentile: Math.round(getPercentile(d.course_percent) * 100) / 100,
+        classQuartile: getQuartile(d.course_percent),
+      }));
+
+      return data;
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   }
 }

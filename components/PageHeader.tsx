@@ -1,7 +1,6 @@
 "use client";
+import { useGlobalContext } from "@/state/globalContext";
 import FERPAPrivacySwitch from "./FERPAPrivacySwitch";
-import { useAtom } from "jotai";
-import { globalStateAtom } from "@/state/globalState";
 
 interface PageHeaderProps {
   title: string;
@@ -9,7 +8,7 @@ interface PageHeaderProps {
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
-  const [globalState] = useAtom(globalStateAtom);
+  const [globalState] = useGlobalContext();
 
   return (
     <div className="tw-flex tw-flex-col tw-w-full tw-mb-2">

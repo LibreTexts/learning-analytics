@@ -1,10 +1,10 @@
 "use client";
-import { GlobalState, globalStateAtom } from "@/state/globalState";
-import { useAtom } from "jotai";
+import { GlobalState } from "@/lib/types";
 import React, { useState } from "react";
 import { Button, Form, ListGroup, Toast } from "react-bootstrap";
 import ToastContainer from "../ToastContainer";
 import { Controller, useForm } from "react-hook-form";
+import { useGlobalContext } from "@/state/globalContext";
 
 interface StudentPermissionsProps {
   saveData: (
@@ -16,7 +16,7 @@ interface StudentPermissionsProps {
 const StudentPermissions: React.FC<StudentPermissionsProps> = ({
   saveData,
 }) => {
-  const [globalState, setGlobalState] = useAtom(globalStateAtom);
+  const [globalState, setGlobalState] = useGlobalContext();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);

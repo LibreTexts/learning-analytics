@@ -1,16 +1,16 @@
 "use client";
 import { ListGroup } from "react-bootstrap";
 import Links from "./Links";
-import { useAtom } from "jotai";
-import { globalStateAtom } from "@/state/globalState";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useGlobalContext } from "@/state/globalContext";
 
 const ACTIVE_CLASSES = "tw-bg-light-gray tw-border-none";
 
 const NavMenu = () => {
-  const [globalState] = useAtom(globalStateAtom);
+  const router = useRouter();
   const pathname = usePathname();
+  const [globalState] = useGlobalContext();
 
   const isActive = useMemo(() => {
     return (key: string) => {
@@ -31,7 +31,7 @@ const NavMenu = () => {
           active={isActive("dashboard")}
           className={isActive("dashboard") ? ACTIVE_CLASSES : ""}
           action
-          href={Links.CLIENT.Dashboard}
+          onClick={() => router.push(Links.CLIENT.Dashboard)}
         >
           <span className="tw-text-link-blue">
             {globalState.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
@@ -43,7 +43,7 @@ const NavMenu = () => {
             active={isActive("early-warning")}
             className={isActive("early-warning") ? ACTIVE_CLASSES : ""}
             action
-            href={Links.CLIENT.EarlyWarning}
+            onClick={() => router.push(Links.CLIENT.EarlyWarning)}
           >
             <span className="tw-text-link-blue">Early Warning</span>
           </ListGroup.Item>
@@ -53,7 +53,7 @@ const NavMenu = () => {
             active={isActive("raw-data")}
             className={isActive("raw-data") ? ACTIVE_CLASSES : ""}
             action
-            href={Links.CLIENT.RawData}
+            onClick={() => router.push(Links.CLIENT.RawData)}
           >
             <span className="tw-text-link-blue">Raw Data</span>
           </ListGroup.Item>
@@ -63,7 +63,7 @@ const NavMenu = () => {
             active={isActive("course-settings")}
             className={isActive("course-settings") ? ACTIVE_CLASSES : ""}
             action
-            href={Links.CLIENT.CourseSettings}
+            onClick={() => router.push(Links.CLIENT.CourseSettings)}
           >
             <span className="tw-text-link-blue">Course Settings</span>
           </ListGroup.Item>
@@ -71,7 +71,7 @@ const NavMenu = () => {
       </ListGroup>
       {process.env.NODE_ENV === "development" && (
         <p className="tw-text-center tw-mt-2">
-          Course ID: {globalState.courseID}
+          Course ID: {globalState?.courseID}
         </p>
       )}
     </>

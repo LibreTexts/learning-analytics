@@ -37,3 +37,15 @@ export type ActivityAccessed = {
   seen: IDWithName[];
   unseen: IDWithName[];
 };
+
+export type AnalyticsRawData = {
+  actor_id: string;
+  name: string;
+  pagesAccessed: number;
+  uniqueInteractionDays: number;
+  avgPercentAssignment: number;
+  percentSeen: number;
+  coursePercent: number;
+  classPercentile: number;
+  classQuartile: number;
+};

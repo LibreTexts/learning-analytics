@@ -1,14 +1,13 @@
 "use client";
 import React, { cloneElement, useRef, useState } from "react";
 import { Card } from "react-bootstrap";
-import { useAtom } from "jotai";
-import { globalStateAtom } from "@/state/globalState";
 import {
   Download as IconDownload,
   Table as IconTable,
   BarChart as IconBarChart,
 } from "react-bootstrap-icons";
 import { VisualizationInnerRef } from "@/lib/types";
+import { useGlobalContext } from "@/state/globalContext";
 
 interface VisualizationContainerProps {
   title: string;
@@ -24,8 +23,8 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   studentMode = false,
 }) => {
   const innerRef = useRef<VisualizationInnerRef | null>(null);
-  const [globalState] = useAtom(globalStateAtom);
   const [tableView, setTableView] = useState(false);
+  const [globalState] = useGlobalContext();
 
   const childWithProps = cloneElement(children as React.ReactElement, {
     selectedStudentId: globalState.studentId,

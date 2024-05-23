@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const PageLoadingIndicator = () => {
+export default function Loading() {
   return (
     <div className="tw-w-full tw-flex tw-flex-col tw-items-center tw-align-center">
       <Image
@@ -16,6 +16,4 @@ const PageLoadingIndicator = () => {
       </div>
     </div>
   );
-};
-
-export default PageLoadingIndicator;
+}
