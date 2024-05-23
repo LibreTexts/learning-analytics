@@ -22,15 +22,15 @@ import { AnalyticsRawData } from "@/lib/types";
 import { truncateString } from "@/utils/text-helpers";
 import { useGlobalContext } from "@/state/globalContext";
 
-declare module '@tanstack/react-table' {
-  //add fuzzy filter to the filterFns
-  interface FilterFns {
-    fuzzy: FilterFn<unknown>
-  }
-  interface FilterMeta {
-    itemRank: RankingInfo
-  }
-}
+// declare module '@tanstack/react-table' {
+//   //add fuzzy filter to the filterFns
+//   interface FilterFns {
+//     fuzzy: FilterFn<unknown>
+//   }
+//   interface FilterMeta {
+//     itemRank: RankingInfo
+//   }
+// }
 
 interface RawDataTableProps {
   getData: (
@@ -60,7 +60,9 @@ const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
   // Only sort by rank if the column has ranking information
   if (rowA.columnFiltersMeta[columnId]) {
     dir = compareItems(
+      //@ts-ignore
       rowA.columnFiltersMeta[columnId]?.itemRank!,
+      // @ts-ignore
       rowB.columnFiltersMeta[columnId]?.itemRank!
     )
   }
@@ -97,6 +99,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
         </div>
       ),
       header: "Student",
+      // @ts-ignore
       filterFn: 'fuzzy',
       sortingFn: fuzzySort
     }),
@@ -131,6 +134,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
     filterFns: {
       fuzzy: fuzzyFilter
     },
+    // @ts-ignore
     globalFilterFn: 'fuzzy',
     onGlobalFilterChange: (value) => setSearchInput(value),
     state: {
