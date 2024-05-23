@@ -106,7 +106,6 @@ const GradeDistribution: React.FC<GradeDistributionProps> = ({
       .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
       .call(d3.axisBottom(x))
       .selectAll("text")
-      .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
       .style("font-size", "8px");
 

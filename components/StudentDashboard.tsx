@@ -3,13 +3,12 @@ import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
 import VisualizationContainer from "@/components/VisualizationContainer";
 import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
-import { useAtom } from "jotai";
-import { globalStateAtom } from "@/state/globalState";
 import StudentQuickMetrics from "@/components/StudentQuickMetrics";
 import ActivityAccessed from "./Visualizations/ActivityAccessed";
+import { useGlobalContext } from "@/state/globalContext";
 
 const StudentDashboard = ({course_id}:{course_id: string}) => {
-  const [globalState] = useAtom(globalStateAtom);
+  const [globalState] = useGlobalContext();
 
   return (
     <GenericPageContainer>
@@ -17,7 +16,7 @@ const StudentDashboard = ({course_id}:{course_id: string}) => {
         title="Student Dashboard"
         subtitle="View your performance and engagement with the course material."
       />
-      <StudentQuickMetrics studentId={globalState.studentId} />
+      {/* <StudentQuickMetrics studentId={globalState.studentId} /> */}
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Your scores vs. class average for each assignment."

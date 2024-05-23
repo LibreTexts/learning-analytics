@@ -1,13 +1,12 @@
 "use client";
 import CustomToggle from "./CustomToggle";
-import { useAtom } from "jotai";
-import { globalStateAtom } from "@/state/globalState";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGlobalContext } from "@/state/globalContext";
 
 interface FERPAPrivacySwitchProps {}
 
 const FERPAPrivacySwitch: React.FC<FERPAPrivacySwitchProps> = () => {
-  const [globalState, setGlobalState] = useAtom(globalStateAtom);
+  const [globalState, setGlobalState] = useGlobalContext();
   const queryClient = useQueryClient();
 
   const handleToggle = () => {

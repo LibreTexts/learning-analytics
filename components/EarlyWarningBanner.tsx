@@ -55,7 +55,7 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
     <Card className="tw-shadow-sm">
       <Card.Body>
         <Card.Title>Quick Look</Card.Title>
-        <Card.Text>
+        <Card.Body className="!tw-p-0">
           <>
             <div className="tw-flex tw-flex-row tw-mt-4">
               <div className="tw-mr-4 tw-mt-0.5">{getIcon()}</div>
@@ -65,7 +65,7 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
               {getMessage()}
             </p>
           </>
-        </Card.Text>
+        </Card.Body>
       </Card.Body>
     </Card>
   );

@@ -5,81 +5,42 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DebouncedInput from "./DebouncedInput";
 import { Search } from "react-bootstrap-icons";
+import { AnalyticsRawData } from "@/lib/types";
+import { truncateString } from "@/utils/text-helpers";
+import { useGlobalContext } from "@/state/globalContext";
 
-interface RawDataTableProps {}
+interface RawDataTableProps {
+  getData: (course_id: string) => Promise<AnalyticsRawData[]>;
+}
 
-const demoData: AnalyticsData[] = [
-  {
-    id: "1",
-    name: "Alice",
-    pagesAccessed: 10,
-    uniqueInteractionDays: 5,
-    avgPercentAssignment: 80,
-    classPercentile: 90,
-    classQuartile: 1,
-  },
-  {
-    id: "2",
-    name: "Bob",
-    pagesAccessed: 20,
-    uniqueInteractionDays: 10,
-    avgPercentAssignment: 70,
-    classPercentile: 80,
-    classQuartile: 2,
-  },
-  {
-    id: "3",
-    name: "Charlie",
-    pagesAccessed: 30,
-    uniqueInteractionDays: 15,
-    avgPercentAssignment: 60,
-    classPercentile: 70,
-    classQuartile: 3,
-  },
-  {
-    id: "4",
-    name: "David",
-    pagesAccessed: 40,
-    uniqueInteractionDays: 20,
-    avgPercentAssignment: 50,
-    classPercentile: 60,
-    classQuartile: 4,
-  },
-  {
-    id: "5",
-    name: "Eve",
-    pagesAccessed: 50,
-    uniqueInteractionDays: 25,
-    avgPercentAssignment: 40,
-    classPercentile: 50,
-    classQuartile: 5,
-  },
-];
+const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
+  const [globalState] = useGlobalContext();
+  const columnHelper = createColumnHelper<AnalyticsRawData>();
 
-type AnalyticsData = {
-  id: string;
-  name: string;
-  pagesAccessed: number;
-  uniqueInteractionDays: number;
-  avgPercentAssignment: number;
-  classPercentile: number;
-  classQuartile: number;
-};
-
-const RawDataTable: React.FC<RawDataTableProps> = () => {
-  const columnHelper = createColumnHelper<AnalyticsData>();
-
-  const [data, setData] = useState<AnalyticsData[]>([]);
+  const [data, setData] = useState<AnalyticsRawData[]>([]);
   const [searchInput, setSearchInput] = useState<string>("");
+
+  useEffect(() => {
+    if (!globalState.courseID) return;
+    fetchData();
+  }, [globalState.courseID]);
+
+  async function fetchData() {
+    if (!globalState.courseID) return;
+    const _data = await getData(globalState.courseID);
+    setData(_data);
+  }
 
   const defaultColumns = [
     columnHelper.accessor("name", {
       cell: (info) => (
         <div>
-          <span className="tw-font-semibold">{info.getValue()}</span>
+          <span className="tw-font-semibold">
+            {truncateString(info.getValue(), 40)}
+          </span>
         </div>
       ),
       header: "Student",
@@ -107,7 +68,7 @@ const RawDataTable: React.FC<RawDataTableProps> = () => {
   ];
 
   const table = useReactTable({
-    data: demoData,
+    data: data,
     columns: defaultColumns,
     getCoreRowModel: getCoreRowModel(),
   });
