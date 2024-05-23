@@ -1,5 +1,5 @@
 "use string";
-import useDebounce from "@/hooks/useDebounce";
+import { useEffect, useState } from "react";
 import { Form, InputGroup } from "react-bootstrap";
 
 interface DebouncedInputProps {
@@ -12,20 +12,26 @@ interface DebouncedInputProps {
 }
 
 const DebouncedInput: React.FC<DebouncedInputProps> = ({
-  value,
+  value: initialValue,
   onChange,
   placeholder = "Search...",
-  delay = 500,
+  delay = 250,
   prefix = false,
   ...props
 }) => {
-  const { debounce } = useDebounce();
+  const [value, setValue] = useState(initialValue);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  };
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
-  const debouncedHandleInputChange = debounce(handleInputChange, delay);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      onChange(value);
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [value]);
 
   return (
     <InputGroup>
@@ -38,7 +44,7 @@ const DebouncedInput: React.FC<DebouncedInputProps> = ({
         type="text"
         placeholder={placeholder}
         value={value}
-        onChange={debouncedHandleInputChange}
+        onChange={(e) => setValue(e.target.value)}
       />
     </InputGroup>
   );
