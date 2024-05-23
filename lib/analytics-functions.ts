@@ -8,11 +8,9 @@ import {
   StudentQuickMetrics,
 } from "./types";
 import { ICourseAnalyticsSettings_Raw } from "./models/courseAnalyticsSettings";
-import { validateRequest } from "./auth";
 
-export async function getInstructorQuickMetrics(): Promise<InstructorQuickMetrics> {
-  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
-  const analytics = new Analytics(adapt_id);
+export async function getInstructorQuickMetrics(course_id: string): Promise<InstructorQuickMetrics> {
+  const analytics = new Analytics(course_id);
 
   const promises = [
     analytics.getAssignments(),
@@ -30,10 +28,10 @@ export async function getInstructorQuickMetrics(): Promise<InstructorQuickMetric
 }
 
 export async function getStudentQuickMetrics(
+  course_id: string,
   student_id: string
 ): Promise<StudentQuickMetrics> {
-  const adapt_id = process.env.NEXT_PUBLIC_ADAPT_ID; // Get ADAPT ID from env
-  const analytics = new Analytics(adapt_id);
+  const analytics = new Analytics(course_id);
 
   const promises = [
     analytics.getStudentTextbookEngagement(student_id),

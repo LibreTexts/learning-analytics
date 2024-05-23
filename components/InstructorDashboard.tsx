@@ -32,7 +32,7 @@ const InstructorDashboard = ({course_id}:{course_id: string}) => {
         title="Instructor Dashboard"
         subtitle="View analytics and data visualizations for your course. Click on a visualization to view more details."
       />
-      <InstructorQuickMetrics />
+      <InstructorQuickMetrics course_id={course_id} />
       <div className="tw-flex tw-justify-center">
         <InstructorDashboardControls />
       </div>

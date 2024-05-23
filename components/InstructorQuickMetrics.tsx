@@ -4,10 +4,10 @@ import { InstructorQuickMetrics as InstructorQuickMetricsType } from "@/lib/type
 import { useQuery } from "@tanstack/react-query";
 import { getInstructorQuickMetrics } from "@/lib/analytics-functions";
 
-const InstructorQuickMetrics = () => {
+const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
   const { data, status } = useQuery<InstructorQuickMetricsType>({
-    queryKey: ["instructor-quick-metrics"],
-    queryFn: async () => await getInstructorQuickMetrics(),
+    queryKey: ["instructor-quick-metrics", course_id],
+    queryFn: async () => await getInstructorQuickMetrics(course_id),
   });
 
   return (
