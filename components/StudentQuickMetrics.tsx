@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getStudentQuickMetrics } from "@/lib/analytics-functions";
 import { StudentQuickMetrics as StudentQuickMetricsType } from "@/lib/types";
 
-const StudentQuickMetrics = ({ studentId }: { studentId: string }) => {
+const StudentQuickMetrics = ({ student_id, course_id }: { student_id: string, course_id: string }) => {
   const { data, status } = useQuery<StudentQuickMetricsType>({
     queryKey: ["student-quick-metrics"],
-    queryFn: async () => await getStudentQuickMetrics(studentId),
+    queryFn: async () => await getStudentQuickMetrics(course_id, student_id),
   });
 
   return (
