@@ -16,7 +16,7 @@ const StudentDashboard = ({course_id}:{course_id: string}) => {
         title="Student Dashboard"
         subtitle="View your performance and engagement with the course material."
       />
-      {/* <StudentQuickMetrics studentId={globalState.studentId} /> */}
+      <StudentQuickMetrics studentId={globalState.studentId} />
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Your scores vs. class average for each assignment."

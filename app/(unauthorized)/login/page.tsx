@@ -3,6 +3,7 @@ import { lucia, validateRequest } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Form, type ActionResult } from "@/lib/form";
 import { getUser, verifyPassword } from "@/utils/auth";
+import IFrameResizer from "@/components/IFrameResizer";
 
 export default async function Page() {
   const { user } = await validateRequest();
@@ -42,6 +43,7 @@ export default async function Page() {
           </div>
         </Form>
       </div>
+      <IFrameResizer />
     </div>
   );
 }
