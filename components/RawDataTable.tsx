@@ -3,8 +3,18 @@ import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
+  FilterFn,
+  SortingFn,
+  sortingFns,
+  getFilteredRowModel
 } from "@tanstack/react-table";
+import {
+  RankingInfo,
+  rankItem,
+  compareItems
+} from '@tanstack/match-sorter-utils'
 import { useEffect, useState } from "react";
 import DebouncedInput from "./DebouncedInput";
 import { Search } from "react-bootstrap-icons";
@@ -12,8 +22,51 @@ import { AnalyticsRawData } from "@/lib/types";
 import { truncateString } from "@/utils/text-helpers";
 import { useGlobalContext } from "@/state/globalContext";
 
+declare module '@tanstack/react-table' {
+  //add fuzzy filter to the filterFns
+  interface FilterFns {
+    fuzzy: FilterFn<unknown>
+  }
+  interface FilterMeta {
+    itemRank: RankingInfo
+  }
+}
+
 interface RawDataTableProps {
-  getData: (course_id: string) => Promise<AnalyticsRawData[]>;
+  getData: (
+    course_id: string,
+    privacy_mode: boolean
+  ) => Promise<AnalyticsRawData[]>;
+}
+
+// Define a custom fuzzy filter function that will apply ranking info to rows (using match-sorter utils)
+const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
+  // Rank the item
+  const itemRank = rankItem(row.getValue(columnId), value)
+
+  // Store the itemRank info
+  addMeta({
+    itemRank,
+  })
+
+  // Return if the item should be filtered in/out
+  return itemRank.passed
+}
+
+// Define a custom fuzzy sort function that will sort by rank if the row has ranking information
+const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
+  let dir = 0
+
+  // Only sort by rank if the column has ranking information
+  if (rowA.columnFiltersMeta[columnId]) {
+    dir = compareItems(
+      rowA.columnFiltersMeta[columnId]?.itemRank!,
+      rowB.columnFiltersMeta[columnId]?.itemRank!
+    )
+  }
+
+  // Provide an alphanumeric fallback for when the item ranks are equal
+  return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir
 }
 
 const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
@@ -26,11 +79,11 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   useEffect(() => {
     if (!globalState.courseID) return;
     fetchData();
-  }, [globalState.courseID]);
+  }, [globalState.courseID, globalState.ferpaPrivacy]);
 
   async function fetchData() {
     if (!globalState.courseID) return;
-    const _data = await getData(globalState.courseID);
+    const _data = await getData(globalState.courseID, globalState.ferpaPrivacy);
     setData(_data);
   }
 
@@ -39,11 +92,13 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       cell: (info) => (
         <div>
           <span className="tw-font-semibold">
-            {truncateString(info.getValue(), 40)}
+            {truncateString(info.getValue(), 30)}
           </span>
         </div>
       ),
       header: "Student",
+      filterFn: 'fuzzy',
+      sortingFn: fuzzySort
     }),
     columnHelper.accessor("pagesAccessed", {
       cell: (info) => <div>{info.getValue()}</div>,
@@ -71,6 +126,16 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
     data: data,
     columns: defaultColumns,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    filterFns: {
+      fuzzy: fuzzyFilter
+    },
+    globalFilterFn: 'fuzzy',
+    onGlobalFilterChange: (value) => setSearchInput(value),
+    state: {
+      globalFilter: searchInput
+    },
   });
 
   return (
@@ -78,9 +143,9 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       <div className="tw-flex tw-flex-row tw-w-1/4 tw-mb-2">
         <DebouncedInput
           value={searchInput}
-          onChange={setSearchInput}
+          onChange={(val) => setSearchInput(val)}
           placeholder={"Search by name or email..."}
-          delay={500}
+          delay={250}
           prefix
           prefixElement={<Search />}
         />
@@ -91,18 +156,32 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th key={header.id} className="tw-p-3 tw-text-sm tw-border-r">
+                  <div onClick={header.column.getToggleSortingHandler()} className="!tw-cursor-pointer">
                   {header.isPlaceholder
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
                         header.getContext()
                       )}
+                      {
+                        header.column.getIsSorted() ? header.column.getIsSorted() === 'desc' ? ' 🔽' : ' 🔼' : ''
+                      }
+                      </div>
                 </th>
               ))}
             </tr>
           ))}
         </thead>
         <tbody>
+          {
+            table.getRowCount() === 0 && (
+              <tr>
+                <td colSpan={table.getAllColumns().length} className="tw-text-center tw-p-3">
+                  No data available
+                </td>
+              </tr>
+            )
+          }
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id} className="hover:tw-bg-slate-100">
               {row.getVisibleCells().map((cell) => (

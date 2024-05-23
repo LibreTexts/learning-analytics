@@ -487,7 +487,7 @@ class Analytics {
     }
   }
 
-  public async getRawData(): Promise<AnalyticsRawData[]> {
+  public async getRawData(privacy_mode: boolean): Promise<AnalyticsRawData[]> {
     try {
       await connectDB();
 
@@ -526,11 +526,23 @@ class Analytics {
         percentSeen: d.percent_seen,
         coursePercent: d.course_percent,
         // round percentile to two decimal places
-        classPercentile: Math.round(getPercentile(d.course_percent) * 100) / 100,
+        classPercentile:
+          Math.round(getPercentile(d.course_percent) * 100) / 100,
         classQuartile: getQuartile(d.course_percent),
       }));
 
-      return data;
+      if (privacy_mode) {
+        return data;
+      }
+
+      const decrypted = await Promise.all(
+        data.map(async (d) => ({
+          ...d,
+          name: await decryptStudent(d.actor_id),
+        }))
+      );
+
+      return decrypted.sort((a, b) => a.name.localeCompare(b.name));
     } catch (err) {
       console.error(err);
       return [];

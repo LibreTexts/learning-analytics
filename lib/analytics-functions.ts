@@ -126,8 +126,8 @@ export async function updateCourseAnalyticsSettings(
   await analytics.updateCourseAnalyticsSettings(newSettings);
 }
 
-export async function getCourseRawData(course_id: string) {
+export async function getCourseRawData(course_id: string, privacy_mode: boolean) {
   const analytics = new Analytics(course_id);
-  const rawData = await analytics.getRawData();
+  const rawData = await analytics.getRawData(privacy_mode);
   return rawData;
 }
