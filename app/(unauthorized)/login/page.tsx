@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Form, type ActionResult } from "@/lib/form";
 import { getUser, verifyPassword } from "@/utils/auth";
 import IFrameResizer from "@/components/IFrameResizer";
+import connectDB from "@/lib/database";
 
 export default async function Page() {
   const { user } = await validateRequest();
@@ -67,6 +68,7 @@ async function login(_: any, formData: FormData): Promise<ActionResult> {
     };
   }
 
+  await connectDB();
   const existingUser = await getUser(email);
   if (!existingUser) {
     return {
