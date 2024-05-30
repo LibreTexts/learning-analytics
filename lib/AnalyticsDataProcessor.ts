@@ -782,6 +782,7 @@ class AnalyticsDataProcessor {
           avg_course_percent: calculateAvgCoursePercent(courseScores),
           avg_interaction_days: 0,
           avg_percent_seen: 0,
+          last_updated: new Date(),
         };
 
         courseSummaries.push(courseSummary);

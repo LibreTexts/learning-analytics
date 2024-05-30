@@ -20,5 +20,7 @@ const EnrollmentsSchema = new Schema<IEnrollments>(
   }
 );
 
+EnrollmentsSchema.index({ email: 1, courseID: 1 }, { unique: true });
+
 export default models.Enrollments ||
   model<IEnrollments>("Enrollments", EnrollmentsSchema, "enrollments");

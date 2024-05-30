@@ -6,6 +6,7 @@ export interface IEWSCourseSummary_Raw {
   avg_percent_seen: number;
   avg_interaction_days: number;
   avg_course_percent: number;
+  last_updated: Date;
 }
 
 export interface IEWSCourseSummary extends IEWSCourseSummary_Raw, Document {}
@@ -22,6 +23,7 @@ const EWSCourseSummarySchema = new Schema<IEWSCourseSummary>(
     avg_percent_seen: { type: Number, required: true },
     avg_interaction_days: { type: Number, required: true },
     avg_course_percent: { type: Number, required: true },
+    last_updated: { type: Date, default: Date.now },
   },
   {
     collection: "ewsCourseSummary",

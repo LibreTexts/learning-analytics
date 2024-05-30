@@ -8,7 +8,7 @@ import {
 } from "react-bootstrap-icons";
 
 interface EarlyWarningBanner {
-  variant: "success" | "danger" | "warning";
+  variant: "success" | "danger" | "warning" | "insufficient-data";
 }
 
 const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
@@ -20,6 +20,8 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
         return <ExclamationCircleFill size={36} color="red" />;
       case "warning":
         return <DashCircleFill size={36} color="yellow" />;
+      case "insufficient-data":
+        return <DashCircle size={36} color="gray" />;
       default:
         return <DashCircle />;
     }
@@ -33,6 +35,8 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
         return "Attention Needed";
       case "warning":
         return "Warning";
+      case "insufficient-data":
+        return "Insufficient Data";
       default:
         return "Unknown";
     }
@@ -46,6 +50,8 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
         return "We have identified a number of students in need of intervention.";
       case "warning":
         return "We have identified a few students as 'at-risk'. Intervention may be needed soon.";
+      case "insufficient-data":
+        return "Sorry, we don't have enough data to make performance predictions. Performance predictions improve with more student enrollments and assignment data.";
       default:
         return "Unknown";
     }
