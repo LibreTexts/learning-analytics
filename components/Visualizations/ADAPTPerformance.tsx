@@ -1,5 +1,4 @@
 "use client";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import {
   useEffect,
   useImperativeHandle,
@@ -192,7 +191,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer ref={containerRef}>
+    <div ref={containerRef}>
       {!selectedAssignmentId && (
         <SelectOption
           width={width}
@@ -209,7 +208,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
       {!loading && selectedAssignmentId && (!data || data.length === 0) && (
         <NoData width={width} height={height} />
       )}
-    </VisualizationInnerContainer>
+    </div>
   );
 };
 

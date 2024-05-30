@@ -30,7 +30,7 @@ export default async function RootLayout({
       <body
         className={classNames(inter.className, "container mt-4 default-layout")}
       >
-        <IFrameResizer />
+        {/* <IFrameResizer /> */}
         <Providers>
           <SessionToContextProvider>
             {process.env.NODE_ENV === "development" && (
@@ -38,11 +38,9 @@ export default async function RootLayout({
                 <DemoModeControls />
               </div>
             )}
-            <div className="tw-flex tw-flex-row">
-              <div className="tw-flex tw-flex-col">
-                <NavMenu />
-              </div>
-              <div className="tw-flex tw-ml-6 !tw-w-full">{children}</div>
+            <div className="tw-grid tw-grid-flow-col tw-gap-6 tw-auto-cols-auto">
+              <NavMenu />
+              {children}
             </div>
           </SessionToContextProvider>
         </Providers>

@@ -1,5 +1,4 @@
 "use client";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import React, {
   useEffect,
   useImperativeHandle,
@@ -153,7 +152,7 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer>
+    <>
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && data && (
         <>
@@ -201,7 +200,7 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
         </>
       )}
       {!loading && !data && <NoData width={width} height={height} />}
-    </VisualizationInnerContainer>
+    </>
   );
 };
 

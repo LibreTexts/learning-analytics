@@ -7,7 +7,6 @@ import {
   useState,
 } from "react";
 import * as d3 from "d3";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import {
@@ -206,7 +205,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer>
+    <>
       {!selectedStudentId && (
         <SelectOption
           width={width}
@@ -260,7 +259,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
           )}
         </div>
       )}
-    </VisualizationInnerContainer>
+    </>
   );
 };
 

@@ -1,5 +1,4 @@
 "use client";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import {
   useEffect,
   useImperativeHandle,
@@ -126,7 +125,7 @@ const TextbookEngagement: React.FC<TextbookEngagementProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer>
+    <>
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && data?.length > 0 && (
         <svg ref={svgRef} width={width} height={height}></svg>
@@ -134,7 +133,7 @@ const TextbookEngagement: React.FC<TextbookEngagementProps> = ({
       {!loading && (!data || data.length === 0) && (
         <NoData width={width} height={height} />
       )}
-    </VisualizationInnerContainer>
+    </>
   );
 };
 

@@ -22,8 +22,8 @@ const NavMenu = () => {
   }, [pathname]);
 
   return (
-    <>
-      <ListGroup className="!tw-shadow-sm tw-w-52 tw-h-fit">
+    <div className="tw-w-52">
+      <ListGroup className="!tw-shadow-sm tw-h-fit">
         <ListGroup.Item className="tw-bg-ultra-light-gray">
           Course Analytics
         </ListGroup.Item>
@@ -74,7 +74,7 @@ const NavMenu = () => {
           Course ID: {globalState?.courseID}
         </p>
       )}
-    </>
+    </div>
   );
 };
 

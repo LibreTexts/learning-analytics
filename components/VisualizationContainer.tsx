@@ -1,5 +1,5 @@
 "use client";
-import React, { cloneElement, useRef, useState } from "react";
+import React, { cloneElement, useEffect, useRef, useState } from "react";
 import { Card } from "react-bootstrap";
 import {
   Download as IconDownload,
@@ -8,6 +8,7 @@ import {
 } from "react-bootstrap-icons";
 import { VisualizationInnerRef } from "@/lib/types";
 import { useGlobalContext } from "@/state/globalContext";
+import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
 
 interface VisualizationContainerProps {
   title: string;
@@ -22,9 +23,23 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   children,
   studentMode = false,
 }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<VisualizationInnerRef | null>(null);
   const [tableView, setTableView] = useState(false);
   const [globalState] = useGlobalContext();
+  const [width, setWidth] = useState<number>(0);
+  const [height, setHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width ?? DEFAULT_WIDTH);
+        setHeight(entry.contentRect.height ?? DEFAULT_HEIGHT);
+      }
+    });
+    observer.observe(containerRef.current as Element);
+  }, [containerRef.current]);
 
   const childWithProps = cloneElement(children as React.ReactElement, {
     selectedStudentId: globalState.studentId,
@@ -32,6 +47,8 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     studentMode,
     tableView,
     innerRef,
+    width: width < 100 ? DEFAULT_WIDTH : width, // if width < 100, something has likely gone wrong, set to default
+    height: height < 100 ? DEFAULT_HEIGHT : height, // if width < 100, something has likely gone wrong, set to default
   });
 
   const handleDownloadImg = () => {
@@ -64,7 +81,12 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
           <p className="tw-text-xs tw-text-gray-500">{description}</p>
         </div>
       </div>
-      {childWithProps}
+      <div
+        ref={containerRef}
+        className="tw-bg-gray-100 tw-rounded-md tw-min-h-96"
+      >
+        {childWithProps}
+      </div>
       <div className="tw-flex tw-flex-row tw-justify-center tw-items-center tw-mt-1 tw-w-full">
         <div className="tw-flex tw-flex-row tw-basis-2/3 tw-justify-end tw-items-center">
           <p className="tw-text-xs tw-text-slate-500 tw-italic tw-justify-center tw-items-center tw-mt-2">

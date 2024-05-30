@@ -1,5 +1,4 @@
 "use client";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import {
   useEffect,
   useImperativeHandle,
@@ -196,7 +195,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer ref={containerRef}>
+    <div ref={containerRef}>
       {!selectedAssignmentId && (
         <SelectOption
           width={width}
@@ -211,7 +210,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       {!loading && selectedAssignmentId && (!data || data.length === 0) && (
         <NoData width={width} height={height} />
       )}
-    </VisualizationInnerContainer>
+    </div>
   );
 };
 

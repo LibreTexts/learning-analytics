@@ -7,7 +7,6 @@ import {
   useState,
 } from "react";
 import * as d3 from "d3";
-import VisualizationInnerContainer from "@/components/VisualizationInnerContainer";
 import SelectOption from "../SelectOption";
 import VisualizationLoading from "../VisualizationLoading";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
@@ -174,7 +173,7 @@ const TextbookActivity: React.FC<TextbookActivityProps> = ({
   }
 
   return (
-    <VisualizationInnerContainer>
+    <>
       {!selectedStudentId && (
         <SelectOption
           width={width}
@@ -186,7 +185,7 @@ const TextbookActivity: React.FC<TextbookActivityProps> = ({
       {!loading && selectedStudentId && (
         <svg ref={svgRef} width={width} height={height}></svg>
       )}
-    </VisualizationInnerContainer>
+    </>
   );
 };
 
