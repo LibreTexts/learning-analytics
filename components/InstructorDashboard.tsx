@@ -4,6 +4,7 @@ import {
   getTextbookEngagement,
   getADAPTPerformance,
   getGradeDistribution,
+  getActivityAccessed,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -24,8 +25,9 @@ import {
 import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
 import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
+import ActivityAccessed from "./Visualizations/ActivityAccessed";
 
-const InstructorDashboard = ({course_id}:{course_id: string}) => {
+const InstructorDashboard = ({ course_id }: { course_id: string }) => {
   return (
     <GenericPageContainer>
       <PageHeader
@@ -40,7 +42,11 @@ const InstructorDashboard = ({course_id}:{course_id: string}) => {
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
       >
-        <PerfPerAssignment getData={(student_id) => getPerformancePerAssignment(course_id, student_id)} />
+        <PerfPerAssignment
+          getData={(student_id) =>
+            getPerformancePerAssignment(course_id, student_id)
+          }
+        />
       </VisualizationContainer>
       {/* <VisualizationContainer
         title="Textbook Activity"
@@ -59,7 +65,11 @@ const InstructorDashboard = ({course_id}:{course_id: string}) => {
         title="Submission Timeline"
         description="Timeline of student submissions for selected assignment"
       >
-        <SubmissionTimeline getData={(assignment_id) => getSubmissionTimeline(course_id, assignment_id)} />
+        <SubmissionTimeline
+          getData={(assignment_id) =>
+            getSubmissionTimeline(course_id, assignment_id)
+          }
+        />
       </VisualizationContainer>
       {/* <VisualizationContainer
               title="Textbook Engagment"
@@ -71,13 +81,25 @@ const InstructorDashboard = ({course_id}:{course_id: string}) => {
         title="ADAPT Performance"
         description="Distribution of student scores by selected assignment"
       >
-        <ADAPTPerformance getData={(assignment_id) => getADAPTPerformance(course_id, assignment_id)} />
+        <ADAPTPerformance
+          getData={(assignment_id) =>
+            getADAPTPerformance(course_id, assignment_id)
+          }
+        />
       </VisualizationContainer>
       <VisualizationContainer
         title="Grade Distribution"
         description="Distribution of student scores across all assignments"
       >
         <GradeDistribution getData={() => getGradeDistribution(course_id)} />
+      </VisualizationContainer>
+      <VisualizationContainer
+        title="Activity Accessed"
+        description="Number of activities accessed by selected student"
+      >
+        <ActivityAccessed
+          getData={(student_id) => getActivityAccessed(course_id, student_id)}
+        />
       </VisualizationContainer>
       <VisualizationContainer
         title="Learning Curve"
