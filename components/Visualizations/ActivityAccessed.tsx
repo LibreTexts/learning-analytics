@@ -47,14 +47,23 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
   }));
 
   const svgRef = useRef(null);
-  const [data, setData] = useState<{ seen: number; unseen: number }>({
+  const [data, setData] = useState<{
+    seen: number;
+    unseen: number;
+    course_avg_percent_seen: number;
+  }>({
     seen: 0,
     unseen: 0,
+    course_avg_percent_seen: 0,
   });
   const [loading, setLoading] = useState(false);
   const [radius, setRadius] = useState(0);
 
-  const columnHelper = createColumnHelper<{ seen: number; unseen: number }>();
+  const columnHelper = createColumnHelper<{
+    seen: number;
+    unseen: number;
+    course_avg_percent_seen: number;
+  }>();
   const table = useReactTable({
     data: [data],
     columns: [
@@ -90,6 +99,7 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
       const mapped = {
         seen: initData.seen.length,
         unseen: initData.unseen.length,
+        course_avg_percent_seen: initData.course_avg_percent_seen,
       };
 
       setData(mapped);
@@ -114,7 +124,13 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
     const pie = d3.pie().value((d: any) => {
       return d[1];
     });
-    const dataReady = pie(Object.entries(data) as any);
+
+    // Remove the course_avg_percent_seen key
+    const dataReady = pie(
+      Object.entries(data).filter(
+        (d) => d[0] !== "course_avg_percent_seen"
+      ) as any
+    );
     const arcGenerator = d3.arc().innerRadius(0).outerRadius(radius);
 
     svg
@@ -147,6 +163,16 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
       })
       .style("text-anchor", "middle")
       .style("font-size", 17);
+
+    // Add course avg info
+    svg
+      .append("text")
+      .text(`Course Average % Seen: ${data.course_avg_percent_seen.toFixed(2)}`)
+      .attr("x", width - (width / 4) - MARGIN.right / 2)
+      .attr("y", height - MARGIN.bottom / 2)
+      .style("text-anchor", "middle")
+      .style("font-size", 17)
+      .style("font-weight", "bold");
 
     setLoading(false);
   }

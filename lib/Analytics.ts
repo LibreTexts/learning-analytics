@@ -34,6 +34,7 @@ import CalcADAPTAllAssignments, {
   ICalcADAPTAllAssignments_Raw,
 } from "./models/calcADAPTAllAssignments";
 import ewsActorSummary from "./models/ewsActorSummary";
+import ewsCourseSummary from "./models/ewsCourseSummary";
 
 class Analytics {
   private adaptID: number;
@@ -142,20 +143,34 @@ class Analytics {
         courseID: this.adaptID.toString(),
       });
 
+      const courseAvgPercent = await ewsCourseSummary
+        .findOne({
+          course_id: this.adaptID.toString(),
+        })
+        .select("avg_percent_seen");
+
       if (!allAssignmentData) {
         throw new Error("Assignment data not found");
       }
 
-      if (!studentAssignmentData) {
+      const allFoundAssignments = allAssignmentData?.assignments ?? [];
+      const allStudentAssignments = studentAssignmentData?.assignments ?? [];
+
+      if (!allStudentAssignments || allStudentAssignments.length === 0) {
         return {
           seen: [],
-          unseen: allAssignmentData.assignments,
+          unseen: allFoundAssignments.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+          })),
+          course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
         };
       }
 
-      const { seen, unseen } = allAssignmentData.assignments.reduce(
+      const { seen, unseen } = allFoundAssignments.reduce(
         (acc: ActivityAccessed, curr: IDWithName) => {
           const obj = { id: curr.id, name: curr.name };
+          //const found = studentAssignmentData.assignments.find((d) => d === curr.id);
           if (studentAssignmentData.assignments.includes(curr.id)) {
             acc.seen.push(obj);
           } else {
@@ -167,14 +182,22 @@ class Analytics {
       );
 
       return {
-        seen,
-        unseen,
+        seen: seen.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+        })),
+        unseen: unseen.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+        })),
+        course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
       };
     } catch (err) {
       console.error(err);
       return {
         seen: [],
         unseen: [],
+        course_avg_percent_seen: 0,
       };
     }
   }
