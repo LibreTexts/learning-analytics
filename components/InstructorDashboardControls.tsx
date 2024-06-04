@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { Card, Dropdown } from "react-bootstrap";
 import CustomDropdown from "./CustomDropdown";
 import { truncateString } from "@/utils/text-helpers";
@@ -45,8 +45,13 @@ const InstructorDashboardControls = () => {
 
   async function fetchStudents(): Promise<IDWithName[]> {
     try {
-      if(!globalState.courseID) return [];
-      const data = await getStudents(globalState.courseID, 1, 100, globalState.ferpaPrivacy);
+      if (!globalState.courseID) return [];
+      const data = await getStudents(
+        globalState.courseID,
+        1,
+        100,
+        globalState.ferpaPrivacy
+      );
       return data;
     } catch (err) {
       console.error(err);
@@ -56,7 +61,7 @@ const InstructorDashboardControls = () => {
 
   async function fetchAssignments(): Promise<IDWithName[]> {
     try {
-      if(!globalState.courseID) return [];
+      if (!globalState.courseID) return [];
       const data = await getAssignments(globalState.courseID);
       return data;
     } catch (err) {
@@ -115,7 +120,7 @@ const InstructorDashboardControls = () => {
       drop="up"
     >
       {assignments?.map((a) => (
-        <Dropdown.Item key={a.id} onClick={() => updateSelectedStudent(a.id)}>
+        <Dropdown.Item key={a.id} onClick={() => updateSelectedAssignment(a.id)}>
           {a.name}
         </Dropdown.Item>
       ))}
@@ -124,7 +129,7 @@ const InstructorDashboardControls = () => {
 
   return (
     <Card
-      className="tw-mt-4 tw-rounded-lg tw-shadow-md tw-px-4 tw-pt-2 tw-pb-2 tw-max-w-[32rem]"
+      className="tw-mt-4 tw-rounded-lg tw-shadow-md tw-px-4 tw-pt-2 tw-pb-2 tw-max-w-[40rem]"
       style={{
         position: "fixed",
         bottom: "1rem",
@@ -135,7 +140,10 @@ const InstructorDashboardControls = () => {
       {/* <p className="tw-font-semibold tw-text-lg tw-text-center">
         Select to Compare
       </p> */}
-      <div className="tw-flex">
+      <div className="tw-flex tw-flex-row">
+        <div className="tw-mr-2 tw-flex tw-items-center tw-h-full">
+          <p className="tw-font-semibold tw-mt-1.5">Filters:</p>
+        </div>
         <StudentDropdown />
         <AssignmentDropdown />
       </div>

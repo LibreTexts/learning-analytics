@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { useGlobalContext } from "@/state/globalContext";
 import axios from "axios";
 import { useEffect } from "react";
@@ -19,11 +19,12 @@ const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({
   async function fetchSessionData() {
     const res = await axios.get("/api/auth/session");
     if (!res.data?.user) return;
-    setGlobalState({
-      ...res.data.user,
+    setGlobalState((prev) => ({
+      ...prev,
+      role: res.data.user.role,
       courseID: res.data.user.courses[0] ?? "",
       viewAs: res.data.user.role,
-    });
+    }));
   }
 
   return <>{children}</>;
