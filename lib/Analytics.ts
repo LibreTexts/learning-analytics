@@ -319,7 +319,13 @@ class Analytics {
 
       res.sort((a, b) => a.assignment_id.localeCompare(b.assignment_id));
 
-      return res;
+      const truncated = res.map((d) => ({
+        assignment_id: d.assignment_id,
+        class_avg: Math.round(d.class_avg * 100) / 100, // round to two decimal places
+        student_score: Math.round(d.student_score * 100) / 100, // round to two decimal places
+      }));
+
+      return truncated;
     } catch (err) {
       console.error(err);
       return [];

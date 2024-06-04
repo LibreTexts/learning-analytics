@@ -85,7 +85,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
       .bin()
       .value((d) => d)
       .domain([0, 100])
-      .thresholds(10);
+      .thresholds(20);
 
     const buckets = bucketGenerator(data);
 
@@ -103,7 +103,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
-      .call(d3.axisBottom(x))
+      .call(d3.axisBottom(x).ticks(20))
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")

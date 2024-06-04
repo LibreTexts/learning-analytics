@@ -4,7 +4,7 @@ import PageHeader from "@/components/PageHeader";
 import VisualizationContainer from "@/components/VisualizationContainer";
 import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
 import StudentQuickMetrics from "@/components/StudentQuickMetrics";
-import ActivityAccessed from "./Visualizations/ActivityAccessed";
+import ActivityAccessed from "./Visualizations/StudentActivity";
 import { useGlobalContext } from "@/state/globalContext";
 
 const StudentDashboard = ({course_id}:{course_id: string}) => {

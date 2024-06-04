@@ -29,12 +29,12 @@ import VisualizationTable from "../VisualizationTableView";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 
-type ActivityAccessedProps = VisualizationBaseProps & {
+type StudentActivityProps = VisualizationBaseProps & {
   selectedStudentId?: string;
   getData: (student_id: string) => Promise<ActivityAccessedType>;
 };
 
-const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
+const StudentActivity: React.FC<StudentActivityProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   tableView = false,
@@ -168,7 +168,7 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
     svg
       .append("text")
       .text(`Course Average % Seen: ${data.course_avg_percent_seen.toFixed(2)}`)
-      .attr("x", width - (width / 4) - MARGIN.right / 2)
+      .attr("x", width - width / 4 - MARGIN.right / 2)
       .attr("y", height - MARGIN.bottom / 2)
       .style("text-anchor", "middle")
       .style("font-size", 17)
@@ -230,4 +230,4 @@ const ActivityAccessed: React.FC<ActivityAccessedProps> = ({
   );
 };
 
-export default ActivityAccessed;
+export default StudentActivity;
