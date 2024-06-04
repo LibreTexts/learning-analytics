@@ -31,6 +31,13 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   const [height, setHeight] = useState<number>(0);
 
   useEffect(() => {
+    if (tableView) return;
+    // set default width and height if tableView is false
+    setWidth(DEFAULT_WIDTH);
+    setHeight(DEFAULT_HEIGHT);
+  }, [tableView]);
+
+  useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -97,7 +104,11 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
               <IconDownload />
             </Button>
           )}
-          <Button className="tw-ml-2" variant="light" onClick={() => setTableView(!tableView)}>
+          <Button
+            className="tw-ml-2"
+            variant="light"
+            onClick={() => setTableView(!tableView)}
+          >
             {tableView ? <IconBarChart /> : <IconTable />}
           </Button>
         </div>
