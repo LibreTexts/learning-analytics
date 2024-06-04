@@ -59,11 +59,11 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       }),
       columnHelper.accessor("student_score", {
         cell: (info) => <div>{info.getValue()}</div>,
-        header: "Student Score",
+        header: "Student Score (%)",
       }),
       columnHelper.accessor("class_avg", {
         cell: (info) => <div>{info.getValue()}</div>,
-        header: "Class Average",
+        header: "Class Average (%)",
       }),
     ],
     getCoreRowModel: getCoreRowModel(),
@@ -215,7 +215,11 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && selectedStudentId && (
-        <div className="tw-w-full">
+        <div
+          className={`tw-w-full ${
+            tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""
+          }`}
+        >
           {tableView ? (
             <VisualizationTable
               headRender={() =>

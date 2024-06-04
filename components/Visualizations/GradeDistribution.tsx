@@ -17,6 +17,13 @@ import {
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
 import { VisualizationBaseProps } from "@/lib/types";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import VisualizationTable from "../VisualizationTableView";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -33,6 +40,7 @@ type GradeDistributionProps = VisualizationBaseProps & {
 const GradeDistribution: React.FC<GradeDistributionProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
+  tableView = false,
   getData,
   innerRef,
 }) => {
@@ -44,6 +52,22 @@ const GradeDistribution: React.FC<GradeDistributionProps> = ({
   const svgRef = useRef(null);
   const [data, setData] = useState<GradeBucket[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const columnHelper = createColumnHelper<GradeBucket>();
+  const table = useReactTable<GradeBucket>({
+    data: data,
+    columns: [
+      columnHelper.accessor("grade", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Letter Grade",
+      }),
+      columnHelper.accessor("count", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Student Count",
+      }),
+    ],
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   useEffect(() => {
     handleGetData();
@@ -183,9 +207,54 @@ const GradeDistribution: React.FC<GradeDistributionProps> = ({
     <div ref={containerRef}>
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && data?.length > 0 && (
-        <svg ref={svgRef} width={width} height={height}>
-          <g className="tooltip-area"></g>
-        </svg>
+        <div
+          className={`tw-w-full ${
+            tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""
+          }`}
+        >
+          {tableView ? (
+            <VisualizationTable
+              headRender={() =>
+                table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className="tw-p-3 tw-text-sm tw-border-r"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))
+              }
+              bodyRender={() =>
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:tw-bg-slate-100">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="tw-p-3 tw-border">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              }
+            />
+          ) : (
+            <svg ref={svgRef} width={width} height={height}>
+              <g className="tooltip-area"></g>
+            </svg>
+          )}
+        </div>
       )}
       {!loading && (!data || data.length === 0) && (
         <NoData width={width} height={height} />

@@ -5,7 +5,7 @@ export const getPaginationOffset = (page: number, limit: number) => {
 
 export const debugADP = (msg: string) => {
   console.log(`[ADP]: ${msg}`);
-}
+};
 
 export const queryObjFromSearchParams = (searchParams: URLSearchParams) => {
   const queryObj: { [key: string]: string } = {};
@@ -13,4 +13,7 @@ export const queryObjFromSearchParams = (searchParams: URLSearchParams) => {
     queryObj[key] = value;
   });
   return queryObj;
-}
+};
+
+export const DEFAULT_DATE_FORMAT = "MM/dd/yyyy hh:mm a";
+export const DATE_ONLY_FORMAT = "MM/dd/yyyy";

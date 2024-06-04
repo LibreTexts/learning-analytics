@@ -22,7 +22,15 @@ import {
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
 import { ICalcADAPTSubmissionsByDate_Raw } from "@/lib/models/calcADAPTSubmissionsByDate";
-import { format } from "date-fns";
+import { format, formatDate } from "date-fns";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import VisualizationTable from "../VisualizationTableView";
+import { DATE_ONLY_FORMAT, DEFAULT_DATE_FORMAT } from "@/utils/misc";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -38,6 +46,7 @@ type SubmissionTimelineProps = VisualizationBaseProps & {
 const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
+  tableView = false,
   getData,
   selectedAssignmentId,
   innerRef,
@@ -51,14 +60,48 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   const [data, setData] = useState<ICalcADAPTSubmissionsByDate_Raw[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const columnHelper = createColumnHelper<ICalcADAPTSubmissionsByDate_Raw>();
+  const table = useReactTable<ICalcADAPTSubmissionsByDate_Raw>({
+    data: data,
+    columns: [
+      columnHelper.group({
+        id: "assignment",
+        header: () => (
+          <div className="tw-mb-0">
+            <p className="text-center tw-mb-0">
+              Assignment: {data[0].assignmentID ?? "Unknown"} - Due Date:{" "}
+              {formatDate(data[0].dueDate, DEFAULT_DATE_FORMAT) ?? "Unknown"}
+            </p>
+          </div>
+        ),
+        columns: [
+          columnHelper.accessor("date", {
+            cell: (info) => (
+              <div>
+                {formatDate(info.getValue().toString(), DATE_ONLY_FORMAT)}
+              </div>
+            ),
+            header: "Submission Date",
+          }),
+          columnHelper.accessor("count", {
+            cell: (info) => <div>{info.getValue()}</div>,
+            header: "Submission Count",
+          }),
+        ],
+      }),
+    ],
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   useEffect(() => {
     handleGetData();
   }, [selectedAssignmentId]);
 
   useEffect(() => {
     if (data.length === 0) return;
+    if (tableView) return;
     drawChart();
-  }, [width, height, data]);
+  }, [width, height, data, tableView]);
 
   async function handleGetData() {
     try {
@@ -205,7 +248,48 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && selectedAssignmentId && data?.length > 0 && (
-        <svg ref={svgRef} width={width} height={height}></svg>
+        <div className={`tw-w-full ${tableView ? 'tw-max-h-[500px] tw-overflow-y-auto' : ""}`}>
+          {tableView ? (
+            <VisualizationTable
+              headRender={() =>
+                table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className="tw-p-3 tw-text-sm tw-border-r"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))
+              }
+              bodyRender={() =>
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:tw-bg-slate-100">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="tw-p-3 tw-border">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              }
+            />
+          ) : (
+            <svg ref={svgRef} width={width} height={height}></svg>
+          )}
+        </div>
       )}
       {!loading && selectedAssignmentId && (!data || data.length === 0) && (
         <NoData width={width} height={height} />

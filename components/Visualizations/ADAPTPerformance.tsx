@@ -21,6 +21,13 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import VisualizationTable from "../VisualizationTableView";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -34,6 +41,7 @@ type ADAPTPerformanceProps = VisualizationBaseProps & {
 const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
+  tableView = false,
   getData,
   selectedAssignmentId,
   innerRef,
@@ -46,6 +54,47 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
   const svgRef = useRef(null);
   const [data, setData] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Calculate the buckets of 5% each
+  const transformedForTable = useMemo(() => {
+    const buckets = Array.from({ length: 20 }, (_, i) => {
+      const start = i * 5;
+      const end = start + 5;
+      return {
+        range: `${start}-${end}`,
+        count: data.filter((d) => d >= start && d < end).length,
+      };
+    });
+    return buckets;
+  }, [data]);
+
+  const columnHelper = createColumnHelper<{ range: string; count: number }>();
+  const table = useReactTable<{ range: string; count: number }>({
+    data: transformedForTable,
+    columns: [
+      columnHelper.group({
+        id: "assignment",
+        header: () => (
+          <div className="tw-mb-0">
+            <p className="text-center tw-mb-0">
+              Assignment: {selectedAssignmentId ?? "Unknown"}{" "}
+            </p>
+          </div>
+        ),
+        columns: [
+          columnHelper.accessor("range", {
+            cell: (info) => <div>{info.getValue()}</div>,
+            header: "Score Range (%)",
+          }),
+          columnHelper.accessor("count", {
+            cell: (info) => <div>{info.getValue()}</div>,
+            header: "Student Count",
+          }),
+        ],
+      }),
+    ],
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   useEffect(() => {
     handleGetData();
@@ -201,9 +250,54 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && selectedAssignmentId && data?.length > 0 && (
-        <svg ref={svgRef} width={width} height={height}>
-          <g className="tooltip-area"></g>
-        </svg>
+        <div
+          className={`tw-w-full ${
+            tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""
+          }`}
+        >
+          {tableView ? (
+            <VisualizationTable
+              headRender={() =>
+                table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className="tw-p-3 tw-text-sm tw-border-r"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))
+              }
+              bodyRender={() =>
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:tw-bg-slate-100">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="tw-p-3 tw-border">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              }
+            />
+          ) : (
+            <svg ref={svgRef} width={width} height={height}>
+              <g className="tooltip-area"></g>
+            </svg>
+          )}
+        </div>
       )}
       {!loading && selectedAssignmentId && (!data || data.length === 0) && (
         <NoData width={width} height={height} />
