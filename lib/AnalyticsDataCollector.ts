@@ -2,6 +2,8 @@ import useADAPTAxios from "@/hooks/useADAPTAxios";
 import { AxiosInstance } from "axios";
 import { ADAPTEnrollmentsResponse } from "./types";
 import enrollments from "./models/enrollments";
+import connectDB from "./database";
+import adaptCourses from "./models/adaptCourses";
 
 class AnalyticsDataCollector {
   private axiosInstance: AxiosInstance | null = null;
@@ -17,7 +19,8 @@ class AnalyticsDataCollector {
   }
 
   async runCollectors() {
-    await this.collectEnrollments();
+    //await this.collectEnrollments();
+    await this.collectGradebookData();
   }
 
   async collectEnrollments() {
@@ -26,6 +29,7 @@ class AnalyticsDataCollector {
         throw new Error("axiosInstance is not set");
       }
 
+      await connectDB();
       const response = await this.axiosInstance.get<ADAPTEnrollmentsResponse[]>(
         "/analytics/enrollments"
       );
@@ -40,6 +44,36 @@ class AnalyticsDataCollector {
         },
       }));
       await enrollments.bulkWrite(bulkOps);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async collectGradebookData() {
+    try {
+      if (!this.axiosInstance) {
+        throw new Error("axiosInstance is not set");
+      }
+
+      await connectDB();
+      const knownCourses = await adaptCourses.find({}).select("courseID");
+
+      const knownCourseIDs = knownCourses.map((course) => course.courseID);
+
+      const promises = knownCourseIDs.map((courseID) => {
+        return this.axiosInstance?.get("/analytics/scores/course/" + courseID);
+      });
+
+      const responses = await Promise.allSettled(promises);
+
+      const gradebookData = responses.map((response) => {
+        if (response.status === "fulfilled" && response.value) {
+          return response.value.data;
+        }
+        return null;
+      });
+
+      console.log(gradebookData.slice(0, 5));
     } catch (err) {
       console.error(err);
     }
