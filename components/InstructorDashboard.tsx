@@ -25,7 +25,7 @@ import {
 import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
 import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
-import ActivityAccessed from "./Visualizations/ActivityAccessed";
+import ActivityAccessed from "./Visualizations/StudentActivity";
 
 const InstructorDashboard = ({ course_id }: { course_id: string }) => {
   return (
@@ -78,7 +78,7 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
               <TextbookEngagement getData={getTextbookEngagement} />
             </VisualizationContainer> */}
       <VisualizationContainer
-        title="ADAPT Performance"
+        title="ADAPT Weighted Score Distribution"
         description="Distribution of student scores by selected assignment"
       >
         <ADAPTPerformance
@@ -88,14 +88,14 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
         />
       </VisualizationContainer>
       <VisualizationContainer
-        title="Grade Distribution"
-        description="Distribution of student scores across all assignments"
+        title="Final Grade Distribution"
+        description="Distribution of final student letter grades"
       >
         <GradeDistribution getData={() => getGradeDistribution(course_id)} />
       </VisualizationContainer>
       <VisualizationContainer
-        title="Activity Accessed"
-        description="Number of activities accessed by selected student"
+        title="Student Activity"
+        description="Number of assignments accessed by selected student"
       >
         <ActivityAccessed
           getData={(student_id) => getActivityAccessed(course_id, student_id)}

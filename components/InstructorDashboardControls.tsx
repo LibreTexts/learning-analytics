@@ -137,13 +137,10 @@ const InstructorDashboardControls = () => {
       }}
       ref={elementRef}
     >
-      {/* <p className="tw-font-semibold tw-text-lg tw-text-center">
-        Select to Compare
-      </p> */}
+      <p className="tw-font-semibold tw-text-lg tw-text-center tw-mb-1 tw-mt-0">
+        Filters
+      </p>
       <div className="tw-flex tw-flex-row">
-        <div className="tw-mr-2 tw-flex tw-items-center tw-h-full">
-          <p className="tw-font-semibold tw-mt-1.5">Filters:</p>
-        </div>
         <StudentDropdown />
         <AssignmentDropdown />
       </div>

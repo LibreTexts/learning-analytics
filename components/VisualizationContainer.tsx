@@ -83,7 +83,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
       </div>
       <div
         ref={containerRef}
-        className="tw-bg-gray-100 tw-rounded-md tw-min-h-96"
+        className="tw-rounded-md tw-min-h-96"
       >
         {childWithProps}
       </div>
