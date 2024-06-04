@@ -1,6 +1,6 @@
 "use client";
 import React, { cloneElement, useEffect, useRef, useState } from "react";
-import { Card } from "react-bootstrap";
+import { Button, Card } from "react-bootstrap";
 import {
   Download as IconDownload,
   Table as IconTable,
@@ -81,10 +81,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
           <p className="tw-text-xs tw-text-gray-500">{description}</p>
         </div>
       </div>
-      <div
-        ref={containerRef}
-        className="tw-rounded-md tw-min-h-96"
-      >
+      <div ref={containerRef} className="tw-rounded-md tw-min-h-96">
         {childWithProps}
       </div>
       <div className="tw-flex tw-flex-row tw-justify-center tw-items-center tw-mt-1 tw-w-full">
@@ -96,19 +93,13 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
         </div>
         <div className="tw-flex tw-flex-row tw-justify-end tw-basis-1/3">
           {!tableView && (
-            <button
-              className="tw-underline tw-rounded-md tw-border tw-border-slate-400"
-              onClick={handleDownloadImg}
-            >
+            <Button className="" variant="light" onClick={handleDownloadImg}>
               <IconDownload />
-            </button>
+            </Button>
           )}
-          <button
-            className="tw-underline tw-ml-2 tw-rounded-md tw-border tw-border-slate-400"
-            onClick={() => setTableView(!tableView)}
-          >
+          <Button className="tw-ml-2" variant="light" onClick={() => setTableView(!tableView)}>
             {tableView ? <IconBarChart /> : <IconTable />}
-          </button>
+          </Button>
         </div>
       </div>
     </Card>

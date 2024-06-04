@@ -129,7 +129,7 @@ const InstructorDashboardControls = () => {
 
   return (
     <Card
-      className="tw-mt-4 tw-rounded-lg tw-shadow-md tw-px-4 tw-pt-2 tw-pb-2 tw-max-w-[40rem]"
+      className="tw-mt-4 tw-rounded-lg tw-shadow-md tw-px-4 tw-pt-1 tw-pb-2 tw-max-w-[40rem]"
       style={{
         position: "fixed",
         bottom: "1rem",
