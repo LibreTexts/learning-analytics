@@ -16,7 +16,10 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import NoData from "../NoData";
-import { VisualizationBaseProps } from "@/lib/types";
+import {
+  GradeDistribution as GradeDistributionType,
+  VisualizationBaseProps,
+} from "@/lib/types";
 import {
   createColumnHelper,
   flexRender,
@@ -34,7 +37,7 @@ type GradeBucket = {
 };
 
 type GradeDistributionProps = VisualizationBaseProps & {
-  getData: () => Promise<string[]>;
+  getData: () => Promise<GradeDistributionType>;
 };
 
 const GradeDistribution: React.FC<GradeDistributionProps> = ({
@@ -84,7 +87,7 @@ const GradeDistribution: React.FC<GradeDistributionProps> = ({
       const data = await getData();
 
       // count the # of occurrences of each grade (d3.bin() does not support string data)
-      const gradeCountArray = data.reduce((acc, grade) => {
+      const gradeCountArray = data.grades.reduce((acc, grade) => {
         const existing = acc.find((g) => g.grade === grade);
         if (existing) {
           existing.count++;
@@ -257,7 +260,7 @@ const GradeDistribution: React.FC<GradeDistributionProps> = ({
         </div>
       )}
       {!loading && (!data || data.length === 0) && (
-        <NoData width={width} height={height} />
+        <NoData width={width} height={height} msg={"Letter grades have not been released for this course yet."} />
       )}
     </div>
   );

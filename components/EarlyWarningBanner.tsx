@@ -1,4 +1,7 @@
 "use client";
+import { EarlyWarningStatus } from "@/lib/types/ews";
+import { useGlobalContext } from "@/state/globalContext";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "react-bootstrap";
 import {
   CheckCircleFill,
@@ -8,12 +11,20 @@ import {
 } from "react-bootstrap-icons";
 
 interface EarlyWarningBanner {
-  variant: "success" | "danger" | "warning" | "insufficient-data";
+  getStatus: (course_id: string) => Promise<EarlyWarningStatus>;
 }
 
-const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
-  const getIcon = () => {
-    switch (variant) {
+const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ getStatus }) => {
+  const [globalState] = useGlobalContext();
+  const [status, setStatus] = useState<EarlyWarningStatus>("insufficient-data");
+
+  useEffect(() => {
+    if(!globalState.courseID) return;
+    getStatus(globalState.courseID).then((status) => setStatus(status));
+  }, [globalState.courseID]);
+
+  const statusIcon = useMemo(() => {
+    switch (status) {
       case "success":
         return <CheckCircleFill size={36} color="green" />;
       case "danger":
@@ -25,10 +36,10 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
       default:
         return <DashCircle />;
     }
-  };
+  }, [status]);
 
-  const getHeader = () => {
-    switch (variant) {
+  const statusHeader = useMemo(() => {
+    switch (status) {
       case "success":
         return "Looks Good";
       case "danger":
@@ -40,10 +51,10 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
       default:
         return "Unknown";
     }
-  };
+  }, [status]);
 
-  const getMessage = () => {
-    switch (variant) {
+  const statusMessage = useMemo(() => {
+    switch (status) {
       case "success":
         return "No students were identified as 'at-risk'. Keep up the good work!";
       case "danger":
@@ -55,7 +66,7 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
       default:
         return "Unknown";
     }
-  };
+  }, [status]);
 
   return (
     <Card className="tw-shadow-sm">
@@ -64,11 +75,11 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ variant }) => {
         <Card.Body className="!tw-p-0">
           <>
             <div className="tw-flex tw-flex-row tw-mt-4">
-              <div className="tw-mr-4 tw-mt-0.5">{getIcon()}</div>
-              <p className="tw-text-4xl tw-font-semibold">{getHeader()}</p>
+              <div className="tw-mr-4 tw-mt-0.5">{statusIcon}</div>
+              <p className="tw-text-4xl tw-font-semibold">{statusHeader}</p>
             </div>
             <p className="tw-mb-0 tw-text-xs tw-text-slate-400">
-              {getMessage()}
+              {statusMessage}
             </p>
           </>
         </Card.Body>
