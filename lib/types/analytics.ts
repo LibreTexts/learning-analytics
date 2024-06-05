@@ -17,6 +17,11 @@ export type PerformancePerAssignment = {
   class_avg: number;
 };
 
+export type GradeDistribution = {
+  grades: string[];
+  letter_grades_released: boolean;
+}
+
 export type TextbookInteractionsCount = {
   date: string;
   numInteractions: number;

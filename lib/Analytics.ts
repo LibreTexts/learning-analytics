@@ -10,6 +10,7 @@ import {
   AnalyticsRawData,
   ArrayElement,
   AssignmentAvgScoreCalc,
+  GradeDistribution,
   IDWithName,
   PerformancePerAssignment,
   SubmissionTimeline,
@@ -35,6 +36,7 @@ import CalcADAPTAllAssignments, {
 } from "./models/calcADAPTAllAssignments";
 import ewsActorSummary from "./models/ewsActorSummary";
 import ewsCourseSummary from "./models/ewsCourseSummary";
+import adaptCourses from "@/lib/models/adaptCourses";
 
 class Analytics {
   private adaptID: number;
@@ -240,17 +242,36 @@ class Analytics {
     }
   }
 
-  public async getGradeDistribution(): Promise<string[]> {
+  public async getGradeDistribution(): Promise<GradeDistribution> {
     try {
+      await connectDB();
+
+      const courseData = await adaptCourses.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      if (!courseData?.letter_grades_released) {
+        return {
+          grades: [],
+          letter_grades_released: false,
+        };
+      }
+
       const res = await calcADAPTGradeDistribution.find({
         courseID: this.adaptID.toString(),
       });
 
       const grades = (res[0].grades as string[]) || [];
-      return grades;
+      return {
+        grades: grades,
+        letter_grades_released: true,
+      };
     } catch (err) {
       console.error(err);
-      return [];
+      return {
+        grades: [],
+        letter_grades_released: false,
+      };
     }
   }
 

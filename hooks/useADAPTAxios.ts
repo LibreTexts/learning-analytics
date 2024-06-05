@@ -1,10 +1,11 @@
 import axios from "axios";
 
-const useADAPTAxios = () => {
+const useADAPTAxios = (token?: string) => {
+  const bearer = token || process.env.ADAPT_API_KEY;
   const axiosInstance = axios.create({
     baseURL: process.env.ADAPT_API_BASE_URL,
     headers: {
-      Authorization: `Bearer ${process.env.ADAPT_API_KEY}`,
+      Authorization: `Bearer ${bearer}`,
     },
   });
 

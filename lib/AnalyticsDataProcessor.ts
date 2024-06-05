@@ -783,6 +783,7 @@ class AnalyticsDataProcessor {
           avg_interaction_days: 0,
           avg_percent_seen: 0,
           last_updated: new Date(),
+          status: "insufficient-data", // set this for now, we will update with updateCourseSummaryStatus below
         };
 
         courseSummaries.push(courseSummary);
@@ -856,6 +857,11 @@ class AnalyticsDataProcessor {
       const filteredCourseSummaries = courseSummaries.filter(
         (summary) => summary.course_id
       );
+
+      // Update the status of each course summary based on available data
+      filteredCourseSummaries.forEach((summary) => {
+        this.updateCourseSummaryStatus(summary);
+      });
 
       // Write the course summaries to the database
       await ewsCourseSummary.bulkWrite(
@@ -1088,6 +1094,13 @@ class AnalyticsDataProcessor {
         err.message ?? "Unknown error occured while writing EWS actor summary"
       );
       return false;
+    }
+  }
+
+  // TODO: Check the logic here
+  private updateCourseSummaryStatus(summary: IEWSCourseSummary_Raw){
+    if(summary.avg_course_percent === 0){
+      summary.status = "insufficient-data";
     }
   }
 }
