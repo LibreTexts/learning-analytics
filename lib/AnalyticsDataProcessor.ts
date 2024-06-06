@@ -23,18 +23,18 @@ class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
-    //await this.compressADAPTAllAssignments();
-    //await this.compressADAPTAssignments();
-    //await this.compressADAPTAverageScore();
-    //await this.compressADAPTInteractionDays();
-    //await this.compressADAPTGradeDistribution();
-    //await this.compressADAPTSubmissions();
-    //await this.compressADAPTScores();
-    //await this.compressTextbookActivityTime();
-    //await this.compressTexbookInteractionsByDate();
-    //await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
+    await this.compressADAPTAllAssignments();
+    // await this.compressADAPTAssignments();
+    // await this.compressADAPTAverageScore();
+    // await this.compressADAPTInteractionDays();
+    // await this.compressADAPTGradeDistribution();
+    // await this.compressADAPTSubmissions();
+    // await this.compressADAPTScores();
+    // await this.compressTextbookActivityTime();
+    // await this.compressTexbookInteractionsByDate();
+    // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
     // await this.writeEWSCourseSummary();
-    await this.writeEWSActorSummary();
+    // await this.writeEWSActorSummary();
   }
 
   private async compressADAPTAllAssignments(): Promise<boolean> {
@@ -42,7 +42,7 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTAllAssignments]: Starting aggregation...");
-      await ADAPT.aggregate(
+      await Gradebook.aggregate(
         [
           {
             $group: {
@@ -119,7 +119,7 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                courseID: "$class",
+                courseID: "$course_id",
                 actor: "$email",
               },
               assignments: {
@@ -189,7 +189,7 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                courseID: "$class",
+                courseID: "$course_id",
                 actor: "$email",
               },
               scores: {
@@ -253,7 +253,7 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                courseID: "$class",
+                courseID: "$course_id",
                 assignmentID: "$assignment_id",
               },
               scores: {
@@ -303,7 +303,7 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                class: "$class",
+                course_id: "$course_id",
                 email: "$email",
               },
               newestDocument: {
@@ -313,7 +313,7 @@ class AnalyticsDataProcessor {
           },
           {
             $group: {
-              _id: "$_id.class",
+              _id: "$_id.course_id",
               grades: {
                 $push: "$newestDocument.overall_course_grade",
               },
@@ -959,7 +959,7 @@ class AnalyticsDataProcessor {
                   assignment_id: assignment.assignment_id,
                   score: isNaN(assignment.score) ? 0 : assignment.score,
                 })
-              ) || [],
+              ) || []
           );
 
           actorSummaries.push(actorSummary);
@@ -1029,7 +1029,9 @@ class AnalyticsDataProcessor {
       actorSummaries.forEach((actorSummary) => {
         const courseID = actorSummary.course_id;
         const assignmentsCount = courseAssignmentsMap.get(courseID) ?? 0;
-        const foundAssignments = assignmentsByActorIdCourseId.get(`${actorSummary.actor_id}:${courseID}`);
+        const foundAssignments = assignmentsByActorIdCourseId.get(
+          `${actorSummary.actor_id}:${courseID}`
+        );
         actorSummary.percent_seen =
           ((foundAssignments?.length ?? 0) / assignmentsCount) * 100 || 0;
       });
@@ -1040,7 +1042,7 @@ class AnalyticsDataProcessor {
           $group: {
             _id: {
               actor: "$email",
-              courseID: "$class",
+              courseID: "$course_id",
             },
             newestDocument: {
               $last: "$$ROOT",
@@ -1098,8 +1100,8 @@ class AnalyticsDataProcessor {
   }
 
   // TODO: Check the logic here
-  private updateCourseSummaryStatus(summary: IEWSCourseSummary_Raw){
-    if(summary.avg_course_percent === 0){
+  private updateCourseSummaryStatus(summary: IEWSCourseSummary_Raw) {
+    if (summary.avg_course_percent === 0) {
       summary.status = "insufficient-data";
     }
   }
