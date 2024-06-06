@@ -37,9 +37,6 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
         subtitle="View analytics and data visualizations for your course. Click on a visualization to view more details."
       />
       <InstructorQuickMetrics course_id={course_id} />
-      <div className="tw-flex tw-justify-center">
-        <InstructorDashboardControls />
-      </div>
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
@@ -64,7 +61,7 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
         <NoData width={1200} height={400} />
       </VisualizationContainer>
       <VisualizationContainer
-        title="Submission Timeline"
+        title="Submission Activity"
         description="Timeline of student submissions for selected assignment"
       >
         <SubmissionTimeline
@@ -80,8 +77,8 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
               <TextbookEngagement getData={getTextbookEngagement} />
             </VisualizationContainer> */}
       <VisualizationContainer
-        title="ADAPT Weighted Score Distribution"
-        description="Distribution of student scores by selected assignment"
+        title="Final Score Distribution"
+        description="Distribution of student final scores"
       >
         <ADAPTPerformance
           getData={(assignment_id) =>
@@ -97,7 +94,7 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
       </VisualizationContainer>
       <VisualizationContainer
         title="Student Activity"
-        description="Questions seen by the selected student vs. all available questions"
+        description="Questions submitted by the selected student vs. all available questions"
       >
         <ActivityAccessed
           getData={(student_id) => getActivityAccessed(course_id, student_id)}

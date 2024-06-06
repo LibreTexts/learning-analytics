@@ -4,6 +4,7 @@ import Links from "./Links";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useGlobalContext } from "@/state/globalContext";
+import InstructorDashboardControls from "./InstructorDashboardControls";
 
 const ACTIVE_CLASSES = "tw-bg-light-gray tw-border-none";
 
@@ -69,11 +70,11 @@ const NavMenu = () => {
           </ListGroup.Item>
         )}
       </ListGroup>
-      {process.env.NODE_ENV === "development" && (
-        <p className="tw-text-center tw-mt-2">
-          Course ID: {globalState?.courseID}
-        </p>
-      )}
+      {
+        globalState.viewAs === "instructor" && (
+          <InstructorDashboardControls className="tw-sticky tw-top-4"/>
+        )
+      }
     </div>
   );
 };

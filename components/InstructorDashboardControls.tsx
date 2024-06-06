@@ -8,8 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import { IDWithName } from "@/lib/types";
 import { useEffect, useMemo, useRef } from "react";
 import { useGlobalContext } from "@/state/globalContext";
+import classNames from "classnames";
 
-const InstructorDashboardControls = () => {
+const InstructorDashboardControls = ({ className }: { className?: string }) => {
   const [globalState, setGlobalState] = useGlobalContext();
   const elementRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +98,9 @@ const InstructorDashboardControls = () => {
       icon="person"
       label={globalState.studentId ? selectedStudentPretty : "Select Student"}
       loading={studentsStatus === "pending"}
-      drop="up"
+      drop="down"
+      labelLength={12}
+      toggleClassName="!tw-w-44 !tw-p-1 !tw-overflow-x-hidden"
     >
       {students?.map((s) => (
         <Dropdown.Item key={s.id} onClick={() => updateSelectedStudent(s.id)}>
@@ -116,11 +119,17 @@ const InstructorDashboardControls = () => {
           : "Select Assignment"
       }
       loading={assignmentsStatus === "pending"}
-      className="tw-ml-4"
-      drop="up"
+      drop="down"
+      labelLength={15}
+      className="tw-mt-2"
+      toggleClassName="!tw-w-44 !tw-p-1 !tw-overflow-x-hidden"
     >
       {assignments?.map((a) => (
-        <Dropdown.Item key={a.id} onClick={() => updateSelectedAssignment(a.id)}>
+        <Dropdown.Item
+          key={a.id}
+          onClick={() => updateSelectedAssignment(a.id)}
+          className="!tw-p-2"
+        >
           {a.name}
         </Dropdown.Item>
       ))}
@@ -129,18 +138,19 @@ const InstructorDashboardControls = () => {
 
   return (
     <Card
-      className="tw-mt-4 tw-rounded-lg tw-shadow-md tw-px-4 tw-pt-1 tw-pb-2 tw-max-w-[40rem]"
-      style={{
-        position: "fixed",
-        bottom: "1rem",
-        zIndex: 1000,
-      }}
+      className={classNames(
+        "tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-1 tw-pb-2 tw-z-50",
+        className
+      )}
       ref={elementRef}
     >
       <p className="tw-font-semibold tw-text-lg tw-text-center tw-mb-1 tw-mt-0">
         Filters
       </p>
-      <div className="tw-flex tw-flex-row">
+      <div className="tw-flex tw-flex-col">
+        <p className="tw-text-sm tw-text-gray-500 tw-mt-0 tw-mb-2">
+          Select a student and assignment to view their respective data.
+        </p>
         <StudentDropdown />
         <AssignmentDropdown />
       </div>
