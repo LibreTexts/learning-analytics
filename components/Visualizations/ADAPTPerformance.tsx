@@ -118,12 +118,6 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
     }
   }
 
-  const getMaxCount = useMemo(() => {
-    const vals = data.map((d) => d);
-    if (vals.length === 0) return 200; // Default value
-    return Math.max(...vals);
-  }, [data]);
-
   function drawChart() {
     setLoading(true);
     const svg = d3.select(svgRef.current);
@@ -138,6 +132,8 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
 
     const buckets = bucketGenerator(data);
 
+    const maxCount = d3.max(buckets, (d) => d.length);
+
     const x = d3
       .scaleLinear()
       .domain([0, 100])
@@ -146,7 +142,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
     const y = d3
       .scaleLinear()
       .range([height - MARGIN.bottom, MARGIN.top])
-      .domain([0, getMaxCount]);
+      .domain([0, maxCount ?? 100]);
 
     // Add X axis
     svg
@@ -222,7 +218,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
       .append("text")
       .attr("text-anchor", "end")
       .attr("x", width / 2 + MARGIN.left)
-      .attr("y", MARGIN.top)
+      .attr("y", height - 5)
       .text("Score Range (%)")
       .style("font-size", "12px");
 
@@ -233,7 +229,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
       .attr("x", `-${height / 3}`)
       .attr("y", MARGIN.left / 2 - 10)
       .attr("transform", "rotate(-90)")
-      .text("# of Submissions")
+      .text("# of Students")
       .style("font-size", "12px");
 
     setLoading(false);
@@ -245,7 +241,7 @@ const ADAPTPerformance: React.FC<ADAPTPerformanceProps> = ({
         <SelectOption
           width={width}
           height={height}
-          msg={"Select an assignment to view the submission timeline."}
+          msg={"Select an assignment to view the performance data."}
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}

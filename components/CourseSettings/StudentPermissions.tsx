@@ -56,7 +56,7 @@ const StudentPermissions: React.FC<StudentPermissionsProps> = ({
   }
 
   return (
-    <>
+    <div>
       <ListGroup className="!tw-shadow-sm tw-w-full tw-h-fit">
         <ListGroup.Item className="tw-bg-ultra-light-gray">
           Student Permissions
@@ -108,7 +108,7 @@ const StudentPermissions: React.FC<StudentPermissionsProps> = ({
           <Toast.Body>Settings saved successfully.</Toast.Body>
         </Toast>
       </ToastContainer>
-    </>
+    </div>
   );
 };
 

@@ -24,6 +24,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
+import { truncateString } from "@/utils/text-helpers";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -136,7 +137,8 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
-      .style("font-size", "8px");
+      .style("font-size", "8px")
+      .text((d) => truncateString(d as string, 10));
 
     // Add y-axis
     svg
@@ -183,8 +185,8 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .data(subgroupsPretty)
       .enter()
       .append("circle")
-      .attr("cx", (d, i) => MARGIN.left + i * 155) // 155 is the distance between dots
-      .attr("cy", (d, i) => height - 10)
+      .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 155)) // 155 is the distance between dots
+      .attr("cy", (d, i) => MARGIN.top / 2)
       .attr("r", 7)
       .style("fill", (d) => color(d) as string);
 
@@ -194,8 +196,8 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .data(subgroupsPretty)
       .enter()
       .append("text")
-      .attr("x", (d, i) => MARGIN.left + 15 + i * 155) // 155 is the distance between dots, 15 is space between dot and text
-      .attr("y", (d, i) => height - 10)
+      .attr("x", (d, i) => width - 155 - (MARGIN.right - 15 + i * 155)) // 155 is the distance between dots, 15 is space between dot and text
+      .attr("y", (d, i) => MARGIN.top / 2)
       .style("fill", (d) => color(d) as string)
       .text((d) => d)
       .attr("text-anchor", "left")

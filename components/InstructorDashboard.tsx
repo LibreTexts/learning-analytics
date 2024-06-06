@@ -6,6 +6,7 @@ import {
   getGradeDistribution,
   getActivityAccessed,
   getAssignmentFrameworkData,
+  checkFinalGradesReleased,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -29,7 +30,13 @@ import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
 import LearningObjectiveCompletion from "./Visualizations/LearningObjectiveCompletion";
 
-const InstructorDashboard = ({ course_id }: { course_id: string }) => {
+const InstructorDashboard = ({
+  course_id,
+  letter_grades_released = false,
+}: {
+  course_id: string;
+  letter_grades_released: boolean;
+}) => {
   return (
     <GenericPageContainer>
       <PageHeader
@@ -77,22 +84,6 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
               <TextbookEngagement getData={getTextbookEngagement} />
             </VisualizationContainer> */}
       <VisualizationContainer
-        title="Final Score Distribution"
-        description="Distribution of student final scores"
-      >
-        <ADAPTPerformance
-          getData={(assignment_id) =>
-            getADAPTPerformance(course_id, assignment_id)
-          }
-        />
-      </VisualizationContainer>
-      <VisualizationContainer
-        title="Final Grade Distribution"
-        description="Distribution of final student letter grades"
-      >
-        <GradeDistribution getData={() => getGradeDistribution(course_id)} />
-      </VisualizationContainer>
-      <VisualizationContainer
         title="Student Activity"
         description="Questions submitted by the selected student vs. all available questions"
       >
@@ -110,8 +101,40 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
         title="Learning Objective Completion"
         description="Breakdown of completion for the selected learning objective"
       >
-        <LearningObjectiveCompletion getAssignmentData={(assignment_id) => getAssignmentFrameworkData(course_id, assignment_id)} />
+        <LearningObjectiveCompletion
+          getAssignmentData={(assignment_id) =>
+            getAssignmentFrameworkData(course_id, assignment_id)
+          }
+        />
       </VisualizationContainer>
+      {letter_grades_released ? (
+        <>
+          <VisualizationContainer
+            title="Final Score Distribution"
+            description="Distribution of student final scores"
+          >
+            <ADAPTPerformance
+              getData={(assignment_id) =>
+                getADAPTPerformance(course_id, assignment_id)
+              }
+            />
+          </VisualizationContainer>
+          <VisualizationContainer
+            title="Final Grade Distribution"
+            description="Distribution of final student letter grades"
+          >
+            <GradeDistribution
+              getData={() => getGradeDistribution(course_id)}
+            />
+          </VisualizationContainer>
+        </>
+      ): (
+        <div className="tw-w-full tw-mt-4">
+          <p className="tw-text-sm tw-text-center tw-text-gray-600">
+            Final grades have not been released for this course. Final score and letter grade distribution visualizations will be available once grades are released.
+          </p>
+        </div>
+      )}
     </GenericPageContainer>
   );
 };

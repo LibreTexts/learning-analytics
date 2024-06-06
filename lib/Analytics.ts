@@ -694,6 +694,21 @@ class Analytics {
       };
     }
   }
+
+  public async checkFinalGradesReleased(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      const res = await adaptCourses.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return res?.letter_grades_released ?? false;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
 }
 
 export default Analytics;
