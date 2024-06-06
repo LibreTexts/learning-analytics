@@ -18,6 +18,7 @@ import ewsActorSummary, {
 import calcADAPTInteractionDays from "./models/calcADAPTInteractionDays";
 import calcADAPTAssignments from "./models/calcADAPTAssignments";
 import enrollments from "./models/enrollments";
+import reviewTime from "./models/reviewTime";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -33,6 +34,7 @@ class AnalyticsDataProcessor {
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
+    await this.compressReviewTime();
     // await this.writeEWSCourseSummary();
     // await this.writeEWSActorSummary();
   }
@@ -691,6 +693,48 @@ class AnalyticsDataProcessor {
       debugADP(
         err.message ??
           "Unknown error occured while compressing textbook num interactions"
+      );
+      return false;
+    }
+  }
+
+  private async compressReviewTime(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressReviewTime]: Starting aggregation...");
+
+      const reviewTimeRaw = await reviewTime.aggregate([
+        {
+          $group: {
+            _id: {
+              actor: "$actor",
+              assignment_id: "$assignment_id",
+              course_id: "$course_id",
+            },
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            actor: "$_id.actor",
+            assignment_id: "$_id.assignment_id",
+            course_id: "$_id.course_id",
+            questions: {
+              $arrayElemAt: ["$questions", 0],
+            },
+          },
+        },
+      ]);
+
+      debugADP("[compressReviewTime]: Finished aggregation.");
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ?? "Unknown error occured while compressing review time"
       );
       return false;
     }

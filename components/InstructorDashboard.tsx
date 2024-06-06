@@ -97,7 +97,7 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
       </VisualizationContainer>
       <VisualizationContainer
         title="Student Activity"
-        description="Number of assignments accessed by selected student"
+        description="Questions seen by the selected student vs. all available questions"
       >
         <ActivityAccessed
           getData={(student_id) => getActivityAccessed(course_id, student_id)}

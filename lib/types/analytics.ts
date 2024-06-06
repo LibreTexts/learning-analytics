@@ -39,8 +39,8 @@ export type StudentQuickMetrics = {
 };
 
 export type ActivityAccessed = {
-  seen: IDWithName[];
-  unseen: IDWithName[];
+  seen: number[];
+  unseen: number[];
   course_avg_percent_seen: number;
 };
 
@@ -65,3 +65,9 @@ export type FrameworkAlignment = FrameworkData & {
   assignment_id: number;
   question_id: number;
 };
+
+export type TimeInReview = {
+  assignment_id: string;
+  minutes: number
+  course_avg: number
+}

@@ -2,6 +2,7 @@ import useADAPTAxios from "@/hooks/useADAPTAxios";
 import { AxiosInstance } from "axios";
 import {
   ADAPTEnrollmentsResponse,
+  ADAPTReviewTimeResponse,
   FrameworkAlignment,
   IDWithText,
 } from "./types";
@@ -12,6 +13,7 @@ import { encryptStudent } from "@/utils/data-helpers";
 import gradebook, { IGradebookRaw } from "./models/gradebook";
 import email from "next-auth/providers/email";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
+import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 
 class AnalyticsDataCollector {
   private token: string | null = null;
@@ -29,7 +31,8 @@ class AnalyticsDataCollector {
   async runCollectors() {
     //await this.collectEnrollments();
     //await this.collectGradebookData();
-    await this.collectQuestionFrameworkAlignment();
+    //await this.collectQuestionFrameworkAlignment();
+    await this.collectReviewTimeData();
   }
 
   async collectEnrollments() {
@@ -325,6 +328,127 @@ class AnalyticsDataCollector {
             filter: {
               assignment_id: doc.assignment_id,
               question_id: doc.question_id,
+            },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  public async collectReviewTimeData() {
+    try {
+      await connectDB();
+
+      const courseAssignmentData = await gradebook.aggregate([
+        {
+          $group: {
+            _id: "$course_id",
+            unique_assignments: {
+              $addToSet: "$assignment_id",
+            },
+          },
+        },
+      ]);
+
+      const courseAssignmentPairs = courseAssignmentData.reduce(
+        (acc: { course_id: number; assignment_id: number }[], data) => {
+          const course_id = parseInt(data._id) ?? 0;
+          const assignment_ids = data.unique_assignments;
+          assignment_ids.forEach((assignment_id: number) => {
+            acc.push({ course_id, assignment_id });
+          });
+          return acc;
+        },
+        []
+      );
+
+      const reviewTimePromises = courseAssignmentPairs.map((pair) => {
+        return useADAPTAxios()?.get(
+          "/analytics/review-history/assignment/" + pair.assignment_id
+        );
+      });
+
+      const reviewTimeResponses = await Promise.allSettled(reviewTimePromises);
+
+      const reviewTimeData: (ADAPTReviewTimeResponse & {
+        course_id: number;
+      })[] = [];
+      for (let i = 0; i < reviewTimeResponses.length; i++) {
+        const response = reviewTimeResponses[i];
+        if (response.status === "fulfilled" && response.value) {
+          response.value.data.forEach((data: ADAPTReviewTimeResponse) => {
+            reviewTimeData.push({
+              ...data,
+              course_id: courseAssignmentPairs[i].course_id,
+            });
+          });
+        }
+      }
+
+      console.log(reviewTimeData.slice(0, 5));
+
+      const encryptedEmails = await Promise.all(
+        reviewTimeData.map((data) => encryptStudent(data.email))
+      );
+
+      reviewTimeData.forEach((data, index) => {
+        data.email = encryptedEmails[index];
+      });
+
+      // for each actor + course_id + assignment_id, group the questions
+
+      const docsToInsert = reviewTimeData.reduce(
+        (acc: IReviewTime_Raw[], curr) => {
+          const existing = acc.find(
+            (doc) =>
+              doc.course_id === curr.course_id &&
+              doc.assignment_id === curr.assignment_id &&
+              doc.actor === curr.email
+          );
+
+          if (existing) {
+            existing.questions.push({
+              question_id: curr.question_id,
+              review_time_start: curr.created_at,
+              review_time_end: curr.updated_at,
+            });
+          } else {
+            acc.push({
+              course_id: curr.course_id,
+              assignment_id: curr.assignment_id,
+              actor: curr.email,
+              questions: [
+                {
+                  question_id: curr.question_id,
+                  review_time_start: curr.created_at,
+                  review_time_end: curr.updated_at,
+                },
+              ],
+            });
+          }
+
+          return acc;
+        },
+        []
+      );
+
+      // Filter out any docs that are missing required fields
+      const filteredDocs = docsToInsert.filter((doc) => {
+        return doc.actor && doc.course_id && doc.assignment_id;
+      });
+
+      // Bulk upsert the review time data
+      await reviewTime.bulkWrite(
+        filteredDocs.map((doc) => ({
+          updateOne: {
+            filter: {
+              course_id: doc.course_id,
+              assignment_id: doc.assignment_id,
+              actor: doc.actor,
             },
             update: { $set: doc },
             upsert: true,

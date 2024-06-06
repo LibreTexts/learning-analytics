@@ -40,6 +40,7 @@ import ewsCourseSummary from "./models/ewsCourseSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
 import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
+import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 
 class Analytics {
   private adaptID: number;
@@ -144,67 +145,72 @@ class Analytics {
     try {
       await connectDB();
 
-      const allAssignmentData = await CalcADAPTAllAssignments.findOne({
-        courseID: this.adaptID.toString(),
+      const allQuestionData = await reviewTime.find({
+        course_id: this.adaptID.toString(),
       });
 
-      const studentAssignmentData = await CalcADAPTAssignments.findOne({
+      const studentData = await reviewTime.find({
+        course_id: this.adaptID.toString(),
         actor: student_id,
-        courseID: this.adaptID.toString(),
       });
 
-      const courseAvgPercent = await ewsCourseSummary
-        .findOne({
-          course_id: this.adaptID.toString(),
-        })
-        .select("avg_percent_seen");
-
-      if (!allAssignmentData) {
+      if (!allQuestionData) {
         return {
           seen: [],
           unseen: [],
-          course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
+          course_avg_percent_seen: 0,
         };
       }
 
-      const allFoundAssignments = allAssignmentData?.assignments ?? [];
-      const allStudentAssignments = studentAssignmentData?.assignments ?? [];
+      const allKnownQuestionsSet = () => {
+        const questions = new Set<number>();
+        allQuestionData.forEach((d) => {
+          d.questions.forEach((q: IReviewTime_Raw["questions"][0]) => {
+            questions.add(q.question_id);
+          });
+        });
+        return questions;
+      };
 
-      if (!allStudentAssignments || allStudentAssignments.length === 0) {
+      const allKnownQuestions = Array.from(allKnownQuestionsSet());
+
+      // Return all questions if student data is not found
+      if (!studentData || studentData.length === 0) {
         return {
           seen: [],
-          unseen: allFoundAssignments.map((a: any) => ({
-            id: a.id,
-            name: a.name,
-          })),
-          course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
+          unseen: allKnownQuestions,
+          course_avg_percent_seen: 0,
         };
       }
 
-      const { seen, unseen } = allFoundAssignments.reduce(
-        (acc: ActivityAccessed, curr: IDWithName) => {
-          const obj = { id: curr.id, name: curr.name };
-          //const found = studentAssignmentData.assignments.find((d) => d === curr.id);
-          if (studentAssignmentData.assignments.includes(curr.id)) {
-            acc.seen.push(obj);
+      const studentQuestionsSet = () => {
+        const questions = new Set<number>();
+        studentData.forEach((d) => {
+          d.questions.forEach((q: IReviewTime_Raw["questions"][0]) => {
+            questions.add(q.question_id);
+          });
+        });
+        return questions;
+      };
+
+      const studentQuestions = Array.from(studentQuestionsSet());
+
+      const { seen: _seen, unseen: _unseen } = allKnownQuestions.reduce(
+        (acc: ActivityAccessed, curr: number) => {
+          if (studentQuestions.includes(curr)) {
+            acc.seen.push(curr);
           } else {
-            acc.unseen.push(obj);
+            acc.unseen.push(curr);
           }
           return acc;
         },
-        { seen: [], unseen: [] }
+        { seen: [], unseen: [], course_avg_percent_seen: 0 }
       );
 
       return {
-        seen: seen.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-        })),
-        unseen: unseen.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-        })),
-        course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
+        seen: _seen,
+        unseen: _unseen,
+        course_avg_percent_seen: 0
       };
     } catch (err) {
       console.error(err);
