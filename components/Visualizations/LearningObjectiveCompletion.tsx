@@ -82,17 +82,16 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
       const _assignmentData = await getAssignmentData(selectedAssignmentId);
 
-      // we need to group the data so that wherever the framework level is the same, we collect any 
-        const frameworkData = _assignmentData.framework_levels.map((level) => {
-            const descriptors = _assignmentData.framework_descriptors.filter((descriptor) => descriptor.id === level.id);
-            return {
-                level,
-                descriptors
-            }
-        }
-        )
-        console.log(frameworkData);
-
+      // we need to group the data so that wherever the framework level is the same, we collect any
+      const frameworkData = _assignmentData.framework_levels.map((level) => {
+        const descriptors = _assignmentData.framework_descriptors.filter(
+          (descriptor) => descriptor.id === level.id
+        );
+        return {
+          level,
+          descriptors,
+        };
+      });
 
       setAssignmentData(_assignmentData);
     } catch (err) {
@@ -192,16 +191,14 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && (
         <div className="tw-w-full tw-max-h-[500px] tw-overflow-y-auto">
-            {
-                assignmentData.framework_levels.map((level, index) => {
-                    return (
-                        <div key={index} className="tw-flex tw-items-center tw-mb-2">
-                            <div className="tw-w-4 tw-h-4 tw-mr-2 tw-rounded-full tw-bg-blue-500"></div>
-                            <div>{level.text}</div>
-                        </div>
-                    )
-                })
-            }
+          {assignmentData.framework_levels.map((level, index) => {
+            return (
+              <div key={index} className="tw-flex tw-items-center tw-mb-2">
+                <div className="tw-w-4 tw-h-4 tw-mr-2 tw-rounded-full tw-bg-blue-500"></div>
+                <div>{level.text}</div>
+              </div>
+            );
+          })}
           {/* <svg ref={svgRef} width={width} height={height}>
             <g className="tooltip-area"></g>
           </svg> */}

@@ -165,14 +165,14 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .style("font-size", 17);
 
     // Add course avg info
-    svg
-      .append("text")
-      .text(`Course Average % Seen: ${data.course_avg_percent_seen.toFixed(2)}`)
-      .attr("x", width - width / 4 - MARGIN.right / 2)
-      .attr("y", height - MARGIN.bottom / 2)
-      .style("text-anchor", "middle")
-      .style("font-size", 17)
-      .style("font-weight", "bold");
+    // svg
+    //   .append("text")
+    //   .text(`Course Average % Seen: ${data.course_avg_percent_seen.toFixed(2)}`)
+    //   .attr("x", width - width / 4 - MARGIN.right / 2)
+    //   .attr("y", height - MARGIN.bottom / 2)
+    //   .style("text-anchor", "middle")
+    //   .style("font-size", 17)
+    //   .style("font-weight", "bold");
 
     setLoading(false);
   }
