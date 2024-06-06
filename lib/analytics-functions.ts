@@ -1,5 +1,9 @@
 "use server";
 
+/***
+ * This file contains server-side functions that are used to fetch data from the Analytics class.
+ */
+
 import Analytics from "@/lib/Analytics";
 import {
   ActivityAccessed,
@@ -9,7 +13,9 @@ import {
 } from "./types";
 import { ICourseAnalyticsSettings_Raw } from "./models/courseAnalyticsSettings";
 
-export async function getInstructorQuickMetrics(course_id: string): Promise<InstructorQuickMetrics> {
+export async function getInstructorQuickMetrics(
+  course_id: string
+): Promise<InstructorQuickMetrics> {
   const analytics = new Analytics(course_id);
 
   const promises = [
@@ -31,6 +37,13 @@ export async function getStudentQuickMetrics(
   course_id: string,
   student_id: string
 ): Promise<StudentQuickMetrics> {
+  if (!student_id)
+    return {
+      assignmentsCount: 0,
+      averageScore: 0,
+      textbookEngagement: 0,
+    };
+
   const analytics = new Analytics(course_id);
 
   const promises = [
@@ -124,8 +137,22 @@ export async function updateCourseAnalyticsSettings(
   await analytics.updateCourseAnalyticsSettings(newSettings);
 }
 
-export async function getCourseRawData(course_id: string, privacy_mode: boolean) {
+export async function getCourseRawData(
+  course_id: string,
+  privacy_mode: boolean
+) {
   const analytics = new Analytics(course_id);
   const rawData = await analytics.getRawData(privacy_mode);
   return rawData;
+}
+
+export async function getAssignmentFrameworkData(
+  course_id: string,
+  assignment_id: string
+) {
+  const analytics = new Analytics(course_id);
+  const frameworkData = await analytics.getAssignmentFrameworkData(
+    assignment_id
+  );
+  return frameworkData;
 }

@@ -5,6 +5,7 @@ import {
   getADAPTPerformance,
   getGradeDistribution,
   getActivityAccessed,
+  getAssignmentFrameworkData,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -26,6 +27,7 @@ import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
 import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
+import LearningObjectiveCompletion from "./Visualizations/LearningObjectiveCompletion";
 
 const InstructorDashboard = ({ course_id }: { course_id: string }) => {
   return (
@@ -111,7 +113,7 @@ const InstructorDashboard = ({ course_id }: { course_id: string }) => {
         title="Learning Objective Completion"
         description="Breakdown of completion for the selected learning objective"
       >
-        <NoData width={1200} height={400} />
+        <LearningObjectiveCompletion getAssignmentData={(assignment_id) => getAssignmentFrameworkData(course_id, assignment_id)} />
       </VisualizationContainer>
     </GenericPageContainer>
   );

@@ -12,6 +12,7 @@ import {
   AssignmentAvgScoreCalc,
   GradeDistribution,
   IDWithName,
+  IDWithText,
   PerformancePerAssignment,
   SubmissionTimeline,
   TextbookInteractionsCount,
@@ -37,6 +38,8 @@ import CalcADAPTAllAssignments, {
 import ewsActorSummary from "./models/ewsActorSummary";
 import ewsCourseSummary from "./models/ewsCourseSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
+import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
+import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 
 class Analytics {
   private adaptID: number;
@@ -65,17 +68,22 @@ class Analytics {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
-      const res = await Adapt.aggregate([
+      const res = await calcADAPTAllAssignments.aggregate([
         {
           $match: {
-            course_id: this.adaptID.toString(),
+            courseID: this.adaptID.toString(),
+          },
+        },
+        {
+          $unwind: {
+            path: "$assignments",
           },
         },
         {
           $group: {
-            _id: "$assignment_id",
+            _id: "$assignments.id",
             assignment_name: {
-              $first: "$assignment_name",
+              $first: "$assignments.name",
             },
           },
         },
@@ -152,7 +160,11 @@ class Analytics {
         .select("avg_percent_seen");
 
       if (!allAssignmentData) {
-        throw new Error("Assignment data not found");
+        return {
+          seen: [],
+          unseen: [],
+          course_avg_percent_seen: courseAvgPercent?.avg_percent_seen ?? 0,
+        };
       }
 
       const allFoundAssignments = allAssignmentData?.assignments ?? [];
@@ -208,7 +220,7 @@ class Analytics {
     try {
       await connectDB();
 
-      const assignment = await Adapt.findOne({
+      const assignment = await Gradebook.findOne({
         assignment_id: assignment_id,
       });
 
@@ -219,13 +231,13 @@ class Analytics {
       const res = await Gradebook.aggregate([
         {
           $match: {
-            class: this.adaptID.toString(),
-            level_name: assignment.assignment_name,
+            course_id: this.adaptID.toString(),
+            assignment_name: assignment.assignment_name,
           },
         },
         {
           $group: {
-            _id: "$level_name",
+            _id: "$assignment_name",
             scores: {
               $push: "$assignment_percent",
             },
@@ -288,12 +300,12 @@ class Analytics {
       const classAvgPromise = Gradebook.aggregate([
         {
           $match: {
-            class: this.adaptID.toString(),
+            course_id: this.adaptID.toString(),
           },
         },
         {
           $group: {
-            _id: "$level_name",
+            _id: "$assignment_name",
             avg_score: { $avg: "$assignment_percent" },
           },
         },
@@ -302,13 +314,13 @@ class Analytics {
       const studentScorePromise = Gradebook.aggregate([
         {
           $match: {
-            class: this.adaptID.toString(),
+            course_id: this.adaptID.toString(),
             email: emailToCompare,
           },
         },
         {
           $group: {
-            _id: "$level_name",
+            _id: "$assignment_name",
             avg_score: { $avg: "$assignment_percent" },
           },
         },
@@ -596,6 +608,72 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return [];
+    }
+  }
+
+  public async getAssignmentFrameworkData(
+    assignment_id: string | number
+  ): Promise<{
+    framework_descriptors: IDWithText<number>[];
+    framework_levels: IDWithText<number>[];
+  }> {
+    try {
+      await connectDB();
+
+      const res = await frameworkQuestionAlignment.find({
+        assignment_id: parseInt(assignment_id.toString()),
+      });
+
+      if (res.length === 0) {
+        return {
+          framework_descriptors: [],
+          framework_levels: [],
+        };
+      }
+
+      const assignmentData = res.reduce(
+        (acc, curr) => {
+          curr.framework_descriptors.forEach((d: IDWithText<number>) => {
+            if (
+              !acc.framework_descriptors.find(
+                (f: IDWithText<number>) => f.id === d.id
+              )
+            ) {
+              acc.framework_descriptors.push(d);
+            }
+          });
+          curr.framework_levels.forEach((d: IDWithText<number>) => {
+            if (
+              !acc.framework_levels.find(
+                (f: IDWithText<number>) => f.id === d.id
+              )
+            ) {
+              acc.framework_levels.push(d);
+            }
+          });
+          return acc;
+        },
+        {
+          framework_descriptors: [],
+          framework_levels: [],
+        }
+      );
+
+      // Convert to POJO (_id in subdocuments will cause call stack overflow)
+      return {
+        framework_descriptors: JSON.parse(
+          JSON.stringify(assignmentData.framework_descriptors)
+        ),
+        framework_levels: JSON.parse(
+          JSON.stringify(assignmentData.framework_levels)
+        ),
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        framework_descriptors: [],
+        framework_levels: [],
+      };
     }
   }
 }

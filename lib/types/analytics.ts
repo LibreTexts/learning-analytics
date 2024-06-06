@@ -1,4 +1,4 @@
-import { IDWithName } from "./misc";
+import { IDWithName, IDWithText } from "./misc";
 
 export type AssignmentAvgScoreCalc = {
   _id: string;
@@ -20,7 +20,7 @@ export type PerformancePerAssignment = {
 export type GradeDistribution = {
   grades: string[];
   letter_grades_released: boolean;
-}
+};
 
 export type TextbookInteractionsCount = {
   date: string;
@@ -54,4 +54,14 @@ export type AnalyticsRawData = {
   coursePercent: number;
   classPercentile: number;
   classQuartile: number;
+};
+
+export type FrameworkData = {
+  framework_descriptors: IDWithText<number>[];
+  framework_levels: IDWithText<number>[];
+};
+
+export type FrameworkAlignment = FrameworkData & {
+  assignment_id: number;
+  question_id: number;
 };

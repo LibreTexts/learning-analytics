@@ -6,6 +6,10 @@ export type AnalyticsAPIResponse<T> = {
 };
 
 export type IDWithName = { id: string; name: string };
+export type IDWithText<T extends string | number = string> = {
+  id: T;
+  text: string;
+};
 
 export type ADAPT_CourseScoresAPIResponse = {
   body: string[][];

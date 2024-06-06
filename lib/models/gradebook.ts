@@ -4,8 +4,8 @@ import { Schema, model } from "mongoose";
 
 export interface IGradebookRaw {
   email: string;
-  level_name: string;
-  class: string;
+  assignment_name: string;
+  course_id: string;
   score: number;
   points_possible: number;
   assignment_percent: number;
@@ -21,8 +21,8 @@ export interface IGradebook extends IGradebookRaw, Document {}
 const GradebookSchema = new Schema<IGradebook>(
   {
     email: String,
-    level_name: String,
-    class: String,
+    assignment_name: String,
+    course_id: String,
     score: Number,
     points_possible: Number,
     assignment_percent: Number,

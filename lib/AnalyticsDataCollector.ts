@@ -1,10 +1,17 @@
 import useADAPTAxios from "@/hooks/useADAPTAxios";
 import { AxiosInstance } from "axios";
-import { ADAPTEnrollmentsResponse } from "./types";
+import {
+  ADAPTEnrollmentsResponse,
+  FrameworkAlignment,
+  IDWithText,
+} from "./types";
 import enrollments from "./models/enrollments";
 import connectDB from "./database";
 import adaptCourses from "./models/adaptCourses";
 import { encryptStudent } from "@/utils/data-helpers";
+import gradebook, { IGradebookRaw } from "./models/gradebook";
+import email from "next-auth/providers/email";
+import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 
 class AnalyticsDataCollector {
   private token: string | null = null;
@@ -16,12 +23,13 @@ class AnalyticsDataCollector {
       throw new Error("ADAPT_API_BASE_URL is not set");
     }
 
-    this.token = "";
+    this.token = process.env.TEMP_TOKEN || null;
   }
 
   async runCollectors() {
     //await this.collectEnrollments();
-    await this.collectGradebookData();
+    //await this.collectGradebookData();
+    await this.collectQuestionFrameworkAlignment();
   }
 
   async collectEnrollments() {
@@ -152,15 +160,16 @@ class AnalyticsDataCollector {
 
       const assignmentsData: {
         courseID: string;
-        assignments: { id: string; name: string }[];
-      }[] = assignmentsResponses.map((response) => {
+        assignments: { id: string; name: string; points_possible: string }[];
+      }[] = assignmentsResponses.map((response, idx) => {
         if (response.status === "fulfilled" && response.value) {
           return {
-            courseID: response.value.data.courseID,
+            courseID: knownCourseIDs[idx],
             assignments: response.value.data.assignments.map(
               (assignment: any) => ({
                 id: assignment.id,
                 name: assignment.name,
+                points_possible: assignment.total_points?.toString() ?? 0,
               })
             ),
           };
@@ -172,29 +181,156 @@ class AnalyticsDataCollector {
       });
 
       // map the assignment names in the parsed data to the assignment IDs in the assignmentsData
-      const mappedData = parsed.map((student) => {
+      const mappedData: IGradebookRaw[][] = parsed.map((student) => {
         const courseAssignments = assignmentsData.find(
           (data) => data.courseID === student.courseID
         )?.assignments;
 
-        if (!courseAssignments) return student;
+        if (!courseAssignments) return [];
 
-        const reduced = courseAssignments.reduce((acc, assignment) => {
-          const assignmentName = assignment.name;
-          const assignmentID = assignment.id;
-          // @ts-ignore
-          acc.push({
-            assignmentID,
-            assignmentName,
-            studentScore: student[assignmentName],
-          });
-          return acc;
-        }, []);
+        const reduced = courseAssignments.reduce(
+          (acc: IGradebookRaw[], assignment) => {
+            const assignmentName = assignment.name;
+            const assignmentID = assignment.id;
 
-        return { ...student, assignments: reduced };
+            const assignment_percent =
+              (parseFloat(student[assignmentName]) /
+                parseFloat(assignment.points_possible)) *
+              100;
+
+            // @ts-ignore
+            acc.push({
+              email: student.email,
+              course_id: student.courseID,
+              assignment_id: parseInt(assignmentID),
+              assignment_name: assignmentName,
+              score: parseFloat(
+                student[assignmentName] === "-" ? "0" : student[assignmentName]
+              ), // If the score is a dash, set it to 0
+              points_possible: parseFloat(assignment.points_possible),
+              assignment_percent:
+                parseFloat(assignment_percent.toFixed(2)) || 0,
+              turned_in_assignment: student[assignmentName] !== "-",
+              overall_course_grade: "", // TODO: Calculate this
+              overall_course_percent: 0, // TODO: Calculate this
+            });
+            // console.log(acc);
+            return acc;
+          },
+          []
+        );
+
+        return reduced;
       });
 
-      console.log(mappedData[0]);
+      const docsToInsert = mappedData.flat();
+
+      // Bulk upsert the gradebook data
+      await gradebook.bulkWrite(
+        docsToInsert.map((doc) => ({
+          updateOne: {
+            filter: {
+              email: doc.email,
+              course_id: doc.course_id,
+              assignment_id: doc.assignment_id,
+            },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async collectQuestionFrameworkAlignment() {
+    try {
+      await connectDB();
+
+      // const assignmentIds = await gradebook.distinct("assignment_id");
+
+      const assignmentIds = await gradebook.distinct("assignment_id").where({
+        course_id: "2904",
+      });
+
+      console.log("TOKEN: ", this.token);
+
+      // Get the questions for each assignment
+      const questionsPromises = assignmentIds.map((assignmentId) => {
+        return useADAPTAxios(this.token as string)?.get(
+          "/assignments/" + assignmentId + "/questions/ids"
+        );
+      });
+
+      const questionsResponses = await Promise.allSettled(questionsPromises);
+
+      const questionsData: { assignment_id: string; question_ids: string[] }[] =
+        questionsResponses.map((response, idx) => {
+          if (response.status === "fulfilled" && response.value) {
+            return {
+              assignment_id: assignmentIds[idx],
+              question_ids: response.value.data.question_ids_array,
+            };
+          }
+          return {
+            assignment_id: "",
+            question_ids: [],
+          };
+        });
+
+      // Spread the question_ids into individual documents
+      const questionDocs = questionsData
+        .map((data) => {
+          return data.question_ids.map((question_id) => ({
+            assignment_id: data.assignment_id,
+            question_id,
+          }));
+        })
+        .flat();
+
+      // Get the framework alignment for each question
+      const frameworkPromises = questionDocs.map((doc) => {
+        return useADAPTAxios(this.token as string)?.get(
+          "/framework-item-sync-question/question/" + doc.question_id
+        );
+      });
+
+      const frameworkResponses = await Promise.allSettled(frameworkPromises);
+
+      const frameworkData: (FrameworkAlignment | undefined)[] =
+        frameworkResponses.map((response, idx) => {
+          if (response.status === "fulfilled" && response.value) {
+            return {
+              assignment_id: parseInt(questionDocs[idx].assignment_id),
+              question_id: parseInt(questionDocs[idx].question_id),
+              framework_descriptors:
+                response.value.data.framework_item_sync_question?.descriptors ??
+                [],
+              framework_levels:
+                response.value.data.framework_item_sync_question?.levels ?? [],
+            };
+          }
+          return undefined;
+        });
+
+      const noUndefined = frameworkData.filter(
+        (data) => data !== undefined
+      ) as FrameworkAlignment[];
+
+      // Bulk upsert the framework alignment data
+      await frameworkQuestionAlignment.bulkWrite(
+        noUndefined.map((doc) => ({
+          updateOne: {
+            filter: {
+              assignment_id: doc.assignment_id,
+              question_id: doc.question_id,
+            },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
     } catch (err) {
       console.error(err);
     }
