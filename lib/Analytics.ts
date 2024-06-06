@@ -97,7 +97,12 @@ class Analytics {
       ]);
 
       // sort the assignments by name
-      res.sort((a, b) => a.assignment_name.localeCompare(b.assignment_name));
+      res.sort((a, b) =>
+        a.assignment_name.localeCompare(b.assignment_name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
 
       return (
         res.map((d) => ({
@@ -210,7 +215,7 @@ class Analytics {
       return {
         seen: _seen,
         unseen: _unseen,
-        course_avg_percent_seen: 0
+        course_avg_percent_seen: 0,
       };
     } catch (err) {
       console.error(err);
@@ -363,6 +368,13 @@ class Analytics {
         class_avg: Math.round(d.class_avg * 100) / 100, // round to two decimal places
         student_score: Math.round(d.student_score * 100) / 100, // round to two decimal places
       }));
+
+      truncated.sort((a, b) =>
+        a.assignment_id.localeCompare(b.assignment_id, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
 
       return truncated;
     } catch (err) {

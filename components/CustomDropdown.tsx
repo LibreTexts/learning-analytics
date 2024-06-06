@@ -5,6 +5,8 @@ import { FileEarmarkTextFill, Person, PersonFill } from "react-bootstrap-icons";
 
 interface CustomDropdownProps extends DropdownProps {
   icon: "file" | "person";
+  toggleClassName?: string;
+  labelLength?: number;
   children: React.ReactNode;
   label: string;
   loading?: boolean;
@@ -14,6 +16,8 @@ interface CustomDropdownProps extends DropdownProps {
 const CustomDropdown: React.FC<CustomDropdownProps> = ({
   icon,
   children,
+  toggleClassName,
+  labelLength = 30,
   label,
   loading,
   disabled,
@@ -22,7 +26,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   const id = useId();
   return (
     <Dropdown {...props} id={id}>
-      <Dropdown.Toggle variant="light" disabled={disabled || loading}>
+      <Dropdown.Toggle variant="light" disabled={disabled || loading} className={toggleClassName}>
           {loading ? (
             <div
               className="spinner-border spinner-border-sm tw-mr-1"
@@ -35,7 +39,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
           ) : (
             <PersonFill className="tw-mb-1 tw-mr-1" />
           )}
-          {truncateString(label, 30)}
+          {truncateString(label, labelLength)}
       </Dropdown.Toggle>
       <Dropdown.Menu
       className="tw-max-h-80 tw-overflow-y-auto tw-overflow-x-hidden"

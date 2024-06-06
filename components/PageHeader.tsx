@@ -17,7 +17,10 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
         {globalState.viewAs === "instructor" && <FERPAPrivacySwitch />}
       </div>
       <hr className="tw-border-gray-300 tw-mt-0.5 tw-mb-3" />
-      <p className="tw-text-sm tw-text-gray-500">{subtitle}</p>
+      <p className="tw-text-sm tw-text-gray-500">
+        {subtitle} Data is updated every 12 hours - current changes may not be
+        reflected.
+      </p>
     </div>
   );
 };

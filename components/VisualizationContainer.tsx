@@ -5,6 +5,7 @@ import {
   Download as IconDownload,
   Table as IconTable,
   BarChart as IconBarChart,
+  InfoCircle as IconInfoCircle,
 } from "react-bootstrap-icons";
 import { VisualizationInnerRef } from "@/lib/types";
 import { useGlobalContext } from "@/state/globalContext";
@@ -13,6 +14,7 @@ import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
 interface VisualizationContainerProps {
   title: string;
   description: string;
+  tooltipDescription?: string;
   children: React.ReactNode;
   studentMode?: boolean;
 }
@@ -20,6 +22,7 @@ interface VisualizationContainerProps {
 const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   title,
   description,
+  tooltipDescription,
   children,
   studentMode = false,
 }) => {
@@ -84,34 +87,31 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
     <Card className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-w-full">
       <div className="tw-flex tw-flex-row tw-justify-between">
         <div className="tw-flex tw-flex-col">
-          <h3 className="tw-text-2xl tw-font-semibold tw-mb-1">{title}</h3>
-          <p className="tw-text-xs tw-text-gray-500">{description}</p>
+          <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">
+            <h3 className="tw-text-2xl tw-font-semibold">{title}</h3>
+            {tooltipDescription && (
+              <IconInfoCircle className="tw-text-gray-500 tw-ml-1.5 tw-mb-1.5" />
+            )}
+          </div>
+          <p className="tw-text-xs tw-text-gray-500 tw-mt-0">{description}</p>
         </div>
       </div>
       <div ref={containerRef} className="tw-rounded-md tw-min-h-96">
         {childWithProps}
       </div>
-      <div className="tw-flex tw-flex-row tw-justify-center tw-items-center tw-mt-1 tw-w-full">
-        <div className="tw-flex tw-flex-row tw-basis-2/3 tw-justify-end tw-items-center">
-          <p className="tw-text-xs tw-text-slate-500 tw-italic tw-justify-center tw-items-center tw-mt-2">
-            Data is updated every 12 hours. Current changes may not be
-            reflected.
-          </p>
-        </div>
-        <div className="tw-flex tw-flex-row tw-justify-end tw-basis-1/3">
-          {!tableView && (
-            <Button className="" variant="light" onClick={handleDownloadImg}>
-              <IconDownload />
-            </Button>
-          )}
-          <Button
-            className="tw-ml-2"
-            variant="light"
-            onClick={() => setTableView(!tableView)}
-          >
-            {tableView ? <IconBarChart /> : <IconTable />}
+      <div className="tw-flex tw-flex-row tw-justify-end tw-items-end tw-mt-0.5 tw-w-full">
+        {!tableView && (
+          <Button className="" variant="light" onClick={handleDownloadImg}>
+            <IconDownload />
           </Button>
-        </div>
+        )}
+        <Button
+          className="tw-ml-2"
+          variant="light"
+          onClick={() => setTableView(!tableView)}
+        >
+          {tableView ? <IconBarChart /> : <IconTable />}
+        </Button>
       </div>
     </Card>
   );

@@ -33,11 +33,9 @@ export default async function RootLayout({
         {/* <IFrameResizer /> */}
         <Providers>
           <SessionToContextProvider>
-            {process.env.NODE_ENV !== "production" && (
-              <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">
-                <DemoModeControls />
-              </div>
-            )}
+            <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">
+              <DemoModeControls />
+            </div>
             <div className="tw-grid tw-grid-flow-col tw-gap-6 tw-grid-cols-[208px_auto]">
               <NavMenu />
               {children}
