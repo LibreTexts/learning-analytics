@@ -113,12 +113,14 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   function drawChart() {
     setLoading(true);
     const svg = d3.select(svgRef.current);
+    const subgroups = ["submitted", "not_submitted"];
+    const subgroupsPretty = ["Submitted", "Not Submitted"];
 
     svg.selectAll("*").remove(); // Clear existing chart
 
     const colorScale = d3
       .scaleOrdinal()
-      .domain(["seen", "unseen"])
+      .domain(subgroups)
       .range(["#1f77b4", "#ff7f0e"]);
 
     const pie = d3.pie().value((d: any) => {
@@ -147,32 +149,53 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .style("opacity", 0.7)
       .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
+    // svg
+    //   .selectAll("slices")
+    //   .data(dataReady)
+    //   .enter()
+    //   .append("text")
+    //   // @ts-ignore
+    //   .text((d) => `${capitalizeFirstLetter(d.data[0] ?? "")}: ${d.data[1]}`)
+    //   .attr("transform", (d) => {
+    //     // @ts-ignore
+    //     return `translate(${arcGenerator.centroid(d)[0] + width / 2}, ${
+    //       // @ts-ignore
+    //       arcGenerator.centroid(d)[1] + height / 2
+    //     })`;
+    //   })
+    //   .style("text-anchor", "middle")
+    //   .style("font-size", 17);
+
+    // Add one dot in the legend for each name.
     svg
-      .selectAll("slices")
-      .data(dataReady)
+      .selectAll("mydots")
+      .data(subgroupsPretty)
+      .enter()
+      .append("circle")
+      .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 165)) // 165 is the distance between dots
+      .attr("cy", (d, i) => (MARGIN.top / 2) - 1) // -1 for slight vertical adjustment
+      .attr("r", 7)
+      .style("fill", (d) => colorScale(d) as string);
+
+    const getCountForLabel = (label: string) => {
+      if (!data) return 0;
+      if (label.toLowerCase() === "submitted") return data["seen"];
+      if (label.toLowerCase() === "not submitted") return data["unseen"];
+      return 0;
+    };
+
+    // Add one dot in the legend for each name.
+    svg
+      .selectAll("mylabels")
+      .data(subgroupsPretty)
       .enter()
       .append("text")
-      // @ts-ignore
-      .text((d) => `${capitalizeFirstLetter(d.data[0] ?? "")}: ${d.data[1]}`)
-      .attr("transform", (d) => {
-        // @ts-ignore
-        return `translate(${arcGenerator.centroid(d)[0] + width / 2}, ${
-          // @ts-ignore
-          arcGenerator.centroid(d)[1] + height / 2
-        })`;
-      })
-      .style("text-anchor", "middle")
-      .style("font-size", 17);
-
-    // Add course avg info
-    // svg
-    //   .append("text")
-    //   .text(`Course Average % Seen: ${data.course_avg_percent_seen.toFixed(2)}`)
-    //   .attr("x", width - width / 4 - MARGIN.right / 2)
-    //   .attr("y", height - MARGIN.bottom / 2)
-    //   .style("text-anchor", "middle")
-    //   .style("font-size", 17)
-    //   .style("font-weight", "bold");
+      .attr("x", (d, i) => width - 165 - (MARGIN.right - 20 + i * 165)) // 165 is the distance between dots, 15 is space between dot and text
+      .attr("y", (d, i) => MARGIN.top / 2)
+      .style("fill", (d) => colorScale(d) as string)
+      .text((d) => `${d}: ${getCountForLabel(d)}`)
+      .attr("text-anchor", "left")
+      .style("alignment-baseline", "middle");
 
     setLoading(false);
   }

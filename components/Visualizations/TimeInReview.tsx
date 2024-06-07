@@ -16,7 +16,6 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import {
-  PerformancePerAssignment,
   TimeInReview as TimeInReviewType,
   VisualizationBaseProps,
 } from "@/lib/types";
@@ -34,7 +33,11 @@ const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type TimeInReviewProps = VisualizationBaseProps & {
   selectedStudentId?: string;
-  getData: (student_id: string) => Promise<TimeInReviewType[]>;
+  selectedAssignmentId?: string;
+  getData: (
+    student_id: string,
+    assignment_id: string
+  ) => Promise<TimeInReviewType[]>;
 };
 
 const TimeInReview: React.FC<TimeInReviewProps> = ({
@@ -42,6 +45,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
   height = DEFAULT_HEIGHT,
   tableView = false,
   selectedStudentId,
+  selectedAssignmentId,
   getData,
   innerRef,
 }) => {
@@ -57,17 +61,17 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
   const table = useReactTable<TimeInReviewType>({
     data: data,
     columns: [
-      columnHelper.accessor("assignment_id", {
+      columnHelper.accessor("question_id", {
         cell: (info) => <div>{info.getValue()}</div>,
-        header: "Assignment ID",
+        header: "Question ID",
       }),
-      columnHelper.accessor("minutes", {
-        cell: (info) => <div>{info.getValue()}</div>,
-        header: "Student Time (minutes)",
+      columnHelper.accessor("student_time", {
+        cell: (info) => <div>{parseInt(info.getValue()).toFixed(2)}</div>,
+        header: "Student Review Time (minutes)",
       }),
       columnHelper.accessor("course_avg", {
-        cell: (info) => <div>{info.getValue()}</div>,
-        header: "Class Average (minutes)",
+        cell: (info) => <div>{parseFloat(info.getValue()).toFixed(2)}</div>,
+        header: "Class Review Average (minutes)",
       }),
     ],
     getCoreRowModel: getCoreRowModel(),
@@ -75,7 +79,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedStudentId]);
+  }, [selectedStudentId, selectedAssignmentId]);
 
   useEffect(() => {
     if (data.length === 0 || tableView) return;
@@ -84,9 +88,9 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudentId) return;
+      if (!selectedStudentId || !selectedAssignmentId) return;
       setLoading(true);
-      const data = await getData(selectedStudentId);
+      const data = await getData(selectedStudentId, selectedAssignmentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -98,18 +102,18 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
   const getMax = useMemo(() => {
     let max = 0;
     if (data.length === 0) {
-      return 100; // Default value (if no data is present)
+      return 15; //Default value (if no data is present)
     }
     data.forEach((d) => {
+      if (d.student_time > max) max = d.student_time;
       if (d.course_avg > max) max = d.course_avg;
-      if (d.minutes > max) max = d.minutes;
     });
     return max;
   }, [data]);
 
   function buildChart() {
     setLoading(true);
-    const subgroups = ["course_avg", "minutes"];
+    const subgroups = ["course_avg", "student_time"];
     const subgroupsPretty = ["Class Average", "Student Time"];
     const svg = d3.select(svgRef.current);
 
@@ -117,7 +121,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
     const x = d3
       .scaleBand()
-      .domain(data.map((d) => d.assignment_id))
+      .domain(data.map((d) => d.question_id.toString()))
       .range([MARGIN.left, width - MARGIN.right])
       .padding(0.1);
 
@@ -140,7 +144,8 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
-      .style("font-size", "8px");
+      .style("font-size", "8px")
+      .text((d) => `Q: ${d}`);
 
     // Add y-axis
     svg
@@ -155,7 +160,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("x", `-${height / 3}`)
       .attr("y", MARGIN.left / 2 - 10)
       .attr("transform", "rotate(-90)")
-      .text("% score")
+      .text("Time (minutes)")
       .style("font-size", "12px");
 
     const color = d3
@@ -169,7 +174,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .data(data)
       .enter()
       .append("g")
-      .attr("transform", (d) => `translate(${x(d.assignment_id)}, 0)`)
+      .attr("transform", (d) => `translate(${x(d.question_id.toString())}, 0)`)
       .selectAll("rect")
       // @ts-ignore
       .data((d) => subgroups.map((key) => ({ key, value: d[key] })))
@@ -178,7 +183,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("x", (d) => xSubgroup(d.key) ?? 0)
       .attr("y", (d) => y(d.value))
       .attr("width", xSubgroup.bandwidth() - BUCKET_PADDING)
-      .attr("height", (d) => height - MARGIN.bottom - y(d.value))
+      .attr("height", (d) => height - MARGIN.bottom - y(d.value) ?? 0)
       .attr("fill", (d) => color(d.key) as string);
 
     // Add one dot in the legend for each name.
@@ -187,8 +192,8 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .data(subgroupsPretty)
       .enter()
       .append("circle")
-      .attr("cx", (d, i) => MARGIN.left + i * 155) // 155 is the distance between dots
-      .attr("cy", (d, i) => height - 10)
+      .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 155)) // 155 is the distance between dots
+      .attr("cy", (d, i) => MARGIN.top / 2)
       .attr("r", 7)
       .style("fill", (d) => color(d) as string);
 
@@ -198,8 +203,8 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .data(subgroupsPretty)
       .enter()
       .append("text")
-      .attr("x", (d, i) => MARGIN.left + 15 + i * 155) // 155 is the distance between dots, 15 is space between dot and text
-      .attr("y", (d, i) => height - 10)
+      .attr("x", (d, i) => width - 155 - (MARGIN.right - 15 + i * 155)) // 155 is the distance between dots, 15 is space between dot and text
+      .attr("y", (d, i) => MARGIN.top / 2)
       .style("fill", (d) => color(d) as string)
       .text((d) => d)
       .attr("text-anchor", "left")

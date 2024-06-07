@@ -157,8 +157,21 @@ export async function getAssignmentFrameworkData(
   return frameworkData;
 }
 
-export async function checkFinalGradesReleased(course_id: string){
+export async function checkFinalGradesReleased(course_id: string) {
   const analytics = new Analytics(course_id);
   const finalGradesReleased = await analytics.checkFinalGradesReleased();
   return finalGradesReleased;
+}
+
+export async function getTimeInReview(
+  course_id: string,
+  student_id: string,
+  assignment_id: string
+) {
+  const analytics = new Analytics(course_id);
+  const timeInReview = await analytics.getTimeInReviewTime(
+    student_id,
+    assignment_id
+  );
+  return timeInReview;
 }
