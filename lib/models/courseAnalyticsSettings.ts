@@ -3,6 +3,8 @@ import { Document, Schema, model, models } from "mongoose";
 export interface ICourseAnalyticsSettings_Raw {
   courseID: string;
   shareGradeDistribution: boolean;
+  frameworkExclusions?: string[];
+  assignmentExclusions?: string[];
 }
 
 export interface ICourseAnalyticsSettings
@@ -15,6 +17,14 @@ const CourseAnalyticsSettingsSchema = new Schema<ICourseAnalyticsSettings>(
     shareGradeDistribution: {
       type: Boolean,
       default: false,
+    },
+    frameworkExclusions: {
+      type: [String],
+      default: [],
+    },
+    assignmentExclusions: {
+      type: [String],
+      default: [],
     },
   },
   {
@@ -34,4 +44,6 @@ export default models.CourseAnalyticsSettings ||
 export const DEFAULT_COURSE_ANALYTICS_SETTINGS: ICourseAnalyticsSettings_Raw = {
   courseID: "",
   shareGradeDistribution: false,
+  frameworkExclusions: [],
+  assignmentExclusions: [],
 };
