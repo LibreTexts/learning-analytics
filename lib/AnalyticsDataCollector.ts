@@ -121,23 +121,41 @@ class AnalyticsDataCollector {
           };
         });
 
-      const parsed: { courseID: string; email: string; [x: string]: string }[] =
-        [];
+      const parsed: {
+        courseID: string;
+        email: string;
+        weighted: string;
+        letter: string;
+        [x: string]: string;
+      }[] = [];
 
       for (const course of scoreData) {
         if (!course.gradeData) continue;
         const headers = course.gradeData[0];
         for (let i = 1; i < course.gradeData.length; i++) {
           const email = course.gradeData[i][0]; // First 'column' is email
-          const data = course.gradeData[i].slice(1); // Rest of the 'columns' are data
+          const data = course.gradeData[i].slice(
+            1,
+            course.gradeData[i].length - 2
+          ); // Rest of the 'columns' are data, excluding the last 2 columnds, which are "Weighted Score" and "Letter Grade"
+          const weighted = course.gradeData[i][course.gradeData[i].length - 2];
+          const letter = course.gradeData[i][course.gradeData[i].length - 1];
           const reduced = data.reduce((acc, val, index) => {
             const assignmentName = headers[index + 1];
             // @ts-ignore
             acc[assignmentName] = val;
+            acc["weighted"] = weighted;
+            acc["letter"] = letter;
             return acc;
           }, {} as { [x: string]: string });
 
-          parsed.push({ courseID: course.courseID, email, ...reduced });
+          parsed.push({
+            courseID: course.courseID,
+            email,
+            weighted: "",
+            letter: "",
+            ...reduced,
+          });
         }
       }
 
@@ -201,6 +219,12 @@ class AnalyticsDataCollector {
                 parseFloat(assignment.points_possible)) *
               100;
 
+            const getOverallPercent = (raw: string) => {
+              if (raw === "-") return 0;
+              if (raw.includes("%")) return parseFloat(raw.replace("%", ""));
+              return parseFloat(raw);
+            };
+
             // @ts-ignore
             acc.push({
               email: student.email,
@@ -214,8 +238,8 @@ class AnalyticsDataCollector {
               assignment_percent:
                 parseFloat(assignment_percent.toFixed(2)) || 0,
               turned_in_assignment: student[assignmentName] !== "-",
-              overall_course_grade: "", // TODO: Calculate this
-              overall_course_percent: 0, // TODO: Calculate this
+              overall_course_grade: student.letter,
+              overall_course_percent: getOverallPercent(student.weighted),
             });
             // console.log(acc);
             return acc;
