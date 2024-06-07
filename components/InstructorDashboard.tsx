@@ -49,6 +49,7 @@ const InstructorDashboard = ({
       <VisualizationContainer
         title="Performance Per Assignment"
         description="Class average vs. selected student's scores"
+        tooltipDescription="Performance per assignment is the student's score on each assignment, compared to the class average."
       >
         <PerfPerAssignment
           getData={(student_id) =>
@@ -68,7 +69,11 @@ const InstructorDashboard = ({
         description="Class average vs. selected student's time in review"
         tooltipDescription="Time in review is the student's time spent reviewing questions after they have been submitted."
       >
-        <TimeInReview getData={(student_id, assigment_id) => getTimeInReview(course_id, student_id, assigment_id)} />
+        <TimeInReview
+          getData={(student_id, assigment_id) =>
+            getTimeInReview(course_id, student_id, assigment_id)
+          }
+        />
       </VisualizationContainer>
       {/* <VisualizationContainer
         title="Time on Task (Homework)"
@@ -79,6 +84,7 @@ const InstructorDashboard = ({
       <VisualizationContainer
         title="Submission Activity"
         description="Timeline of student submissions for selected assignment"
+        tooltipDescription="A histogram of student submissions over time for the selected assignment."
       >
         <SubmissionTimeline
           getData={(assignment_id) =>
@@ -102,13 +108,14 @@ const InstructorDashboard = ({
       </VisualizationContainer>
       <VisualizationContainer
         title="Learning Curve"
-        description="Performance vs opportunity for each student"
+        description="Performance vs. opportunity for each student"
       >
         <NoData width={1200} height={400} />
       </VisualizationContainer>
       <VisualizationContainer
         title="Learning Objective Completion"
         description="Breakdown of completion for the selected learning objective"
+        tooltipDescription="Learning objective completion is determined by the number of questions answered correctly by the student, where those questions have been aligned with a framework's learning objective(s)."
       >
         <LearningObjectiveCompletion
           getAssignmentData={(assignment_id) =>

@@ -1,6 +1,6 @@
 "use client";
 import React, { cloneElement, useEffect, useRef, useState } from "react";
-import { Button, Card } from "react-bootstrap";
+import { Button, Card, OverlayTrigger, Tooltip } from "react-bootstrap";
 import {
   Download as IconDownload,
   Table as IconTable,
@@ -90,7 +90,9 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
           <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">
             <h3 className="tw-text-2xl tw-font-semibold">{title}</h3>
             {tooltipDescription && (
-              <IconInfoCircle className="tw-text-gray-500 tw-ml-1.5 tw-mb-1.5" />
+              <OverlayTrigger overlay={<Tooltip>{tooltipDescription}</Tooltip>}>
+                <IconInfoCircle className="tw-text-gray-500 tw-ml-1.5 tw-mb-1.5" />
+              </OverlayTrigger>
             )}
           </div>
           <p className="tw-text-xs tw-text-gray-500 tw-mt-0">{description}</p>

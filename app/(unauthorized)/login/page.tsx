@@ -44,7 +44,6 @@ export default async function Page() {
           </div>
         </Form>
       </div>
-      <IFrameResizer />
     </div>
   );
 }
