@@ -44,11 +44,6 @@ export const validateRequest = cache(
     await connectDB();
     const aggResult = await session.aggregate([
       {
-        $match: {
-          _id: "vc7ipsjit636h424cdjvhqa4fpmuz6pe7o3jsqvt",
-        },
-      },
-      {
         $addFields: {
           userId: {
             $toObjectId: "$user_id",
@@ -75,8 +70,8 @@ export const validateRequest = cache(
       {
         $project: {
           "user.password": 0, // Remove password from user object
-        }
-      }
+        },
+      },
     ]);
 
     const result = aggResult[0];

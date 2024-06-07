@@ -8,7 +8,10 @@ import DemoModeControls from "@/components/DemoModeControls";
 import { validateRequest } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SessionToContextProvider from "@/components/SessionToContextProvider";
-import IFrameResizer from "@/components/IFrameResizer";
+import dynamic from "next/dynamic";
+const IFrameResizer = dynamic(() => import("@/components/IFrameResizer"), {
+  ssr: false,
+});
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,7 +33,7 @@ export default async function RootLayout({
       <body
         className={classNames(inter.className, "container mt-4 default-layout")}
       >
-        {/* <IFrameResizer /> */}
+        <IFrameResizer />
         <Providers>
           <SessionToContextProvider>
             <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">

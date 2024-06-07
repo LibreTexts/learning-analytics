@@ -1,20 +1,24 @@
+// @ts-nocheck
 "use client";
 import { useEffect } from "react";
-import "@iframe-resizer/child";
+import "iframe-resizer/js/iframeResizer.contentWindow";
 
-interface IFrameResizerProps {}
-
-const IFrameResizer: React.FC<IFrameResizerProps> = () => {
+export default function IFrameResizer() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if(!window) {
+      console.log('no window')
+    }
+    if (!window.iFrameResizer) {
+      console.log('rendered but no iFrameResizer')
+    }
+    console.log('rendered with iFrameResizer')
     window.iFrameResizer = {
-      onMessage: function (message: any) {
-        console.log("iFrameResizer message:", message);
+      onMessage: function (message) {
+        alert("Got message from parent");
+        console.log("message", message);
       },
     };
   }, []);
 
   return <></>;
-};
-
-export default IFrameResizer;
+}
