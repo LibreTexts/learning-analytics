@@ -71,7 +71,7 @@ const NavMenu = () => {
         )}
       </ListGroup>
       {
-        globalState.viewAs === "instructor" && (
+        globalState.viewAs === "instructor" && isActive('dashboard') && (
           <InstructorDashboardControls className="tw-sticky tw-top-4"/>
         )
       }
