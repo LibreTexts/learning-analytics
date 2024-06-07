@@ -67,7 +67,7 @@ export type FrameworkAlignment = FrameworkData & {
 };
 
 export type TimeInReview = {
-  assignment_id: string;
-  minutes: number
-  course_avg: number
-}
+  question_id: number;
+  student_time: number;
+  course_avg: number;
+};

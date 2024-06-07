@@ -16,6 +16,7 @@ import {
   PerformancePerAssignment,
   SubmissionTimeline,
   TextbookInteractionsCount,
+  TimeInReview,
 } from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
@@ -41,6 +42,7 @@ import adaptCourses from "@/lib/models/adaptCourses";
 import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
+import calcReviewTime from "./models/calcReviewTime";
 
 class Analytics {
   private adaptID: number;
@@ -707,6 +709,75 @@ class Analytics {
     } catch (err) {
       console.error(err);
       return false;
+    }
+  }
+
+  public async getTimeInReviewTime(
+    student_id: string,
+    assignment_id: string
+  ): Promise<TimeInReview[]> {
+    try {
+      await connectDB();
+
+      const studentRes = await calcReviewTime.find({
+        course_id: this.adaptID,
+        actor: student_id,
+        assignment_id: parseInt(assignment_id),
+      });
+
+      const courseRes = await calcReviewTime.find({
+        course_id: this.adaptID,
+        assignment_id: parseInt(assignment_id),
+      });
+
+      const studentData = studentRes.map((d) => ({
+        question_id: d.question_id,
+        total_review_time: d.total_review_time,
+      }));
+
+      // Get the total review time for each question
+      const courseData = courseRes.reduce((acc, curr) => {
+        // @ts-ignore
+        const existing = acc.find((a) => a.question_id === curr.question_id);
+        if (existing) {
+          existing.total_review_time += curr.total_review_time;
+        } else {
+          acc.push({
+            question_id: curr.question_id,
+            total_review_time: curr.total_review_time,
+          });
+        }
+        return acc;
+      }, [] as { question_id: number; total_review_time: number }[]);
+
+      // Calculate the average review time for each question
+      const courseDataAvg = courseData.map((d: any) => ({
+        question_id: d.question_id,
+        total_review_time:
+          d.total_review_time /
+          courseData.filter((c: any) => c.question_id === d.question_id).length,
+      }));
+
+      const mapped = studentData.map((d) => ({
+        question_id: d.question_id,
+        student_time: d.total_review_time,
+        course_avg:
+          courseDataAvg.find((c: any) => c.question_id === d.question_id)
+            ?.total_review_time ?? 0,
+      }));
+
+      if (mapped.length === 0) {
+        return courseDataAvg.map((d: any) => ({
+          question_id: d.question_id,
+          student_time: 0,
+          course_avg: d.total_review_time,
+        }));
+      }
+
+      return mapped;
+    } catch (err) {
+      console.error(err);
+      return [];
     }
   }
 }

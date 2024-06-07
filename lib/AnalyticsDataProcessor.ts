@@ -19,6 +19,7 @@ import calcADAPTInteractionDays from "./models/calcADAPTInteractionDays";
 import calcADAPTAssignments from "./models/calcADAPTAssignments";
 import enrollments from "./models/enrollments";
 import reviewTime from "./models/reviewTime";
+import calcReviewTime from "./models/calcReviewTime";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -729,6 +730,84 @@ class AnalyticsDataProcessor {
           },
         },
       ]);
+
+      // Returns this format: { actor: string, assignment_id: string, course_id: string, questions: { question_id: string, review_time_start: string, review_time_end: string}[] }
+      const reviewTimeData: {
+        actor: string;
+        assignment_id: string;
+        course_id: string;
+        question_id: string;
+        review_time_start: Date;
+        review_time_end: Date;
+      }[] = reviewTimeRaw.map((data) => {
+        const { actor, assignment_id, course_id, questions } = data;
+        return questions.map((question: any) => ({
+          actor,
+          assignment_id,
+          course_id,
+          question_id: question.question_id,
+          review_time_start: new Date(question.review_time_start),
+          review_time_end: new Date(question.review_time_end),
+        }));
+      });
+
+      const reviewTimeFlattened = reviewTimeData.flat();
+
+      const reviewTimeAgg = reviewTimeFlattened.reduce((acc, curr) => {
+        const key = `${curr.actor}:${curr.assignment_id}:${curr.course_id}:${curr.question_id}`;
+        if (acc.has(key)) {
+          acc.get(key)?.push({
+            review_time_start: curr.review_time_start,
+            review_time_end: curr.review_time_end,
+          });
+        } else {
+          acc.set(key, [
+            {
+              review_time_start: curr.review_time_start,
+              review_time_end: curr.review_time_end,
+            },
+          ]);
+        }
+        return acc;
+      }, new Map<string, { review_time_start: Date; review_time_end: Date }[]>());
+
+      const reviewTimeAggArray = Array.from(reviewTimeAgg.entries()).map(
+        ([key, value]) => {
+          const [actor, assignment_id, course_id, question_id] = key.split(":");
+          const totalReviewTimeMs = value.reduce((acc, curr) => {
+            return (
+              acc +
+              (curr.review_time_end.getTime() -
+                curr.review_time_start.getTime())
+            );
+          }, 0);
+
+          // convert to minutes
+          const totalReviewTime = totalReviewTimeMs / 60000;
+          return {
+            actor,
+            assignment_id,
+            course_id,
+            question_id,
+            total_review_time: totalReviewTime,
+          };
+        }
+      );
+
+      await calcReviewTime.bulkWrite(
+        reviewTimeAggArray.map((data) => ({
+          updateOne: {
+            filter: {
+              actor: data.actor,
+              assignment_id: data.assignment_id,
+              course_id: data.course_id,
+              question_id: data.question_id,
+            },
+            update: data,
+            upsert: true,
+          },
+        }))
+      );
 
       debugADP("[compressReviewTime]: Finished aggregation.");
       return true;

@@ -7,6 +7,7 @@ import {
   getActivityAccessed,
   getAssignmentFrameworkData,
   checkFinalGradesReleased,
+  getTimeInReview,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -29,6 +30,7 @@ import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
 import LearningObjectiveCompletion from "./Visualizations/LearningObjectiveCompletion";
+import TimeInReview from "./Visualizations/TimeInReview";
 
 const InstructorDashboard = ({
   course_id,
@@ -62,11 +64,18 @@ const InstructorDashboard = ({
         <TextbookActivity getData={getPerformancePerAssignment} />
       </VisualizationContainer> */}
       <VisualizationContainer
+        title="Time in Review"
+        description="Class average vs. selected student's time in review"
+        tooltipDescription="Time in review is the student's time spent reviewing questions after they have been submitted."
+      >
+        <TimeInReview getData={(student_id, assigment_id) => getTimeInReview(course_id, student_id, assigment_id)} />
+      </VisualizationContainer>
+      {/* <VisualizationContainer
         title="Time on Task (Homework)"
         description="Class average vs. selected student's time on task"
       >
         <NoData width={1200} height={400} />
-      </VisualizationContainer>
+      </VisualizationContainer> */}
       <VisualizationContainer
         title="Submission Activity"
         description="Timeline of student submissions for selected assignment"
@@ -128,10 +137,12 @@ const InstructorDashboard = ({
             />
           </VisualizationContainer>
         </>
-      ): (
+      ) : (
         <div className="tw-w-full tw-mt-4">
           <p className="tw-text-sm tw-text-center tw-text-gray-600">
-            Final grades have not been released for this course. Final score and letter grade distribution visualizations will be available once grades are released.
+            Final grades have not been released for this course. Final score and
+            letter grade distribution visualizations will be available once
+            grades are released.
           </p>
         </div>
       )}
