@@ -71,9 +71,14 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
   }, [selectedAssignmentId]);
 
   useEffect(() => {
-    if (data.length === 0) return;
+    if (
+      data.length === 0 ||
+      assignmentData.framework_descriptors.length === 0 ||
+      assignmentData.framework_levels.length === 0
+    )
+      return;
     drawChart();
-  }, [width, height, data]);
+  }, [width, height, data, assignmentData]);
 
   async function handleGetData() {
     try {
@@ -102,106 +107,131 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
   }
 
   function drawChart() {
-    // setLoading(true);
+    setLoading(true);
     // const svg = d3.select(svgRef.current);
-    // svg.selectAll("*").remove(); // Clear existing chart
+    // svg.selectAll("*").remove();
+
+    // // create a horizontal boxplot with demo data
+    // const DEMO_DATA = [
+    //   { min: 0, q1: 10, median: 20, q3: 30, max: 40 },
+    //   { min: 10, q1: 20, median: 30, q3: 40, max: 50 },
+    //   { min: 20, q1: 30, median: 40, q3: 50, max: 60 },
+    //   { min: 30, q1: 40, median: 50, q3: 60, max: 70 },
+    // ];
+
     // const x = d3
     //   .scaleBand()
-    //   .domain(["F", "D", "C", "B", "A"])
-    //   .range([MARGIN.left, width - MARGIN.right]);
+    //   .domain(DEMO_DATA.map((d, i) => i))
+    //   .range([MARGIN.left, width - MARGIN.right])
+    //   .padding(0.1);
+
     // const y = d3
     //   .scaleLinear()
-    //   .range([height - MARGIN.bottom, MARGIN.top])
-    //   .domain([0, getMaxCount]);
-    // // Add X axis
+    //   .domain([0, 70])
+    //   .range([height - MARGIN.bottom, MARGIN.top]);
+
+    // const line = d3
+    //   .line()
+    //   .x((d, i) => x(i) + x.bandwidth() / 2)
+    //   .y((d) => y(d));
+
     // svg
     //   .append("g")
-    //   .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
+    //   .selectAll("line")
+    //   .data(DEMO_DATA)
+    //   .join("line")
+    //   .attr("stroke", "black")
+    //   .attr("x1", (d, i) => x(i) + x.bandwidth() / 2)
+    //   .attr("x2", (d, i) => x(i) + x.bandwidth() / 2)
+    //   .attr("y1", (d) => y(d.min))
+    //   .attr("y2", (d) => y(d.max));
+
+    // svg
+    //   .append("g")
+    //   .selectAll("rect")
+    //   .data(DEMO_DATA)
+    //   .join("rect")
+    //   .attr("stroke", "black")
+    //   .attr("fill", "white")
+    //   .attr("x", (d, i) => x(i))
+    //   .attr("y", (d) => y(d.q3))
+    //   .attr("width", x.bandwidth())
+    //   .attr("height", (d) => y(d.q1) - y(d.q3));
+
+    // svg
+    //   .append("g")
+    //   .selectAll("rect")
+    //   .data(DEMO_DATA)
+    //   .join("rect")
+    //   .attr("stroke", "black")
+    //   .attr("fill", "black")
+    //   .attr("x", (d, i) => x(i) + x.bandwidth() * 0.25)
+    //   .attr("y", (d) => y(d.median))
+    //   .attr("width", x.bandwidth() * 0.5)
+    //   .attr("height", 2);
+
+    // svg
+    //   .append("g")
+    //   .selectAll("line")
+    //   .data(DEMO_DATA)
+    //   .join("line")
+    //   .attr("stroke", "black")
+    //   .attr("x1", (d) => x(d) + x.bandwidth() * 0.25)
+    //   .attr("x2", (d) => x(d) + x.bandwidth() * 0.75)
+    //   .attr("y1", (d) => y(d.median))
+    //   .attr("y2", (d) => y(d.median));
+
+    // svg
+    //   .append("g")
+    //   .selectAll("line")
+    //   .data(DEMO_DATA)
+    //   .join("line")
+    //   .attr("stroke", "black")
+    //   .attr("x1", (d) => x(d) + x.bandwidth() / 2)
+    //   .attr("x2", (d) => x(d) + x.bandwidth() / 2)
+    //   .attr("y1", (d) => y(d.q3))
+    //   .attr("y2", (d) => y(d.max));
+
+    // svg
+    //   .append("g")
+    //   .selectAll("line")
+    //   .data(DEMO_DATA)
+    //   .join("line")
+    //   .attr("stroke", "black")
+    //   .attr("x1", (d) => x(d) + x.bandwidth() / 2)
+    //   .attr("x2", (d) => x(d) + x.bandwidth() / 2)
+    //   .attr("y1", (d) => y(d.q1))
+    //   .attr("y2", (d) => y(d.min));
+
+    // svg
+    //   .append("g")
     //   .call(d3.axisBottom(x))
-    //   .selectAll("text")
-    //   .style("text-anchor", "end")
-    //   .style("font-size", "8px");
-    // // Add Y axis
+    //   .attr("transform", `translate(0, ${height - MARGIN.bottom})`);
+
     // svg
     //   .append("g")
     //   .call(d3.axisLeft(y))
     //   .attr("transform", `translate(${MARGIN.left}, 0)`);
-    // // // Create tool tip
-    // const tooltip = d3
-    //   .select(containerRef.current)
-    //   .append("div")
-    //   .style("position", "absolute")
-    //   .style("bottom", height - MARGIN.bottom + "px")
-    //   .style("right", MARGIN.right + 10 + "px")
-    //   .style("opacity", 0)
-    //   .attr("class", "tooltip")
-    //   .style("background-color", "white")
-    //   .style("border", "solid")
-    //   .style("border-width", "1px")
-    //   .style("border-radius", "5px")
-    //   .style("padding", "10px");
-    // // Three function that change the tooltip when user hover / move / leave a cell
-    // const mouseover = (e: any, d: GradeBucket) => {
-    //   tooltip
-    //     .html("Letter Grade: " + d.grade + "<br>" + "Count: " + d.count)
-    //     .style("opacity", 1)
-    //     .style("visibility", "visible");
-    // };
-    // const mousemove = (e: any, d: GradeBucket) => {
-    //   //tooltip.style("left", e.pageX + "px").style("top", e.pageY - 5 + "px");
-    // };
-    // const mouseleave = (d: any) => {
-    //   tooltip.style("opacity", 0);
-    // };
-    // svg
-    //   .selectAll("rect")
-    //   .data(data)
-    //   .enter()
-    //   .append("rect")
-    //   .attr("x", (d) => x(d.grade) ?? 0)
-    //   .attr("y", (d) => y(d.count) ?? 0)
-    //   .attr("width", x.bandwidth() - BUCKET_PADDING)
-    //   .attr("height", (d) => height - MARGIN.bottom - y(d.count))
-    //   .on("mouseover", mouseover)
-    //   .on("mousemove", mousemove)
-    //   .on("mouseleave", mouseleave)
-    //   .style("fill", LIBRE_BLUE);
-    // // Add X axis label:
-    // svg
-    //   .append("text")
-    //   .attr("text-anchor", "end")
-    //   .attr("x", width / 2 + MARGIN.left)
-    //   .attr("y", MARGIN.top)
-    //   .text("Letter Grade")
-    //   .style("font-size", "12px");
-    // // Add Y axis label:
-    // svg
-    //   .append("text")
-    //   .attr("text-anchor", "end")
-    //   .attr("x", `-${height / 3}`)
-    //   .attr("y", MARGIN.left / 2 - 10)
-    //   .attr("transform", "rotate(-90)")
-    //   .text("# of Students")
-    //   .style("font-size", "12px");
-    // setLoading(false);
+
+    setLoading(false);
   }
 
   return (
     <div ref={containerRef}>
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && (
-        <div className="tw-w-full tw-max-h-[500px] tw-overflow-y-auto">
+        <div className="tw-w-full">
           {assignmentData.framework_levels.map((level, index) => {
             return (
-              <div key={index} className="tw-flex tw-items-center tw-mb-2">
-                <div className="tw-w-4 tw-h-4 tw-mr-2 tw-rounded-full tw-bg-blue-500"></div>
-                <div>{level.text}</div>
-              </div>
+              <>
+                <div key={index} className="tw-flex tw-items-center tw-mb-2">
+                  <div className="tw-w-4 tw-h-4 tw-mr-2 tw-rounded-full tw-bg-blue-500"></div>
+                  <div>{level.text}</div>
+                </div>
+              </>
             );
           })}
-          {/* <svg ref={svgRef} width={width} height={height}>
-            <g className="tooltip-area"></g>
-          </svg> */}
+          {/* <svg ref={svgRef} width={width} height={height}></svg> */}
         </div>
       )}
       {!loading && noFrameworkAlignment && (!data || data.length === 0) && (

@@ -640,6 +640,10 @@ class Analytics {
     try {
       await connectDB();
 
+      const courseSettings = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
       const res = await frameworkQuestionAlignment.find({
         assignment_id: parseInt(assignment_id.toString()),
       });
@@ -679,13 +683,28 @@ class Analytics {
         }
       );
 
+      const filteredDescriptors = assignmentData.framework_descriptors.filter(
+        (d: IDWithText<number>) => {
+          return (
+            courseSettings?.frameworkExclusions?.includes(d.text) === false
+          );
+        }
+      );
+      const filteredLevels = assignmentData.framework_levels.filter(
+        (d: IDWithText<number>) => {
+          return (
+            courseSettings?.frameworkExclusions?.includes(d.text) === false
+          );
+        }
+      );
+
       // Convert to POJO (_id in subdocuments will cause call stack overflow)
       return {
         framework_descriptors: JSON.parse(
-          JSON.stringify(assignmentData.framework_descriptors)
+          JSON.stringify(filteredDescriptors)
         ),
         framework_levels: JSON.parse(
-          JSON.stringify(assignmentData.framework_levels)
+          JSON.stringify(filteredLevels)
         ),
       };
     } catch (err) {
