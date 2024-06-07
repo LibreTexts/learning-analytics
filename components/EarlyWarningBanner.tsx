@@ -20,7 +20,8 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ getStatus }) => {
 
   useEffect(() => {
     if(!globalState.courseID) return;
-    getStatus(globalState.courseID).then((status) => setStatus(status));
+    //getStatus(globalState.courseID).then((status) => setStatus(status));
+    setStatus("warning")
   }, [globalState.courseID]);
 
   const statusIcon = useMemo(() => {
@@ -30,7 +31,7 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ getStatus }) => {
       case "danger":
         return <ExclamationCircleFill size={36} color="red" />;
       case "warning":
-        return <DashCircleFill size={36} color="yellow" />;
+        return <DashCircleFill size={36} color="orange" />;  
       case "insufficient-data":
         return <DashCircle size={36} color="gray" />;
       default:
@@ -69,7 +70,7 @@ const EarlyWarningBanner: React.FC<EarlyWarningBanner> = ({ getStatus }) => {
   }, [status]);
 
   return (
-    <Card className="tw-shadow-sm">
+    <Card className="tw-shadow-sm tw-mb-4">
       <Card.Body>
         <Card.Title>Quick Look</Card.Title>
         <Card.Body className="!tw-p-0">
