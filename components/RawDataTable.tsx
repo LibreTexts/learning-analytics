@@ -8,19 +8,20 @@ import {
   FilterFn,
   SortingFn,
   sortingFns,
-  getFilteredRowModel
+  getFilteredRowModel,
 } from "@tanstack/react-table";
 import {
   RankingInfo,
   rankItem,
-  compareItems
-} from '@tanstack/match-sorter-utils'
+  compareItems,
+} from "@tanstack/match-sorter-utils";
 import { useEffect, useState } from "react";
 import DebouncedInput from "./DebouncedInput";
 import { Search } from "react-bootstrap-icons";
 import { AnalyticsRawData } from "@/lib/types";
 import { truncateString } from "@/utils/text-helpers";
 import { useGlobalContext } from "@/state/globalContext";
+import { Alert } from "react-bootstrap";
 
 // declare module '@tanstack/react-table' {
 //   //add fuzzy filter to the filterFns
@@ -42,20 +43,20 @@ interface RawDataTableProps {
 // Define a custom fuzzy filter function that will apply ranking info to rows (using match-sorter utils)
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   // Rank the item
-  const itemRank = rankItem(row.getValue(columnId), value)
+  const itemRank = rankItem(row.getValue(columnId), value);
 
   // Store the itemRank info
   addMeta({
     itemRank,
-  })
+  });
 
   // Return if the item should be filtered in/out
-  return itemRank.passed
-}
+  return itemRank.passed;
+};
 
 // Define a custom fuzzy sort function that will sort by rank if the row has ranking information
 const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
-  let dir = 0
+  let dir = 0;
 
   // Only sort by rank if the column has ranking information
   if (rowA.columnFiltersMeta[columnId]) {
@@ -64,12 +65,12 @@ const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
       rowA.columnFiltersMeta[columnId]?.itemRank!,
       // @ts-ignore
       rowB.columnFiltersMeta[columnId]?.itemRank!
-    )
+    );
   }
 
   // Provide an alphanumeric fallback for when the item ranks are equal
-  return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir
-}
+  return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir;
+};
 
 const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   const [globalState] = useGlobalContext();
@@ -100,8 +101,8 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       ),
       header: "Student",
       // @ts-ignore
-      filterFn: 'fuzzy',
-      sortingFn: fuzzySort
+      filterFn: "fuzzy",
+      sortingFn: fuzzySort,
     }),
     columnHelper.accessor("pagesAccessed", {
       cell: (info) => <div>{info.getValue()}</div>,
@@ -132,18 +133,24 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     filterFns: {
-      fuzzy: fuzzyFilter
+      fuzzy: fuzzyFilter,
     },
     // @ts-ignore
-    globalFilterFn: 'fuzzy',
+    globalFilterFn: "fuzzy",
     onGlobalFilterChange: (value) => setSearchInput(value),
     state: {
-      globalFilter: searchInput
+      globalFilter: searchInput,
     },
   });
 
   return (
     <div className="">
+      {!globalState.courseLetterGradesReleased && (
+        <Alert variant="warning">
+          Final grades have not been released for this course. The data
+          displayed here may not be accurate.
+        </Alert>
+      )}
       <div className="tw-flex tw-flex-row tw-w-1/4 tw-mb-2">
         <DebouncedInput
           value={searchInput}
@@ -160,32 +167,38 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th key={header.id} className="tw-p-3 tw-text-sm tw-border-r">
-                  <div onClick={header.column.getToggleSortingHandler()} className="!tw-cursor-pointer">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {
-                        header.column.getIsSorted() ? header.column.getIsSorted() === 'desc' ? ' 🔽' : ' 🔼' : ''
-                      }
-                      </div>
+                  <div
+                    onClick={header.column.getToggleSortingHandler()}
+                    className="!tw-cursor-pointer"
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                    {header.column.getIsSorted()
+                      ? header.column.getIsSorted() === "desc"
+                        ? " 🔽"
+                        : " 🔼"
+                      : ""}
+                  </div>
                 </th>
               ))}
             </tr>
           ))}
         </thead>
         <tbody>
-          {
-            table.getRowCount() === 0 && (
-              <tr>
-                <td colSpan={table.getAllColumns().length} className="tw-text-center tw-p-3">
-                  No data available
-                </td>
-              </tr>
-            )
-          }
+          {table.getRowCount() === 0 && (
+            <tr>
+              <td
+                colSpan={table.getAllColumns().length}
+                className="tw-text-center tw-p-3"
+              >
+                No data available
+              </td>
+            </tr>
+          )}
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id} className="hover:tw-bg-slate-100">
               {row.getVisibleCells().map((cell) => (

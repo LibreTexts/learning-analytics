@@ -16,6 +16,7 @@ const DEFAULT_GLOBAL_STATE: GlobalState = {
   assignmentId: "",
   courseID: "",
   shareGradeDistribution: false,
+  courseLetterGradesReleased: false,
 };
 
 const GlobalContext = createContext<

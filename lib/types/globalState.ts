@@ -6,4 +6,5 @@ export type GlobalState = {
   viewAs: string;
   studentId: string;
   assignmentId: string;
+  courseLetterGradesReleased: boolean;
 } & ICourseAnalyticsSettings_Raw;
