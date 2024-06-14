@@ -6,16 +6,17 @@ import "iframe-resizer/js/iframeResizer.contentWindow";
 export default function IFrameResizer() {
   useEffect(() => {
     if(!window) {
-      console.log('no window')
+      console.log('[LAD]: no window')
+      return
     }
     if (!window.iFrameResizer) {
-      console.log('rendered but no iFrameResizer')
+      console.log('[LAD]: rendered but no iFrameResizer')
+      return
     }
-    console.log('rendered with iFrameResizer')
     window.iFrameResizer = {
       onMessage: function (message) {
-        alert("Got message from parent");
-        console.log("message", message);
+        // alert("Got message from parent");
+        // console.log("message", message);
       },
     };
   }, []);

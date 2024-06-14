@@ -31,7 +31,7 @@ export default async function RootLayout({
         <title>Course Analytics - LibreTexts ADAPT</title>
       </head>
       <body
-        className={classNames(inter.className, "container mt-4 default-layout")}
+        className={classNames(inter.className, "mt-4 default-layout")}
       >
         <IFrameResizer />
         <Providers>
