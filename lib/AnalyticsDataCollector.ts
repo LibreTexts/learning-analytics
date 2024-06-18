@@ -245,6 +245,8 @@ class AnalyticsDataCollector {
                 student_id,
                 course_id: course.course_id,
                 assignment_id: assignment.assignment_id,
+                percent_correct: row.percent_correct === "N/A" ? "-" : row.percent_correct, // use dash indicator instead of "N/A" for consistency
+                total_points: row.total_points.toString(),
                 questions: Object.keys(reduced).map((key) => {
                   const { score, timeOnTask } = this._extractScoreAndTimeOnTask(
                     reduced[key]
