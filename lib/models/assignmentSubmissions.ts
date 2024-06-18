@@ -11,6 +11,8 @@ export interface IAssignmentScoresRaw {
   student_id: string;
   course_id: string;
   assignment_id: string;
+  percent_correct: string;
+  total_points: string;
   questions: IQuestionScoreData[];
 }
 
@@ -21,6 +23,8 @@ const AssignmentScoresSchema = new Schema<IAssignmentScores>(
     student_id: { type: String, required: true },
     course_id: { type: String, required: true },
     assignment_id: { type: String, required: true },
+    percent_correct: { type: String, required: true },
+    total_points: { type: String, required: true },
     questions: [
       {
         question_id: String,
