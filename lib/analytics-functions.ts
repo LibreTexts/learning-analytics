@@ -21,15 +21,18 @@ export async function getInstructorQuickMetrics(
   const promises = [
     analytics.getAssignments(),
     analytics.countEnrolledStudents(),
+    analytics.getTotalQuestionsCount()
   ];
 
   const res = await Promise.all(promises);
   const assignments = res[0] as IDWithName[];
   const enrolled = res[1] as number;
+  const totalQuestions = res[2] as number;
 
   return {
     assignments: assignments.length,
     enrolled,
+    totalQuestions
   };
 }
 

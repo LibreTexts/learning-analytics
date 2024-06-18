@@ -6,6 +6,7 @@ import Gradebook from "@/lib/models/gradebook";
 import LTAnalytics from "@/lib/models/ltanalytics";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
+  ADAPTCourseAssignment,
   ActivityAccessed,
   AnalyticsRawData,
   ArrayElement,
@@ -33,13 +34,9 @@ import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
 import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
 } from "./models/courseAnalyticsSettings";
-import CalcADAPTAllAssignments, {
-  ICalcADAPTAllAssignments_Raw,
-} from "./models/calcADAPTAllAssignments";
 import ewsActorSummary from "./models/ewsActorSummary";
 import ewsCourseSummary from "./models/ewsCourseSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
-import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
@@ -71,45 +68,24 @@ class Analytics {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
-      const res = await calcADAPTAllAssignments.aggregate([
-        {
-          $match: {
-            courseID: this.adaptID.toString(),
-          },
-        },
-        {
-          $unwind: {
-            path: "$assignments",
-          },
-        },
-        {
-          $group: {
-            _id: "$assignments.id",
-            assignment_name: {
-              $first: "$assignments.name",
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            assignment_name: 1,
-          },
-        },
-      ]);
+      const res = await adaptCourses.findOne({
+        course_id: this.adaptID.toString(),
+      });
+
+      const assignments = (res?.assignments ?? []) as ADAPTCourseAssignment[];
 
       // sort the assignments by name
-      res.sort((a, b) =>
-        a.assignment_name.localeCompare(b.assignment_name, undefined, {
+      assignments.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, {
           numeric: true,
           sensitivity: "base",
         })
       );
 
       return (
-        res.map((d) => ({
-          id: d._id,
-          name: d.assignment_name,
+        assignments.map((d) => ({
+          id: d.id.toString(),
+          name: d.name,
         })) ?? []
       );
     } catch (err) {
@@ -127,6 +103,28 @@ class Analytics {
       });
 
       return res ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getTotalQuestionsCount(): Promise<number> {
+    try {
+      await connectDB();
+
+      const res = await adaptCourses.findOne({
+        course_id: this.adaptID.toString(),
+      });
+
+      const total = res.assignments.reduce(
+        (acc: number, curr: ADAPTCourseAssignment) => {
+          return acc + curr.num_questions ?? 0;
+        },
+        0
+      );
+
+      return total ?? 0;
     } catch (err) {
       console.error(err);
       return 0;
@@ -700,12 +698,8 @@ class Analytics {
 
       // Convert to POJO (_id in subdocuments will cause call stack overflow)
       return {
-        framework_descriptors: JSON.parse(
-          JSON.stringify(filteredDescriptors)
-        ),
-        framework_levels: JSON.parse(
-          JSON.stringify(filteredLevels)
-        ),
+        framework_descriptors: JSON.parse(JSON.stringify(filteredDescriptors)),
+        framework_levels: JSON.parse(JSON.stringify(filteredLevels)),
       };
     } catch (err) {
       console.error(err);

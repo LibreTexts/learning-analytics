@@ -30,6 +30,8 @@ export type TextbookInteractionsCount = {
 export type InstructorQuickMetrics = {
   assignments: number;
   enrolled: number;
+  totalQuestions: number;
+  totalPageViews?: number;
 };
 
 export type StudentQuickMetrics = {

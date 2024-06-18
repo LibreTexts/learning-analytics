@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getInstructorQuickMetrics } from "@/lib/analytics-functions";
 
 const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
-  const { data, status } = useQuery<InstructorQuickMetricsType>({
+  const { data, isFetching } = useQuery<InstructorQuickMetricsType>({
     queryKey: ["instructor-quick-metrics", course_id],
     queryFn: async () => await getInstructorQuickMetrics(course_id),
   });
@@ -16,21 +16,30 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
         title="Assignments"
         value={data?.assignments}
         unit="Active Assignments"
-        loading={status === "pending"}
+        loading={isFetching}
       />
       <SmallMetricCard
-        title="Total Page Views"
-        value={1225}
-        unit="Textbook Total Page Views"
+        title="Total Questions"
+        value={data?.totalQuestions}
+        unit="Questions in Course"
         className="tw-ml-4"
-        loading={status === "pending"}
+        loading={isFetching}
       />
+      {data && data?.totalPageViews && (
+        <SmallMetricCard
+          title="Total Page Views"
+          value={data?.totalPageViews}
+          unit="Textbook Total Page Views"
+          className="tw-ml-4"
+          loading={isFetching}
+        />
+      )}
       <SmallMetricCard
         title="Enrolled Students"
         value={data?.enrolled}
         unit="Active Students in Course"
         className="tw-ml-4"
-        loading={status === "pending"}
+        loading={isFetching}
       />
     </div>
   );

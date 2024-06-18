@@ -4,10 +4,9 @@ import connectDB from "./database";
 import { debugADP } from "@/utils/misc";
 import ADAPT from "./models/adapt";
 import Gradebook from "./models/gradebook";
-import useADAPTAxios from "@/hooks/useADAPTAxios";
-import { IDWithName } from "./types";
+import useADAPTAxiosicsAxios from "@/hooks/useADAPTAxios";
+import { ADAPTCourseAssignment, IDWithName } from "./types";
 import textbookInteractionsByDate from "./models/textbookInteractionsByDate";
-import calcADAPTAllAssignments from "./models/calcADAPTAllAssignments";
 import calcADAPTScores from "./models/calcADAPTScores";
 import ewsCourseSummary, {
   IEWSCourseSummary_Raw,
@@ -20,12 +19,12 @@ import calcADAPTAssignments from "./models/calcADAPTAssignments";
 import enrollments from "./models/enrollments";
 import reviewTime from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
+import adaptCourses from "./models/adaptCourses";
 
 class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
-    await this.compressADAPTAllAssignments();
     // await this.compressADAPTAssignments();
     // await this.compressADAPTAverageScore();
     // await this.compressADAPTInteractionDays();
@@ -38,70 +37,6 @@ class AnalyticsDataProcessor {
     await this.compressReviewTime();
     // await this.writeEWSCourseSummary();
     // await this.writeEWSActorSummary();
-  }
-
-  private async compressADAPTAllAssignments(): Promise<boolean> {
-    try {
-      await connectDB();
-
-      debugADP("[compressADAPTAllAssignments]: Starting aggregation...");
-      await Gradebook.aggregate(
-        [
-          {
-            $group: {
-              _id: {
-                course_id: "$course_id",
-                assignment_id: "$assignment_id",
-              },
-              assignment_name: {
-                $first: "$assignment_name",
-              },
-              assignments: {
-                $addToSet: "$assignment_id",
-              },
-            },
-          },
-          {
-            $group: {
-              _id: "$_id.course_id",
-              assignments: {
-                $addToSet: {
-                  id: "$_id.assignment_id",
-                  name: "$assignment_name",
-                },
-              },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              courseID: "$_id",
-              assignments: 1,
-            },
-          },
-          {
-            $merge: {
-              into: "calcADAPTAllAssignments",
-              on: "courseID",
-              whenMatched: "replace",
-              whenNotMatched: "insert",
-            },
-          },
-        ],
-        {
-          allowDiskUse: true,
-        }
-      );
-
-      debugADP(`[compressADAPTAllAssignments]: Finished aggregation.`);
-      return true;
-    } catch (err: any) {
-      debugADP(
-        err.message ??
-          "Unknown error occured while compressing ADAPT all assignments"
-      );
-      return false;
-    }
   }
 
   private async compressADAPTAssignments(): Promise<boolean> {
@@ -824,14 +759,14 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[writeEWSCourseSummary]: Starting aggregation...");
-      const coursesWAssignments = await calcADAPTAllAssignments.find();
+      const coursesWAssignments = await adaptCourses.find()
       const courseAssignmentMap = new Map<string, string[]>();
       coursesWAssignments.forEach((course) => {
-        course.assignments.forEach((assignment: IDWithName) => {
-          if (courseAssignmentMap.has(course.courseID)) {
-            courseAssignmentMap.get(course.courseID)?.push(assignment.id);
+        course.assignments.forEach((assignment: ADAPTCourseAssignment) => {
+          if (courseAssignmentMap.has(course.course_id)) {
+            courseAssignmentMap.get(course.course_id)?.push(assignment.id.toString());
           } else {
-            courseAssignmentMap.set(course.courseID, [assignment.id]);
+            courseAssignmentMap.set(course.course_id, [assignment.id.toString()]);
           }
         });
       });
@@ -941,14 +876,14 @@ class AnalyticsDataProcessor {
         }
       });
 
-      /* for percent seen, from calcADAPTAllAssignments, we can get the number of assignments for each course
+      /* for percent seen, from adaptCourses, we can get the number of assignments for each course
       and from calcADAPTAssignments, we can get the number of assignments completed by each student in each course.
       Then, we can calculate the average percent seen for each course. */
 
-      const courseAssignments = await calcADAPTAllAssignments.find();
+      const courseAssignments = await adaptCourses.find()
       const courseAssignmentsMap = new Map<string, number>();
       courseAssignments.forEach((course) => {
-        courseAssignmentsMap.set(course.courseID, course.assignments.length);
+        courseAssignmentsMap.set(course.courseID, course.assignments.length ?? 0);
       });
 
       const courseAssignmentsCompleted = await calcADAPTAssignments.aggregate([
@@ -1124,10 +1059,10 @@ class AnalyticsDataProcessor {
         }
       });
 
-      const courseAssignments = await calcADAPTAllAssignments.aggregate([
+      const courseAssignments = await adaptCourses.aggregate([
         {
           $group: {
-            _id: "$courseID",
+            _id: "$course_id",
             assignments_count: {
               $sum: {
                 $size: "$assignments",
