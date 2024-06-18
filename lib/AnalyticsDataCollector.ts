@@ -1,22 +1,26 @@
-import useADAPTAxios from "@/hooks/useADAPTAxios";
-import { AxiosInstance } from "axios";
 import {
-  ADAPTEnrollmentsResponse,
+  ADAPTCourseAssignment,
   ADAPTReviewTimeResponse,
   FrameworkAlignment,
-  IDWithText,
 } from "./types";
-import enrollments from "./models/enrollments";
+import enrollments, { IEnrollmentsRaw } from "./models/enrollments";
 import connectDB from "./database";
-import adaptCourses from "./models/adaptCourses";
+import adaptCourses, {
+  IAdaptCourses,
+  IAdaptCoursesRaw,
+} from "./models/adaptCourses";
 import { encryptStudent } from "@/utils/data-helpers";
 import gradebook, { IGradebookRaw } from "./models/gradebook";
-import email from "next-auth/providers/email";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
+import useADAPTAxios from "@/hooks/useADAPTAxios";
+import ADAPTInstructorConnector from "./ADAPTInstructorConnector";
+import ADAPTCourseConnector from "./ADAPTCourseConnector";
+import assignmentSubmissions, {
+  IAssignmentScoresRaw,
+} from "./models/assignmentSubmissions";
 
 class AnalyticsDataCollector {
-  private token: string | null = null;
   constructor() {
     if (!process.env.ADAPT_API_KEY) {
       throw new Error("ADAPT_API_KEY is not set");
@@ -24,54 +28,158 @@ class AnalyticsDataCollector {
     if (!process.env.ADAPT_API_BASE_URL) {
       throw new Error("ADAPT_API_BASE_URL is not set");
     }
-
-    this.token = process.env.TEMP_TOKEN || null;
   }
 
   async runCollectors() {
+    //await this.updateCourseData();
+    //await this.collectAllAssignments();
     //await this.collectEnrollments();
+    await this.collectAssignmentScores();
     //await this.collectGradebookData();
     //await this.collectQuestionFrameworkAlignment();
-    await this.collectReviewTimeData();
+    //await this.collectReviewTimeData();
+  }
+
+  async updateCourseData() {
+    try {
+      await connectDB();
+
+      const knownCourses = await adaptCourses
+        .find(
+          process.env.DEV_LOCK_COURSE_ID
+            ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+            : {}
+        )
+        .select("course_id");
+
+      const knownCourseIDs = knownCourses.map((course) => course.course_id);
+
+      const updateDocs = new Map<string, Record<string, string>>();
+      for (const courseID of knownCourseIDs) {
+        const adaptConn = new ADAPTCourseConnector(courseID);
+        const courseData = await adaptConn.getCourseMiniSummary();
+        if (!courseData?.data) continue;
+
+        const raw = courseData.data["mini-summary"];
+        updateDocs.set(courseID, {
+          instructor_id: raw.user_id,
+          name: raw.name,
+          start_date: raw.start_date,
+          end_date: raw.end_date,
+          textbook_url: raw.textbook_url,
+        });
+      }
+
+      const bulkOps = Array.from(updateDocs).map(([course_id, update]) => ({
+        updateOne: {
+          filter: { course_id },
+          update: { $set: update },
+          upsert: true,
+        },
+      }));
+
+      await adaptCourses.bulkWrite(bulkOps);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async collectAllAssignments() {
+    try {
+      await connectDB();
+
+      const knownCourses = (await adaptCourses.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
+      )) as IAdaptCoursesRaw[];
+
+      const updateDocs = new Map<string, ADAPTCourseAssignment[]>();
+      for (const course of knownCourses) {
+        try {
+          if (!course.instructor_id) continue;
+          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+          const courseData = await adaptConn.getCourseAssignments(
+            course.course_id
+          );
+          if (!courseData?.data) continue;
+
+          const assignments = courseData.data.assignments.map((assig) => ({
+            id: assig.id,
+            name: assig.name,
+            num_questions: assig.num_questions,
+          }));
+
+          updateDocs.set(course.course_id, assignments);
+        } catch (err) {
+          console.error(err);
+          continue;
+        }
+      }
+
+      const bulkOps = Array.from(updateDocs).map(
+        ([course_id, assignments]) => ({
+          updateOne: {
+            filter: { course_id },
+            update: { $set: { assignments } },
+            upsert: true,
+          },
+        })
+      );
+
+      await adaptCourses.bulkWrite(bulkOps);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async collectEnrollments() {
     try {
       await connectDB();
 
-      const knownCourses = await adaptCourses
-        .find({
-          courseID: "2904",
-        })
-        .select("courseID");
-
-      const knownCourseIDs = knownCourses.map((course) => course.courseID);
-
-      const START_DATE = "2024-01-01";
-      const END_DATE = "2024-12-31";
-      const response = await useADAPTAxios().get<ADAPTEnrollmentsResponse[]>(
-        "/analytics/enrollments/" + START_DATE + "/" + END_DATE
+      const knownCourses = await adaptCourses.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
       );
-      const _enrollments = response.data;
 
-      const filteredEnrollments = _enrollments.filter((enrollment) => {
-        return knownCourseIDs.includes(enrollment.class.toString());
-      });
+      const docsToInsert: IEnrollmentsRaw[] = [];
+      for (const course of knownCourses) {
+        try {
+          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+          const courseData = await adaptConn.getCourseEnrollments(
+            course.course_id
+          );
+          if (!courseData?.data) continue;
+          const enrollments = courseData.data.enrollments;
 
-      const encrpytionPromises = filteredEnrollments.map((enrollment) => {
-        return encryptStudent(enrollment.email);
-      });
+          const encryptedEmails = await Promise.all(
+            enrollments.map((enrollment) => encryptStudent(enrollment.email))
+          );
+          const encryptedIds = await Promise.all(
+            enrollments.map((enrollment) =>
+              encryptStudent(enrollment.student_id)
+            )
+          );
 
-      const encryptedEmails = await Promise.all(encrpytionPromises);
-
-      filteredEnrollments.forEach((enrollment, index) => {
-        enrollment.email = encryptedEmails[index];
-      });
+          enrollments.forEach((enrollment, index) => {
+            docsToInsert.push({
+              email: encryptedEmails[index],
+              student_id: encryptedIds[index],
+              course_id: course.course_id,
+              created_at: enrollment.enrollment_date,
+            });
+          });
+        } catch (e) {
+          console.error(e);
+          continue;
+        }
+      }
 
       // Bulk upsert the enrollments
-      const bulkOps = filteredEnrollments.map((enrollment) => ({
+      const bulkOps = docsToInsert.map((enrollment) => ({
         updateOne: {
-          filter: { email: enrollment.email, courseID: enrollment.class },
+          filter: { email: enrollment.email, course_id: enrollment.course_id },
           update: { $set: enrollment },
           upsert: true,
         },
@@ -82,13 +190,119 @@ class AnalyticsDataCollector {
     }
   }
 
+  async collectAssignmentScores() {
+    try {
+      await connectDB();
+
+      const knownCourses = (await adaptCourses.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
+      )) as IAdaptCourses[];
+
+      for (const course of knownCourses) {
+        try {
+          const assignmentIDs = course.assignments.map(
+            (assignment) => assignment.id
+          );
+
+          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+
+          const promises = assignmentIDs.map((assignmentID) => {
+            return adaptConn.getAssignmentScores(assignmentID.toString());
+          });
+
+          const responses = await Promise.allSettled(promises);
+
+          const scoreData: { assignment_id: string; rows: any[] }[] =
+            responses.map((response, idx) => {
+              if (response.status === "fulfilled" && response.value) {
+                return {
+                  assignment_id: assignmentIDs[idx].toString(),
+                  rows: response.value.data.rows,
+                };
+              }
+              return {
+                assignment_id: "",
+                rows: [],
+              };
+            });
+
+          const parsed: IAssignmentScoresRaw[] = [];
+
+          for (const assignment of scoreData) {
+            for (const row of assignment.rows) {
+              const student_id = row.userId;
+              const reduced = Object.keys(row).reduce((acc, key) => {
+                if (key === "userId") return acc;
+                if (["name", "percent_correct", "total_points"].includes(key))
+                  return acc;
+                acc[key] = row[key];
+                return acc;
+              }, {} as { [x: string]: string });
+
+              parsed.push({
+                student_id,
+                course_id: course.course_id,
+                assignment_id: assignment.assignment_id,
+                questions: Object.keys(reduced).map((key) => {
+                  const { score, timeOnTask } = this._extractScoreAndTimeOnTask(
+                    reduced[key]
+                  );
+
+                  return {
+                    question_id: key,
+                    score: score,
+                    time_on_task: timeOnTask,
+                  };
+                }),
+              });
+            }
+          }
+
+          const encryptedIds = await Promise.all(
+            parsed.map((student) =>
+              encryptStudent(student.student_id.toString())
+            )
+          );
+
+          parsed.forEach((student, index) => {
+            student.student_id = encryptedIds[index];
+          });
+
+          // Bulk upsert the assignment scores
+          const bulkOps = parsed.map((student) => ({
+            updateOne: {
+              filter: {
+                student_id: student.student_id,
+                assignment_id: student.assignment_id,
+                course_id: student.course_id,
+              },
+              update: { $set: student },
+              upsert: true,
+            },
+          }));
+
+          await assignmentSubmissions.bulkWrite(bulkOps);
+        } catch (e) {
+          console.error(e);
+          continue;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async collectGradebookData() {
     try {
       await connectDB();
       const knownCourses = await adaptCourses
-        .find({
-          courseID: "2904",
-        })
+        .find(
+          process.env.DEV_LOCK_COURSE_ID
+            ? { courseID: process.env.DEV_LOCK_COURSE_ID }
+            : {}
+        )
         .select("courseID");
 
       const knownCourseIDs = knownCourses.map((course) => course.courseID);
@@ -170,9 +384,7 @@ class AnalyticsDataCollector {
       });
 
       const assignmentsPromises = knownCourseIDs.map((courseID) => {
-        return useADAPTAxios(this.token as string)?.get(
-          "/assignments/courses/" + courseID
-        );
+        return useADAPTAxios()?.get("/assignments/courses/" + courseID);
       });
 
       const assignmentsResponses = await Promise.allSettled(
@@ -277,15 +489,17 @@ class AnalyticsDataCollector {
 
       // const assignmentIds = await gradebook.distinct("assignment_id");
 
-      const assignmentIds = await gradebook.distinct("assignment_id").where({
-        course_id: "2904",
-      });
-
-      console.log("TOKEN: ", this.token);
+      const assignmentIds = await gradebook
+        .distinct("assignment_id")
+        .where(
+          process.env.DEV_LOCK_COURSE_ID
+            ? { course_id: parseInt(process.env.DEV_LOCK_COURSE_ID) }
+            : {}
+        );
 
       // Get the questions for each assignment
       const questionsPromises = assignmentIds.map((assignmentId) => {
-        return useADAPTAxios(this.token as string)?.get(
+        return useADAPTAxios()?.get(
           "/assignments/" + assignmentId + "/questions/ids"
         );
       });
@@ -318,7 +532,7 @@ class AnalyticsDataCollector {
 
       // Get the framework alignment for each question
       const frameworkPromises = questionDocs.map((doc) => {
-        return useADAPTAxios(this.token as string)?.get(
+        return useADAPTAxios()?.get(
           "/framework-item-sync-question/question/" + doc.question_id
         );
       });
@@ -482,6 +696,32 @@ class AnalyticsDataCollector {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  private _extractScoreAndTimeOnTask(raw: string): {
+    score: string;
+    timeOnTask: string;
+  } {
+    const DEFAULT = { score: "-", timeOnTask: "-" };
+
+    if (!raw) return DEFAULT;
+    if (typeof raw !== "string") return DEFAULT;
+    if (raw.includes("-")) return DEFAULT;
+
+    // valid raw data comes in the format "score (timeOnTask)"
+    let [score, timeOnTask] = raw.split(" ");
+
+    if (!timeOnTask)
+      return {
+        score: score,
+        timeOnTask: "0",
+      };
+
+    timeOnTask = timeOnTask.replace("(", "").replace(")", ""); // Remove the parentheses
+
+    // score should now be a string of the score, and timeOnTask should be a string of the time on task in minutes(ie "1:30")
+
+    return { score, timeOnTask };
   }
 }
 

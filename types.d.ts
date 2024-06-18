@@ -10,6 +10,7 @@ declare global {
       EWS_API_BASE_URL: string;
       EWS_API_KEY: string;
       AUTH_SECRET: string;
+      DEV_LOCK_COURSE_ID: string;
     }
   }
 }
