@@ -67,15 +67,11 @@ const TimeOnTask: React.FC<TimeOnTaskProps> = ({
         header: "Question ID",
       }),
       columnHelper.accessor("student_time", {
-        cell: (info) => (
-          <div>{parseInt(info.getValue()).toFixed(2)}</div>
-        ),
+        cell: (info) => <div>{parseInt(info.getValue()).toFixed(2)}</div>,
         header: "Student Time on Task (minutes)",
       }),
       columnHelper.accessor("course_avg", {
-        cell: (info) => (
-          <div>{parseFloat(info.getValue()).toFixed(2)}</div>
-        ),
+        cell: (info) => <div>{parseFloat(info.getValue()).toFixed(2)}</div>,
         header: "Class Average Time on Task (minutes)",
       }),
     ],
@@ -190,6 +186,16 @@ const TimeOnTask: React.FC<TimeOnTaskProps> = ({
       .attr("width", xSubgroup.bandwidth() - BUCKET_PADDING)
       .attr("height", (d) => height - MARGIN.bottom - y(d.value) ?? 0)
       .attr("fill", (d) => color(d.key) as string);
+
+    // Add selected student and assignment to the graph
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("font-weight", "semibold")
+      .text(`Assignment: ${selectedAssignmentId} | Student: ${selectedStudent?.name}`);
 
     // Add one dot in the legend for each name.
     svg
