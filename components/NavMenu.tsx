@@ -24,57 +24,57 @@ const NavMenu = () => {
 
   return (
     <div className="tw-w-52">
-      <ListGroup className="!tw-shadow-sm tw-h-fit">
-        <ListGroup.Item className="tw-bg-ultra-light-gray">
-          Course Analytics
-        </ListGroup.Item>
-        <ListGroup.Item
-          active={isActive("dashboard")}
-          className={isActive("dashboard") ? ACTIVE_CLASSES : ""}
-          action
-          onClick={() => router.push(Links.CLIENT.Dashboard)}
-        >
-          <span className="tw-text-link-blue">
-            {globalState.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
-            Dashboard
-          </span>
-        </ListGroup.Item>
-        {globalState.viewAs === "instructor" && (
-          <ListGroup.Item
-            active={isActive("early-warning")}
-            className={isActive("early-warning") ? ACTIVE_CLASSES : ""}
-            action
-            onClick={() => router.push(Links.CLIENT.EarlyWarning)}
-          >
-            <span className="tw-text-link-blue">Early Warning</span>
+      <div className="tw-sticky tw-top-4">
+        <ListGroup className="!tw-shadow-sm tw-h-fit">
+          <ListGroup.Item className="tw-bg-ultra-light-gray">
+            Course Analytics
           </ListGroup.Item>
-        )}
-        {globalState.viewAs === "instructor" && (
           <ListGroup.Item
-            active={isActive("raw-data")}
-            className={isActive("raw-data") ? ACTIVE_CLASSES : ""}
+            active={isActive("dashboard")}
+            className={isActive("dashboard") ? ACTIVE_CLASSES : ""}
             action
-            onClick={() => router.push(Links.CLIENT.RawData)}
+            onClick={() => router.push(Links.CLIENT.Dashboard)}
           >
-            <span className="tw-text-link-blue">Raw Data</span>
+            <span className="tw-text-link-blue">
+              {globalState.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
+              Dashboard
+            </span>
           </ListGroup.Item>
+          {globalState.viewAs === "instructor" && (
+            <ListGroup.Item
+              active={isActive("early-warning")}
+              className={isActive("early-warning") ? ACTIVE_CLASSES : ""}
+              action
+              onClick={() => router.push(Links.CLIENT.EarlyWarning)}
+            >
+              <span className="tw-text-link-blue">Early Warning</span>
+            </ListGroup.Item>
+          )}
+          {globalState.viewAs === "instructor" && (
+            <ListGroup.Item
+              active={isActive("raw-data")}
+              className={isActive("raw-data") ? ACTIVE_CLASSES : ""}
+              action
+              onClick={() => router.push(Links.CLIENT.RawData)}
+            >
+              <span className="tw-text-link-blue">Raw Data</span>
+            </ListGroup.Item>
+          )}
+          {globalState.viewAs === "instructor" && (
+            <ListGroup.Item
+              active={isActive("course-settings")}
+              className={isActive("course-settings") ? ACTIVE_CLASSES : ""}
+              action
+              onClick={() => router.push(Links.CLIENT.CourseSettings)}
+            >
+              <span className="tw-text-link-blue">Course Settings</span>
+            </ListGroup.Item>
+          )}
+        </ListGroup>
+        {globalState.viewAs === "instructor" && isActive("dashboard") && (
+          <InstructorDashboardControls />
         )}
-        {globalState.viewAs === "instructor" && (
-          <ListGroup.Item
-            active={isActive("course-settings")}
-            className={isActive("course-settings") ? ACTIVE_CLASSES : ""}
-            action
-            onClick={() => router.push(Links.CLIENT.CourseSettings)}
-          >
-            <span className="tw-text-link-blue">Course Settings</span>
-          </ListGroup.Item>
-        )}
-      </ListGroup>
-      {
-        globalState.viewAs === "instructor" && isActive('dashboard') && (
-          <InstructorDashboardControls className="tw-sticky tw-top-4"/>
-        )
-      }
+      </div>
     </div>
   );
 };

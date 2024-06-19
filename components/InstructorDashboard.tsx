@@ -49,7 +49,7 @@ const InstructorDashboard = ({
       />
       <InstructorQuickMetrics course_id={course_id} />
       <VisualizationContainer
-        title="Performance Per Assignment"
+        title="Performance"
         description="Class average vs. selected student's scores"
         tooltipDescription="Performance per assignment is the student's score on each assignment, compared to the class average."
       >
