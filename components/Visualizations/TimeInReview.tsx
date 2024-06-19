@@ -16,6 +16,7 @@ import {
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
 import {
+  Student,
   TimeInReview as TimeInReviewType,
   VisualizationBaseProps,
 } from "@/lib/types";
@@ -32,7 +33,7 @@ const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type TimeInReviewProps = VisualizationBaseProps & {
-  selectedStudentId?: string;
+  selectedStudent?: Student;
   selectedAssignmentId?: string;
   getData: (
     student_id: string,
@@ -44,7 +45,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   tableView = false,
-  selectedStudentId,
+  selectedStudent,
   selectedAssignmentId,
   getData,
   innerRef,
@@ -79,7 +80,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedStudentId, selectedAssignmentId]);
+  }, [selectedStudent?.email, selectedAssignmentId]);
 
   useEffect(() => {
     if (data.length === 0 || tableView) return;
@@ -88,9 +89,9 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudentId || !selectedAssignmentId) return;
+      if (!selectedStudent?.email || !selectedAssignmentId) return;
       setLoading(true);
-      const data = await getData(selectedStudentId, selectedAssignmentId);
+      const data = await getData(selectedStudent.email, selectedAssignmentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -215,7 +216,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   return (
     <>
-      {!selectedStudentId && (
+      {!selectedStudent?.id && (
         <SelectOption
           width={width}
           height={height}
@@ -223,7 +224,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedStudentId && (
+      {!loading && selectedStudent?.id && (
         <div
           className={`tw-w-full ${
             tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""

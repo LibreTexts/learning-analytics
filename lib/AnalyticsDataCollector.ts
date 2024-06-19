@@ -33,8 +33,8 @@ class AnalyticsDataCollector {
   async runCollectors() {
     //await this.updateCourseData();
     //await this.collectAllAssignments();
-    //await this.collectEnrollments();
-    await this.collectAssignmentScores();
+    await this.collectEnrollments();
+    //await this.collectAssignmentScores();
     //await this.collectGradebookData();
     //await this.collectQuestionFrameworkAlignment();
     //await this.collectReviewTimeData();
@@ -158,7 +158,7 @@ class AnalyticsDataCollector {
           );
           const encryptedIds = await Promise.all(
             enrollments.map((enrollment) =>
-              encryptStudent(enrollment.student_id)
+              encryptStudent(enrollment.id.toString())
             )
           );
 

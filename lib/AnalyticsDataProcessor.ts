@@ -20,101 +20,23 @@ import enrollments from "./models/enrollments";
 import reviewTime from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import adaptCourses from "./models/adaptCourses";
+import assignmentSubmissions from "./models/assignmentSubmissions";
 
 class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
-    // await this.compressADAPTAssignments();
     // await this.compressADAPTAverageScore();
     // await this.compressADAPTInteractionDays();
     // await this.compressADAPTGradeDistribution();
     // await this.compressADAPTSubmissions();
-    // await this.compressADAPTScores();
+    await this.compressADAPTScores();
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    await this.compressReviewTime();
+    //await this.compressReviewTime();
     // await this.writeEWSCourseSummary();
     // await this.writeEWSActorSummary();
-  }
-
-  private async compressADAPTAssignments(): Promise<boolean> {
-    try {
-      await connectDB();
-
-      debugADP("[compressADAPTAssignments]: Starting aggregation...");
-      await Gradebook.aggregate(
-        [
-          {
-            $match: {
-              assignment_id: {
-                $exists: true,
-                $nin: [null, ""],
-              },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                courseID: "$course_id",
-                actor: "$email",
-              },
-              assignments: {
-                $addToSet: {
-                  assignment_id: {
-                    $toString: "$assignment_id",
-                  },
-                  score: "$assignment_percent",
-                },
-              },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              courseID: "$_id.courseID",
-              actor: "$_id.actor",
-              assignments: 1,
-              assignments_count: {
-                $size: "$assignments",
-              },
-            },
-          },
-          {
-            $match: {
-              actor: {
-                $exists: true,
-                $nin: [null, ""],
-              },
-              courseID: {
-                $exists: true,
-                $nin: [null, ""],
-              },
-            },
-          },
-          {
-            $merge: {
-              into: "calcADAPTAssignments",
-              on: ["actor", "courseID"],
-              whenMatched: "replace",
-              whenNotMatched: "insert",
-            },
-          },
-        ],
-        { allowDiskUse: true }
-      );
-
-      debugADP(`[compressADAPTAssignments]: Finished aggregation.`);
-
-      return true;
-    } catch (err: any) {
-      debugADP(
-        err.message ??
-          "Unknown error occured while compressing ADAPT assignments"
-      );
-      return false;
-    }
   }
 
   private async compressADAPTAverageScore(): Promise<boolean> {
@@ -178,7 +100,7 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTScores]: Starting aggregation...");
-      await Gradebook.aggregate(
+      await assignmentSubmissions.aggregate(
         [
           {
             $match: {
@@ -186,6 +108,39 @@ class AnalyticsDataProcessor {
                 $exists: true,
                 $ne: null,
               },
+              percent_correct: {
+                $regex: "^[0-9]+(\\.[0-9]+)?%$",
+              },
+            },
+          },
+          {
+            $addFields: {
+              percent_correct_stripped: {
+                $substr: [
+                  "$percent_correct",
+                  0,
+                  {
+                    $subtract: [{ $strLenCP: "$percent_correct" }, 1],
+                  },
+                ],
+              },
+            },
+          },
+          {
+            $addFields: {
+              percent_correct_float: {
+                $convert: {
+                  input: "$percent_correct_stripped",
+                  to: "double",
+                  onError: null,
+                  onNull: null,
+                },
+              },
+            },
+          },
+          {
+            $match: {
+              percent_correct_float: { $ne: null },
             },
           },
           {
@@ -195,15 +150,15 @@ class AnalyticsDataProcessor {
                 assignmentID: "$assignment_id",
               },
               scores: {
-                $push: "$assignment_percent",
+                $push: "$percent_correct_float",
               },
             },
           },
           {
             $project: {
               _id: 0,
-              courseID: "$_id.courseID",
-              assignmentID: {
+              course_id: "$_id.courseID",
+              assignment_id: {
                 $toString: "$_id.assignmentID",
               },
               scores: 1,
@@ -212,7 +167,7 @@ class AnalyticsDataProcessor {
           {
             $merge: {
               into: "calcADAPTScores",
-              on: ["courseID", "assignmentID"],
+              on: ["course_id", "assignment_id"],
               whenMatched: "replace",
               whenNotMatched: "insert",
             },
@@ -759,14 +714,18 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[writeEWSCourseSummary]: Starting aggregation...");
-      const coursesWAssignments = await adaptCourses.find()
+      const coursesWAssignments = await adaptCourses.find();
       const courseAssignmentMap = new Map<string, string[]>();
       coursesWAssignments.forEach((course) => {
         course.assignments.forEach((assignment: ADAPTCourseAssignment) => {
           if (courseAssignmentMap.has(course.course_id)) {
-            courseAssignmentMap.get(course.course_id)?.push(assignment.id.toString());
+            courseAssignmentMap
+              .get(course.course_id)
+              ?.push(assignment.id.toString());
           } else {
-            courseAssignmentMap.set(course.course_id, [assignment.id.toString()]);
+            courseAssignmentMap.set(course.course_id, [
+              assignment.id.toString(),
+            ]);
           }
         });
       });
@@ -880,10 +839,13 @@ class AnalyticsDataProcessor {
       and from calcADAPTAssignments, we can get the number of assignments completed by each student in each course.
       Then, we can calculate the average percent seen for each course. */
 
-      const courseAssignments = await adaptCourses.find()
+      const courseAssignments = await adaptCourses.find();
       const courseAssignmentsMap = new Map<string, number>();
       courseAssignments.forEach((course) => {
-        courseAssignmentsMap.set(course.courseID, course.assignments.length ?? 0);
+        courseAssignmentsMap.set(
+          course.courseID,
+          course.assignments.length ?? 0
+        );
       });
 
       const courseAssignmentsCompleted = await calcADAPTAssignments.aggregate([
