@@ -21,7 +21,7 @@ export async function getInstructorQuickMetrics(
   const promises = [
     analytics.getAssignments(),
     analytics.countEnrolledStudents(),
-    analytics.getTotalQuestionsCount()
+    analytics.getTotalQuestionsCount(),
   ];
 
   const res = await Promise.all(promises);
@@ -32,7 +32,7 @@ export async function getInstructorQuickMetrics(
   return {
     assignments: assignments.length,
     enrolled,
-    totalQuestions
+    totalQuestions,
   };
 }
 
@@ -177,4 +177,14 @@ export async function getTimeInReview(
     assignment_id
   );
   return timeInReview;
+}
+
+export async function getTimeOnTask(
+  course_id: string,
+  student_id: string,
+  assignment_id: string
+) {
+  const analytics = new Analytics(course_id);
+  const timeOnTask = await analytics.getTimeOnTask(student_id, assignment_id);
+  return timeOnTask;
 }

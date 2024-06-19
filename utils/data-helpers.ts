@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { isGeneratorFunction } from "util/types";
 
 const ALGO = "aes-256-cbc";
 const KEY = process.env.STUDENT_ENCRYPTION_KEY;
@@ -69,11 +70,32 @@ export async function encryptStudent(student: string): Promise<string> {
 
 /**
  * Keys of the ADAPTQuestionScoreData object that are not question id's
-**/
+ **/
 export const QUESTION_SCORE_DATA_EXCLUSIONS = [
-  'name',
-  'percent_correct',
-  'total_points',
-  'userId',
-  'override_score'
-]
+  "name",
+  "percent_correct",
+  "total_points",
+  "userId",
+  "override_score",
+];
+
+export function mmssToSeconds(mmss: string): number {
+  if(!mmss) return 0;
+  if(typeof mmss !== 'string') return 0;
+  if(!mmss.includes(':')) return 0;
+
+  const parts = mmss.split(":");
+
+  if (parts.length !== 2) {
+    return 0; // Invalid format
+  }
+
+  const minutes = parseInt(parts[0], 10);
+  const seconds = parseInt(parts[1], 10);
+
+  if (isNaN(minutes) || isNaN(seconds)) {
+    return 0; // Invalid number conversion
+  }
+
+  return minutes * 60 + seconds;
+}

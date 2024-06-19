@@ -73,3 +73,9 @@ export type TimeInReview = {
   student_time: number;
   course_avg: number;
 };
+
+export type TimeOnTask = {
+  question_id: number;
+  student_time: number;
+  course_avg: number;
+};
