@@ -167,6 +167,16 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
     //   .style("text-anchor", "middle")
     //   .style("font-size", 17);
 
+    // Add selected student name to the graph
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("font-weight", "semibold")
+      .text(`Student: ${selectedStudent?.name}`);
+
     // Add one dot in the legend for each name.
     svg
       .selectAll("mydots")
@@ -174,7 +184,7 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .enter()
       .append("circle")
       .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 165)) // 165 is the distance between dots
-      .attr("cy", (d, i) => (MARGIN.top / 2) - 1) // -1 for slight vertical adjustment
+      .attr("cy", (d, i) => MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
       .attr("r", 7)
       .style("fill", (d) => colorScale(d) as string);
 

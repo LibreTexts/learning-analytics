@@ -15,7 +15,11 @@ import {
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
-import { PerformancePerAssignment, Student, VisualizationBaseProps } from "@/lib/types";
+import {
+  PerformancePerAssignment,
+  Student,
+  VisualizationBaseProps,
+} from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 import {
   createColumnHelper,
@@ -178,6 +182,16 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .attr("width", xSubgroup.bandwidth() - BUCKET_PADDING)
       .attr("height", (d) => height - MARGIN.bottom - y(d.value))
       .attr("fill", (d) => color(d.key) as string);
+
+    // Add selected student name to the graph
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("font-weight", "semibold")
+      .text(`Student: ${selectedStudent?.name}`);
 
     // Add one dot in the legend for each name.
     svg
