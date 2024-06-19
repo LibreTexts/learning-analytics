@@ -24,7 +24,7 @@ const NavMenu = () => {
 
   return (
     <div className="tw-w-52">
-      <div className="tw-sticky tw-top-4">
+      <div className="tw-sticky tw-top-4 tw-z-50">
         <ListGroup className="!tw-shadow-sm tw-h-fit">
           <ListGroup.Item className="tw-bg-ultra-light-gray">
             Course Analytics
