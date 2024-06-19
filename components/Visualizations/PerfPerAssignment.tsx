@@ -15,7 +15,7 @@ import {
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
 } from "@/utils/visualization-helpers";
-import { PerformancePerAssignment, VisualizationBaseProps } from "@/lib/types";
+import { PerformancePerAssignment, Student, VisualizationBaseProps } from "@/lib/types";
 import { LIBRE_BLUE } from "@/utils/colors";
 import {
   createColumnHelper,
@@ -30,7 +30,7 @@ const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type PerfPerAssignmentProps = VisualizationBaseProps & {
-  selectedStudentId?: string;
+  selectedStudent?: Student;
   getData: (student_id: string) => Promise<PerformancePerAssignment[]>;
 };
 
@@ -38,7 +38,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   tableView = false,
-  selectedStudentId,
+  selectedStudent,
   getData,
   innerRef,
 }) => {
@@ -72,7 +72,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedStudentId]);
+  }, [selectedStudent?.id]);
 
   useEffect(() => {
     if (data.length === 0 || tableView) return;
@@ -81,9 +81,9 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudentId) return;
+      if (!selectedStudent?.id) return;
       setLoading(true);
-      const data = await getData(selectedStudentId);
+      const data = await getData(selectedStudent.id);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
@@ -208,7 +208,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
 
   return (
     <>
-      {!selectedStudentId && (
+      {!selectedStudent?.id && (
         <SelectOption
           width={width}
           height={height}
@@ -216,7 +216,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
         />
       )}
       {loading && <VisualizationLoading width={width} height={height} />}
-      {!loading && selectedStudentId && (
+      {!loading && selectedStudent && selectedStudent.id && (
         <div
           className={`tw-w-full ${
             tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""

@@ -12,7 +12,11 @@ const DEFAULT_GLOBAL_STATE: GlobalState = {
   ferpaPrivacy: false,
   role: "student",
   viewAs: "student",
-  studentId: "",
+  student: {
+    id: "",
+    email: "",
+    name: "",
+  },
   assignmentId: "",
   courseID: "",
   shareGradeDistribution: false,

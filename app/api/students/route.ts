@@ -1,10 +1,24 @@
 import Analytics from "@/lib/Analytics";
+import { queryObjFromSearchParams } from "@/utils/misc";
+import { GetStudentsSchema, validateZod } from "@/validators";
+import { NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const adaptId = process.env.NEXT_PUBLIC_ADAPT_ID;
-    const analytics = new Analytics(adaptId);
-    const students = await analytics.getStudents(1, 100, false);
+    const searchParams = request.nextUrl.searchParams;
+    const queryObj = queryObjFromSearchParams(searchParams);
+    await validateZod(GetStudentsSchema, {
+      query: queryObj,
+    });
+
+    const { courseID, page, limit } = queryObj;
+
+    const analytics = new Analytics(courseID);
+    const students = await analytics.getStudents(
+      parseInt(page.toString()),
+      parseInt(limit.toString()),
+      false
+    );
 
     return Response.json({ data: students });
   } catch (err) {

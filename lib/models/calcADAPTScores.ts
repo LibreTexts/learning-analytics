@@ -1,8 +1,8 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface ICalcADAPTScores_Raw {
-  courseID: string;
-  assignmentID: string;
+  course_id: string;
+  assignment_id: string;
   scores: number[];
 }
 
@@ -10,16 +10,16 @@ export interface ICalcADAPTScores extends ICalcADAPTScores_Raw, Document {}
 
 const CalcADAPTScoresSchema = new Schema<ICalcADAPTScores>(
   {
-    courseID: String,
-    assignmentID: String,
-    scores: [Number],
+    course_id: String,
+    assignment_id: String,
+    scores: [Number], // Array of scores (as percent correct)
   },
   {
     collection: "calcADAPTScores",
   }
 );
 
-CalcADAPTScoresSchema.index({ courseID: 1, assignmentID: 1 }, { unique: true });
+CalcADAPTScoresSchema.index({ course_id: 1, assignment_id: 1 }, { unique: true });
 
 export default models.CalcADAPTScores ||
   model<ICalcADAPTScores>(

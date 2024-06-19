@@ -5,7 +5,7 @@ import { truncateString } from "@/utils/text-helpers";
 
 import { getAssignments, getStudents } from "@/lib/analytics-functions";
 import { useQuery } from "@tanstack/react-query";
-import { IDWithName } from "@/lib/types";
+import { IDWithName, Student } from "@/lib/types";
 import { useEffect, useMemo, useRef } from "react";
 import { useGlobalContext } from "@/state/globalContext";
 import classNames from "classnames";
@@ -14,7 +14,7 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
   const [globalState, setGlobalState] = useGlobalContext();
   const elementRef = useRef<HTMLDivElement>(null);
 
-  const { data: students, status: studentsStatus } = useQuery<IDWithName[]>({
+  const { data: students, status: studentsStatus } = useQuery<Student[]>({
     queryKey: ["students", globalState.courseID, globalState.ferpaPrivacy],
     queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
@@ -33,7 +33,7 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
   useEffect(() => {
     // Set the selected ID to the first student when the list is loaded
     if (students && students.length > 0) {
-      updateSelectedStudent(students[0].id);
+      updateSelectedStudent(students[0]);
     }
   }, [students]);
 
@@ -44,7 +44,7 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
     }
   }, [assignments]);
 
-  async function fetchStudents(): Promise<IDWithName[]> {
+  async function fetchStudents(): Promise<Student[]> {
     try {
       if (!globalState.courseID) return [];
       const data = await getStudents(
@@ -71,8 +71,8 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
     }
   }
 
-  const updateSelectedStudent = (id: string) => {
-    setGlobalState({ ...globalState, studentId: id });
+  const updateSelectedStudent = (newStudent: Student) => {
+    setGlobalState({ ...globalState, student: newStudent });
   };
 
   const updateSelectedAssignment = (id: string) => {
@@ -80,10 +80,12 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
   };
 
   const selectedStudentPretty = useMemo(() => {
-    if (!globalState.studentId) return "";
-    const found = students?.find((s) => s.id === globalState.studentId)?.name;
+    // if (!globalState.student.id) return "";
+    // const found = students?.find((s) => s.id === globalState.studentId)?.name;
+
+    const found = globalState.student.name;
     return found ? truncateString(found, 20) : "Unknown";
-  }, [globalState.studentId, students]);
+  }, [globalState.student, students]);
 
   const selectedAssignmentPretty = useMemo(() => {
     if (!globalState.assignmentId) return "";
@@ -96,14 +98,14 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
   const StudentDropdown = () => (
     <CustomDropdown
       icon="person"
-      label={globalState.studentId ? selectedStudentPretty : "Select Student"}
+      label={globalState.student.id ? selectedStudentPretty : "Select Student"}
       loading={studentsStatus === "pending"}
       drop="down"
       labelLength={12}
       toggleClassName="!tw-w-44 !tw-p-1 !tw-overflow-x-hidden"
     >
       {students?.map((s) => (
-        <Dropdown.Item key={s.id} onClick={() => updateSelectedStudent(s.id)}>
+        <Dropdown.Item key={s.id} onClick={() => updateSelectedStudent(s)}>
           {truncateString(s.name, 20)}
         </Dropdown.Item>
       ))}

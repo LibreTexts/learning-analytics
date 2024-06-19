@@ -15,6 +15,7 @@ import {
   IDWithName,
   IDWithText,
   PerformancePerAssignment,
+  Student,
   SubmissionTimeline,
   TextbookInteractionsCount,
   TimeInReview,
@@ -40,6 +41,8 @@ import adaptCourses from "@/lib/models/adaptCourses";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
+import calcADAPTScores from "./models/calcADAPTScores";
+import assignmentSubmissions from "./models/assignmentSubmissions";
 
 class Analytics {
   private adaptID: number;
@@ -308,31 +311,63 @@ class Analytics {
 
       await connectDB();
 
-      const classAvgPromise = Gradebook.aggregate([
-        {
-          $match: {
-            course_id: this.adaptID.toString(),
-          },
-        },
+      const classAvgPromise = calcADAPTScores.aggregate([
+        { $match: { course_id: this.adaptID.toString() } },
+        { $unwind: "$scores" },
         {
           $group: {
-            _id: "$assignment_name",
-            avg_score: { $avg: "$assignment_percent" },
+            _id: "$assignment_id",
+            avg_score: { $avg: "$scores" },
           },
         },
       ]);
 
-      const studentScorePromise = Gradebook.aggregate([
+      const studentScorePromise = assignmentSubmissions.aggregate([
         {
           $match: {
             course_id: this.adaptID.toString(),
-            email: emailToCompare,
+            student_id: emailToCompare,
+            percent_correct: {
+              $regex: "^[0-9]+(\\.[0-9]+)?%$",
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_stripped: {
+              $substr: [
+                "$percent_correct",
+                0,
+                {
+                  $subtract: [{ $strLenCP: "$percent_correct" }, 1],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_float: {
+              $convert: {
+                input: "$percent_correct_stripped",
+                to: "double",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            percent_correct_float: { $ne: null },
           },
         },
         {
           $group: {
-            _id: "$assignment_name",
-            avg_score: { $avg: "$assignment_percent" },
+            _id: "$assignment_id",
+            avg_score: {
+              $avg: "$percent_correct_float",
+            },
           },
         },
       ]);
@@ -459,29 +494,30 @@ class Analytics {
     page = 1,
     limit = 100,
     privacyMode = true
-  ): Promise<IDWithName[]> {
+  ): Promise<Student[]> {
     try {
       await connectDB();
 
       const offset = getPaginationOffset(page, limit);
 
       const res = await Enrollments.find({
-        courseID: this.adaptID.toString(),
+        course_id: this.adaptID.toString(),
       })
-        .select("email")
         .skip(offset)
         .limit(limit);
 
       if (privacyMode) {
         return res.map((d) => ({
-          id: d.email,
+          id: d.student_id,
+          email: d.email,
           name: d.email,
         }));
       }
 
       return await Promise.all(
         res.map(async (d) => ({
-          id: d.email,
+          id: d.student_id,
+          email: d.email,
           name: await decryptStudent(d.email),
         }))
       );

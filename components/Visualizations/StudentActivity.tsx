@@ -16,6 +16,7 @@ import {
 import NoData from "../NoData";
 import {
   ActivityAccessed as ActivityAccessedType,
+  Student,
   VisualizationBaseProps,
 } from "@/lib/types";
 import { capitalizeFirstLetter } from "@/utils/text-helpers";
@@ -30,7 +31,7 @@ import VisualizationTable from "../VisualizationTableView";
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 
 type StudentActivityProps = VisualizationBaseProps & {
-  selectedStudentId?: string;
+  selectedStudent?: Student;
   getData: (student_id: string) => Promise<ActivityAccessedType>;
 };
 
@@ -38,7 +39,7 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   tableView = false,
-  selectedStudentId,
+  selectedStudent,
   getData,
   innerRef,
 }) => {
@@ -80,9 +81,9 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   });
 
   useEffect(() => {
-    if (!selectedStudentId) return;
+    if (!selectedStudent?.id) return;
     handleGetData();
-  }, [selectedStudentId]);
+  }, [selectedStudent?.id]);
 
   useLayoutEffect(() => {
     if (!data || tableView) return;
@@ -92,9 +93,9 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudentId) return;
+      if (!selectedStudent?.id) return;
       setLoading(true);
-      const initData = await getData(selectedStudentId);
+      const initData = await getData(selectedStudent?.id);
 
       const mapped = {
         seen: initData.seen.length,

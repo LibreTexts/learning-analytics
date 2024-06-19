@@ -11,6 +11,12 @@ export type IDWithText<T extends string | number = string> = {
   text: string;
 };
 
+export type Student = {
+  id: string;
+  email: string;
+  name: string;
+}
+
 export type ADAPT_CourseScoresAPIResponse = {
   body: string[][];
 };

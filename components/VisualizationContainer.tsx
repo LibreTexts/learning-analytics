@@ -52,7 +52,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   }, [containerRef.current]);
 
   const childWithProps = cloneElement(children as React.ReactElement, {
-    selectedStudentId: globalState.studentId,
+    selectedStudent: globalState.student,
     selectedAssignmentId: globalState.assignmentId,
     studentMode,
     tableView,
