@@ -19,6 +19,7 @@ import {
   SubmissionTimeline,
   TextbookInteractionsCount,
   TimeInReview,
+  TimeOnTask,
 } from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
 import { time } from "console";
@@ -28,7 +29,7 @@ import calcADAPTSubmissionsByDate, {
 } from "./models/calcADAPTSubmissionsByDate";
 import { sortStringsWithNumbers } from "@/utils/text-helpers";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
-import { decryptStudent } from "@/utils/data-helpers";
+import { decryptStudent, mmssToSeconds } from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
 import CalcADAPTActorAvgScore from "./models/calcADAPTActorAvgScore";
 import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
@@ -44,6 +45,7 @@ import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentSubmissions from "./models/assignmentSubmissions";
 import assignments from "./models/assignments";
+import calcTimeOnTask from "./models/calcTimeOnTask";
 
 class Analytics {
   private adaptID: number;
@@ -86,7 +88,7 @@ class Analytics {
 
       return (
         res.map((d) => ({
-          id: d.id.toString(),
+          id: d.assignment_id.toString(),
           name: d.name,
         })) ?? []
       );
@@ -821,6 +823,86 @@ class Analytics {
 
       return mapped;
     } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  async getTimeOnTask(
+    student_id: string,
+    assignment_id: string
+  ): Promise<TimeOnTask[]> {
+    try {
+      await connectDB();
+
+      const enrollments = await Enrollments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const courseTotals = await calcTimeOnTask.find({
+        course_id: this.adaptID,
+        assignment_id,
+      });
+
+      //for each question, divide the total review time by the number of students
+      const courseAvg = courseTotals.map((d) => {
+        if (!isNaN(d.total_time_seconds) && enrollments.length > 0) {
+          return {
+            question_id: d.question_id,
+            avg_time_seconds: d.total_time_seconds / enrollments.length,
+          };
+        }
+
+        return {
+          question_id: d.question_id,
+          avg_time_seconds: 0,
+        };
+      });
+
+      const studentData = await assignmentSubmissions.find({
+        course_id: this.adaptID.toString(),
+        student_id,
+        assignment_id,
+      });
+
+      const studentQuestions = studentData.map((d) => {
+        if (Array.isArray(d.questions)) {
+          return d.questions.flat();
+        }
+        return [];
+      });
+
+      const flattened = studentQuestions.flat();
+
+      const studentTime = flattened.map((d) => ({
+        question_id: d.question_id,
+        time_seconds: mmssToSeconds(d.time_on_task) ?? 0,
+      }));
+
+      const mapped = studentTime.map((d) => ({
+        question_id: d.question_id,
+        student_time: d.time_seconds,
+        course_avg:
+          courseAvg.find((c) => c.question_id === d.question_id)
+            ?.avg_time_seconds ?? 0,
+      }));
+
+      const toMinutes = mapped.map((d) => ({
+        question_id: d.question_id,
+        student_time: Math.round(d.student_time / 60),
+        course_avg: Math.round(d.course_avg / 60),
+      }));
+
+      if (toMinutes.length === 0) {
+        return courseAvg.map((d) => ({
+          question_id: d.question_id,
+          student_time: 0,
+          course_avg: Math.round(d.avg_time_seconds / 60),
+        }));
+      }
+
+      return toMinutes;
+    } catch (err: any) {
       console.error(err);
       return [];
     }

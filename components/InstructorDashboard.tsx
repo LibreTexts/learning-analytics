@@ -8,6 +8,7 @@ import {
   getAssignmentFrameworkData,
   checkFinalGradesReleased,
   getTimeInReview,
+  getTimeOnTask,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -31,6 +32,7 @@ import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
 import LearningObjectiveCompletion from "./Visualizations/LearningObjectiveCompletion";
 import TimeInReview from "./Visualizations/TimeInReview";
+import TimeOnTask from "./Visualizations/TimeOnTask";
 
 const InstructorDashboard = ({
   course_id,
@@ -64,6 +66,17 @@ const InstructorDashboard = ({
       >
         <TextbookActivity getData={getPerformancePerAssignment} />
       </VisualizationContainer> */}
+      <VisualizationContainer
+        title="Time on Task"
+        description="Class average vs. selected student's time on task"
+        tooltipDescription="Time on task is the student's time spent working on a question before they submit it."
+      >
+        <TimeOnTask
+          getData={(student_id, assignment_id) =>
+            getTimeOnTask(course_id, student_id, assignment_id)
+          }
+        />
+      </VisualizationContainer>
       <VisualizationContainer
         title="Time in Review"
         description="Class average vs. selected student's time in review"

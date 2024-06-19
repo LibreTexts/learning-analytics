@@ -30,12 +30,13 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTInteractionDays();
     // await this.compressADAPTGradeDistribution();
     // await this.compressADAPTSubmissions();
-    await this.compressADAPTScores();
-    await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
+    //await this.compressADAPTScores();
+    //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
     //await this.compressReviewTime();
+    await this.compressTimeOnTask();
     // await this.writeEWSCourseSummary();
     // await this.writeEWSActorSummary();
   }
@@ -194,12 +195,11 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTStudentActivity]: Starting aggregation...");
 
-
-
       return true;
-    } catch (err: any){
+    } catch (err: any) {
       debugADP(
-        err.message ?? "Unknown error occured while compressing ADAPT student activity"
+        err.message ??
+          "Unknown error occured while compressing ADAPT student activity"
       );
       return false;
     }
@@ -722,6 +722,144 @@ class AnalyticsDataProcessor {
     } catch (err: any) {
       debugADP(
         err.message ?? "Unknown error occured while compressing review time"
+      );
+      return false;
+    }
+  }
+
+  private async compressTimeOnTask(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressTimeOnTask]: Starting aggregation...");
+
+      await assignmentSubmissions.aggregate([
+        {
+          $match: {
+            course_id: "2904",
+          },
+        },
+        {
+          $unwind: {
+            path: "$questions",
+          },
+        },
+        {
+          $addFields: {
+            time_parts: {
+              $cond: {
+                if: {
+                  $eq: ["$questions.time_on_task", "-"],
+                },
+                then: null,
+                else: {
+                  $split: ["$questions.time_on_task", ":"],
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            minutes: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 0],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+            seconds: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 1],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            total_seconds: {
+              $add: [
+                {
+                  $multiply: ["$minutes", 60],
+                },
+                "$seconds",
+              ],
+            },
+          },
+        },
+        {
+          $match:
+            /**
+             * query: The query in MQL.
+             */
+            {
+              total_seconds: {
+                $type: "number",
+              },
+            },
+        },
+        {
+          $group: {
+            _id: "$questions.question_id",
+            assignment_id: {
+              $first: "$assignment_id",
+            },
+            course_id: {
+              $first: "$course_id",
+            },
+            total_time_seconds: {
+              $sum: "$total_seconds",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            course_id: 1,
+            assignment_id: 1,
+            question_id: "$_id",
+            total_time_seconds: 1,
+          },
+        },
+        {
+          $merge: {
+            into: "calcTimeOnTask",
+            on: ["course_id", "assignment_id", "question_id"],
+            whenMatched: "replace",
+            whenNotMatched: "insert",
+          },
+        },
+      ]);
+
+      debugADP("[compressTimeOnTask]: Finished aggregation.");
+      return true;
+    } catch (err: any) {
+      debugADP(
+        err.message ?? "Unknown error occured while compressing time on task"
       );
       return false;
     }
