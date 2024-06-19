@@ -27,7 +27,7 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
       />
       {data && data?.totalPageViews && (
         <SmallMetricCard
-          title="Total Page Views"
+          title="Textbook Page Views"
           value={data?.totalPageViews}
           unit="Textbook Total Page Views"
           className="tw-ml-4"
