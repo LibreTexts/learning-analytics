@@ -21,6 +21,10 @@ import reviewTime from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import adaptCourses from "./models/adaptCourses";
 import assignmentSubmissions from "./models/assignmentSubmissions";
+import assignments from "./models/assignments";
+import calcADAPTStudentActivity, {
+  ICalcADAPTStudentActivity_Raw,
+} from "./models/calcADAPTStudentActivity";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -31,7 +35,7 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTGradeDistribution();
     // await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
-    //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
+    await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
@@ -195,6 +199,115 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTStudentActivity]: Starting aggregation...");
 
+      const hasScoreData = await assignmentSubmissions.aggregate([
+        {
+          $unwind: "$questions",
+        },
+        {
+          $match: {
+            $expr: {
+              $ne: [
+                {
+                  $convert: {
+                    input: "$questions.score",
+                    to: "double",
+                    onError: null,
+                    onNull: null,
+                  },
+                },
+                null,
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              course_id: "$course_id",
+              student_id: "$student_id",
+            },
+            unique_questions: {
+              $addToSet: "$questions.question_id",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            course_id: "$_id.course_id",
+            student_id: "$_id.student_id",
+            unique_questions: "$unique_questions",
+          },
+        },
+      ]);
+
+      const allCourseQuestions = await assignments.aggregate([
+        {
+          $unwind: "$questions",
+        },
+        {
+          $group: {
+            _id: "$course_id",
+            unique_questions: {
+              $addToSet: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            course_id: "$_id",
+            unique_questions: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      // for each student in each course, find what questions they have seen and not seen (has a score vs no score)
+      const studentActivityData: (ICalcADAPTStudentActivity_Raw | null)[] =
+        hasScoreData.map((data) => {
+          const { course_id, student_id, unique_questions } = data;
+          const courseQuestions = allCourseQuestions.find(
+            (course) => course.course_id === course_id
+          );
+          if (!courseQuestions) {
+            return null;
+          }
+
+          const seenQuestions = unique_questions;
+          const unseenQuestions = courseQuestions.unique_questions
+            .map((question: string) => question)
+            .filter(
+              (questionID: string) => !seenQuestions.includes(questionID)
+            );
+
+          return {
+            course_id,
+            student_id,
+            seen: seenQuestions,
+            unseen: unseenQuestions,
+          };
+        });
+
+      // filter out null values
+      const filteredStudentActivityData = studentActivityData.filter(
+        (data) => data
+      ) as ICalcADAPTStudentActivity_Raw[];
+
+      const bulkWriteData = filteredStudentActivityData.map((data) => ({
+        updateOne: {
+          filter: {
+            course_id: data.course_id,
+            student_id: data.student_id,
+          },
+          update: data,
+          upsert: true,
+        },
+      }));
+
+      // write the data to the database
+      await calcADAPTStudentActivity.bulkWrite(bulkWriteData);
+
+      debugADP("[compressADAPTStudentActivity]: Finished aggregation.");
       return true;
     } catch (err: any) {
       debugADP(

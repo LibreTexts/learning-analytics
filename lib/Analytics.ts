@@ -46,6 +46,7 @@ import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentSubmissions from "./models/assignmentSubmissions";
 import assignments from "./models/assignments";
 import calcTimeOnTask from "./models/calcTimeOnTask";
+import calcADAPTStudentActivity from "./models/calcADAPTStudentActivity";
 
 class Analytics {
   private adaptID: number;
@@ -151,72 +152,60 @@ class Analytics {
     try {
       await connectDB();
 
-      const allQuestionData = await reviewTime.find({
-        course_id: this.adaptID.toString(),
-      });
-
-      const studentData = await reviewTime.find({
-        course_id: this.adaptID.toString(),
-        actor: student_id,
-      });
-
-      if (!allQuestionData) {
-        return {
-          seen: [],
-          unseen: [],
-          course_avg_percent_seen: 0,
-        };
-      }
-
-      const allKnownQuestionsSet = () => {
-        const questions = new Set<number>();
-        allQuestionData.forEach((d) => {
-          d.questions.forEach((q: IReviewTime_Raw["questions"][0]) => {
-            questions.add(q.question_id);
-          });
-        });
-        return questions;
-      };
-
-      const allKnownQuestions = Array.from(allKnownQuestionsSet());
-
-      // Return all questions if student data is not found
-      if (!studentData || studentData.length === 0) {
-        return {
-          seen: [],
-          unseen: allKnownQuestions,
-          course_avg_percent_seen: 0,
-        };
-      }
-
-      const studentQuestionsSet = () => {
-        const questions = new Set<number>();
-        studentData.forEach((d) => {
-          d.questions.forEach((q: IReviewTime_Raw["questions"][0]) => {
-            questions.add(q.question_id);
-          });
-        });
-        return questions;
-      };
-
-      const studentQuestions = Array.from(studentQuestionsSet());
-
-      const { seen: _seen, unseen: _unseen } = allKnownQuestions.reduce(
-        (acc: ActivityAccessed, curr: number) => {
-          if (studentQuestions.includes(curr)) {
-            acc.seen.push(curr);
-          } else {
-            acc.unseen.push(curr);
-          }
-          return acc;
+      const allCourseQuestions = await assignments.aggregate([
+        {
+          $unwind: "$questions",
         },
-        { seen: [], unseen: [], course_avg_percent_seen: 0 }
-      );
+        {
+          $group: {
+            _id: "$course_id",
+            unique_questions: {
+              $addToSet: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            course_id: "$_id",
+            unique_questions: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      const COURSE_TOTAL_COUNT =
+        allCourseQuestions[0].unique_questions.length ?? 0;
+
+      const allCourse = await calcADAPTStudentActivity
+        .find({
+          course_id: this.adaptID.toString(),
+        })
+        .lean();
+
+      const courseAvgPercentSeen =
+        allCourse.reduce((acc, curr) => {
+          if (!curr.seen || !curr.seen.length) return acc;
+          const percentSeen = curr.seen.length / COURSE_TOTAL_COUNT;
+          if (isNaN(percentSeen)) {
+            return acc;
+          }
+          return acc + percentSeen;
+        }, 0) / allCourse.length;
+
+      const studentCourse = allCourse.find((d) => d.student_id === student_id);
+
+      if (!studentCourse) {
+        return {
+          seen: [],
+          unseen: allCourseQuestions[0].unique_questions ?? [],
+          course_avg_percent_seen: courseAvgPercentSeen,
+        };
+      }
 
       return {
-        seen: _seen,
-        unseen: _unseen,
-        course_avg_percent_seen: 0,
+        seen: studentCourse.seen,
+        unseen: studentCourse.unseen,
+        course_avg_percent_seen: courseAvgPercentSeen,
       };
     } catch (err) {
       console.error(err);
