@@ -31,6 +31,7 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTGradeDistribution();
     // await this.compressADAPTSubmissions();
     await this.compressADAPTScores();
+    await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
@@ -182,6 +183,23 @@ class AnalyticsDataProcessor {
     } catch (err: any) {
       debugADP(
         err.message ?? "Unknown error occured while compressing ADAPT scores"
+      );
+      return false;
+    }
+  }
+
+  private async compressADAPTStudentActivity(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      debugADP("[compressADAPTStudentActivity]: Starting aggregation...");
+
+
+
+      return true;
+    } catch (err: any){
+      debugADP(
+        err.message ?? "Unknown error occured while compressing ADAPT student activity"
       );
       return false;
     }

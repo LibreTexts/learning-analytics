@@ -9,7 +9,10 @@ import adaptCourses, {
   IAdaptCourses,
   IAdaptCoursesRaw,
 } from "./models/adaptCourses";
-import { encryptStudent } from "@/utils/data-helpers";
+import {
+  QUESTION_SCORE_DATA_EXCLUSIONS,
+  encryptStudent,
+} from "@/utils/data-helpers";
 import gradebook, { IGradebookRaw } from "./models/gradebook";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
@@ -19,6 +22,7 @@ import ADAPTCourseConnector from "./ADAPTCourseConnector";
 import assignmentSubmissions, {
   IAssignmentScoresRaw,
 } from "./models/assignmentSubmissions";
+import assignments, { IAssignmentRaw } from "./models/assignments";
 
 class AnalyticsDataCollector {
   constructor() {
@@ -32,8 +36,8 @@ class AnalyticsDataCollector {
 
   async runCollectors() {
     //await this.updateCourseData();
-    //await this.collectAllAssignments();
-    await this.collectEnrollments();
+    await this.collectAllAssignments();
+    //await this.collectEnrollments();
     //await this.collectAssignmentScores();
     //await this.collectGradebookData();
     //await this.collectQuestionFrameworkAlignment();
@@ -94,7 +98,7 @@ class AnalyticsDataCollector {
           : {}
       )) as IAdaptCoursesRaw[];
 
-      const updateDocs = new Map<string, ADAPTCourseAssignment[]>();
+      const updateDocs: IAssignmentRaw[] = [];
       for (const course of knownCourses) {
         try {
           if (!course.instructor_id) continue;
@@ -104,30 +108,58 @@ class AnalyticsDataCollector {
           );
           if (!courseData?.data) continue;
 
-          const assignments = courseData.data.assignments.map((assig) => ({
-            id: assig.id,
-            name: assig.name,
-            num_questions: assig.num_questions,
-          }));
+          const assignments: IAssignmentRaw[] = courseData.data.assignments.map(
+            (assig) => ({
+              course_id: course.course_id,
+              assignment_id: assig.id.toString(),
+              name: assig.name,
+              num_questions: assig.num_questions,
+              questions: [],
+            })
+          );
 
-          updateDocs.set(course.course_id, assignments);
+          for (const assignment of assignments) {
+            const scoreData = await adaptConn.getAssignmentScores(
+              assignment.assignment_id
+            );
+            if (!scoreData?.data) continue;
+            const questionsRaw = scoreData.data.rows[0];
+            if (!questionsRaw) continue;
+
+            const questions = Object.keys(questionsRaw).filter(
+              (key) => !QUESTION_SCORE_DATA_EXCLUSIONS.includes(key)
+            );
+
+            assignment.questions = questions.map((question) =>
+              question.toString()
+            );
+          }
+
+          updateDocs.push(...assignments);
         } catch (err) {
           console.error(err);
           continue;
         }
       }
 
-      const bulkOps = Array.from(updateDocs).map(
-        ([course_id, assignments]) => ({
-          updateOne: {
-            filter: { course_id },
-            update: { $set: { assignments } },
-            upsert: true,
+      const bulkOps = Array.from(updateDocs).map((assignment) => ({
+        updateOne: {
+          filter: {
+            course_id: assignment.course_id,
+            assignment_id: assignment.assignment_id,
           },
-        })
-      );
+          update: {
+            $set: {
+              name: assignment.name,
+              num_questions: assignment.num_questions,
+              questions: assignment.questions,
+            },
+          },
+          upsert: true,
+        },
+      }));
 
-      await adaptCourses.bulkWrite(bulkOps);
+      await assignments.bulkWrite(bulkOps);
     } catch (err) {
       console.error(err);
     }
@@ -200,13 +232,26 @@ class AnalyticsDataCollector {
           : {}
       )) as IAdaptCourses[];
 
-      for (const course of knownCourses) {
+      const assignmentData = await assignments.find({
+        course_id: { $in: knownCourses.map((course) => course.course_id) },
+      });
+
+      const withAssignments = knownCourses.map((course) => {
+        const assignments = assignmentData.filter(
+          (assignment) => assignment.course_id === course.course_id
+        );
+        return { ...course, assignments };
+      });
+
+      for (const course of withAssignments) {
         try {
           const assignmentIDs = course.assignments.map(
-            (assignment) => assignment.id
+            (assignment) => assignment.assignment_id
           );
 
-          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+          const adaptConn = new ADAPTInstructorConnector(
+            course.instructor_id.toString()
+          );
 
           const promises = assignmentIDs.map((assignmentID) => {
             return adaptConn.getAssignmentScores(assignmentID.toString());
@@ -234,9 +279,10 @@ class AnalyticsDataCollector {
             for (const row of assignment.rows) {
               const student_id = row.userId;
               const reduced = Object.keys(row).reduce((acc, key) => {
-                if (key === "userId") return acc;
-                if (["name", "percent_correct", "total_points"].includes(key))
+                if (QUESTION_SCORE_DATA_EXCLUSIONS.includes(key)) {
                   return acc;
+                }
+
                 acc[key] = row[key];
                 return acc;
               }, {} as { [x: string]: string });
@@ -245,7 +291,8 @@ class AnalyticsDataCollector {
                 student_id,
                 course_id: course.course_id,
                 assignment_id: assignment.assignment_id,
-                percent_correct: row.percent_correct === "N/A" ? "-" : row.percent_correct, // use dash indicator instead of "N/A" for consistency
+                percent_correct:
+                  row.percent_correct === "N/A" ? "-" : row.percent_correct, // use dash indicator instead of "N/A" for consistency
                 total_points: row.total_points.toString(),
                 questions: Object.keys(reduced).map((key) => {
                   const { score, timeOnTask } = this._extractScoreAndTimeOnTask(
@@ -628,8 +675,6 @@ class AnalyticsDataCollector {
           });
         }
       }
-
-      console.log(reviewTimeData.slice(0, 5));
 
       const encryptedEmails = await Promise.all(
         reviewTimeData.map((data) => encryptStudent(data.email))
