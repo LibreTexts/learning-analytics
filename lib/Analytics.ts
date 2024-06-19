@@ -43,6 +43,7 @@ import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentSubmissions from "./models/assignmentSubmissions";
+import assignments from "./models/assignments";
 
 class Analytics {
   private adaptID: number;
@@ -71,14 +72,12 @@ class Analytics {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
-      const res = await adaptCourses.findOne({
+      const res = await assignments.find({
         course_id: this.adaptID.toString(),
       });
 
-      const assignments = (res?.assignments ?? []) as ADAPTCourseAssignment[];
-
       // sort the assignments by name
-      assignments.sort((a, b) =>
+      res.sort((a, b) =>
         a.name.localeCompare(b.name, undefined, {
           numeric: true,
           sensitivity: "base",
@@ -86,7 +85,7 @@ class Analytics {
       );
 
       return (
-        assignments.map((d) => ({
+        res.map((d) => ({
           id: d.id.toString(),
           name: d.name,
         })) ?? []
@@ -102,7 +101,7 @@ class Analytics {
       await connectDB();
 
       const res = await Enrollments.countDocuments({
-        courseID: this.adaptID.toString(),
+        course_id: this.adaptID.toString(),
       });
 
       return res ?? 0;
@@ -116,16 +115,13 @@ class Analytics {
     try {
       await connectDB();
 
-      const res = await adaptCourses.findOne({
+      const res = await assignments.find({
         course_id: this.adaptID.toString(),
       });
 
-      const total = res.assignments.reduce(
-        (acc: number, curr: ADAPTCourseAssignment) => {
-          return acc + curr.num_questions ?? 0;
-        },
-        0
-      );
+      const total = res.reduce((acc: number, curr: ADAPTCourseAssignment) => {
+        return acc + curr.num_questions ?? 0;
+      }, 0);
 
       return total ?? 0;
     } catch (err) {

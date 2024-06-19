@@ -66,3 +66,14 @@ export async function encryptStudent(student: string): Promise<string> {
     }
   });
 }
+
+/**
+ * Keys of the ADAPTQuestionScoreData object that are not question id's
+**/
+export const QUESTION_SCORE_DATA_EXCLUSIONS = [
+  'name',
+  'percent_correct',
+  'total_points',
+  'userId',
+  'override_score'
+]
