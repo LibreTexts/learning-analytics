@@ -80,9 +80,9 @@ export const QUESTION_SCORE_DATA_EXCLUSIONS = [
 ];
 
 export function mmssToSeconds(mmss: string): number {
-  if(!mmss) return 0;
-  if(typeof mmss !== 'string') return 0;
-  if(!mmss.includes(':')) return 0;
+  if (!mmss) return 0;
+  if (typeof mmss !== "string") return 0;
+  if (!mmss.includes(":")) return 0;
 
   const parts = mmss.split(":");
 
@@ -99,3 +99,24 @@ export function mmssToSeconds(mmss: string): number {
 
   return minutes * 60 + seconds;
 }
+
+export const Assignments_AllCourseQuestionsAggregation = [
+  {
+    $unwind: "$questions",
+  },
+  {
+    $group: {
+      _id: "$course_id",
+      unique_questions: {
+        $addToSet: "$questions",
+      },
+    },
+  },
+  {
+    $project: {
+      course_id: "$_id",
+      unique_questions: 1,
+      _id: 0,
+    },
+  },
+];

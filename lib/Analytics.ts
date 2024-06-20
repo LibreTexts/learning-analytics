@@ -21,7 +21,11 @@ import calcADAPTSubmissionsByDate, {
   ICalcADAPTSubmissionsByDate_Raw,
 } from "./models/calcADAPTSubmissionsByDate";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
-import { decryptStudent, mmssToSeconds } from "@/utils/data-helpers";
+import {
+  Assignments_AllCourseQuestionsAggregation,
+  decryptStudent,
+  mmssToSeconds,
+} from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
 import CalcADAPTActorAvgScore from "./models/calcADAPTActorAvgScore";
 import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
@@ -152,29 +156,15 @@ class Analytics {
     try {
       await connectDB();
 
-      const allCourseQuestions = await assignments.aggregate([
-        {
-          $unwind: "$questions",
-        },
-        {
-          $group: {
-            _id: "$course_id",
-            unique_questions: {
-              $addToSet: "$questions",
-            },
-          },
-        },
-        {
-          $project: {
-            course_id: "$_id",
-            unique_questions: 1,
-            _id: 0,
-          },
-        },
-      ]);
+      const allCourseQuestions = await assignments.aggregate(
+        Assignments_AllCourseQuestionsAggregation
+      );
 
-      const COURSE_TOTAL_COUNT =
-        allCourseQuestions[0].unique_questions.length ?? 0;
+      const courseRecord = allCourseQuestions.find(
+        (d) => d.course_id === this.adaptID.toString()
+      );
+
+      const COURSE_TOTAL_COUNT = courseRecord?.unique_questions?.length ?? 0;
 
       const allCourse = await calcADAPTStudentActivity
         .find({
@@ -197,7 +187,7 @@ class Analytics {
       if (!studentCourse) {
         return {
           seen: [],
-          unseen: allCourseQuestions[0].unique_questions ?? [],
+          unseen: courseRecord?.unique_assignment_count ?? [],
           course_avg_percent_seen: courseAvgPercentSeen,
         };
       }
@@ -690,11 +680,6 @@ class Analytics {
 
       const actorIds = res.map((d) => d.actor_id);
 
-      const avgScores = await CalcADAPTActorAvgScore.find({
-        courseID: this.adaptID.toString(),
-        actor: { $in: actorIds },
-      });
-
       // Calculate course percentile and quartile
       const allScores = res.map((d) => d.course_percent);
       const sortedScores = allScores.sort((a, b) => a - b);
@@ -714,8 +699,6 @@ class Analytics {
         name: d.actor_id,
         pagesAccessed: 0,
         uniqueInteractionDays: d.interaction_days,
-        avgPercentAssignment:
-          avgScores.find((a) => a.actor === d.actor_id)?.avg_score ?? 0,
         percentSeen: d.percent_seen,
         coursePercent: d.course_percent,
         // round percentile to two decimal places
