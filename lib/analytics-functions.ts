@@ -203,3 +203,13 @@ export async function getTimeOnTask(
   const timeOnTask = await analytics.getTimeOnTask(student_id, assignment_id);
   return timeOnTask;
 }
+
+export async function getLearningObjectiveCompletion(
+  course_id: string,
+  assignment_id: string
+) {
+  const analytics = new Analytics(course_id);
+  const learningObjectiveCompletion =
+    await analytics.getLearningObjectiveCompletion(assignment_id);
+  return learningObjectiveCompletion;
+}
