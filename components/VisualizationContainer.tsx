@@ -84,7 +84,7 @@ const VisualizationContainer: React.FC<VisualizationContainerProps> = ({
   };
 
   return (
-    <Card className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-w-full">
+    <Card className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-max-w-[96%]">
       <div className="tw-flex tw-flex-row tw-justify-between">
         <div className="tw-flex tw-flex-col">
           <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">

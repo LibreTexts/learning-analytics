@@ -14,7 +14,7 @@ const GenericPageContainer: React.FC<GenericPageContainerProps> = ({
     <div
       className={classNames(
         className,
-        "tw-grid tw-auto-rows-min tw-grid-flow-row tw-w-full tw-mb-16 tw-min-w-0"
+        "tw-grid tw-auto-rows-min tw-grid-flow-row tw-mb-16 tw-min-w-0 tw-max-w-[97%] tw-mx-auto"
       )}
       {...rest}
     >

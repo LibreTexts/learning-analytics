@@ -3,10 +3,9 @@ import GenericPageContainer from "@/components/GenericPageContainer";
 import StudentPermissions from "@/components/CourseSettings/StudentPermissions";
 import { updateCourseAnalyticsSettings } from "@/lib/analytics-functions";
 import FrameworkExclusions from "@/components/CourseSettings/FrameworkExclusions";
+import AssignmentExclusions from "@/components/CourseSettings/AssignmentExclusions";
 
 export default function CourseSettings() {
-
-
   return (
     <GenericPageContainer>
       <PageHeader
@@ -14,7 +13,14 @@ export default function CourseSettings() {
         subtitle="Configure your course analytics and sharing settings."
       />
       <StudentPermissions saveData={updateCourseAnalyticsSettings} />
-      <FrameworkExclusions saveData={updateCourseAnalyticsSettings} className="tw-mt-4"/>
+      <AssignmentExclusions
+        saveData={updateCourseAnalyticsSettings}
+        className="tw-mt-6"
+      />
+      <FrameworkExclusions
+        saveData={updateCourseAnalyticsSettings}
+        className="tw-mt-6"
+      />
     </GenericPageContainer>
   );
 }

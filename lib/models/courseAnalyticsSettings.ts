@@ -1,10 +1,11 @@
 import { Document, Schema, model, models } from "mongoose";
+import { IDWithName, IDWithText } from "../types";
 
 export interface ICourseAnalyticsSettings_Raw {
   courseID: string;
   shareGradeDistribution: boolean;
-  frameworkExclusions?: string[];
-  assignmentExclusions?: string[];
+  frameworkExclusions?: IDWithText[];
+  assignmentExclusions?: IDWithName[];
 }
 
 export interface ICourseAnalyticsSettings
@@ -19,11 +20,21 @@ const CourseAnalyticsSettingsSchema = new Schema<ICourseAnalyticsSettings>(
       default: false,
     },
     frameworkExclusions: {
-      type: [String],
+      type: [
+        {
+          id: String,
+          text: String
+        },
+      ],
       default: [],
     },
     assignmentExclusions: {
-      type: [String],
+      type: [
+        {
+          id: String,
+          name: String,
+        },
+      ],
       default: [],
     },
   },

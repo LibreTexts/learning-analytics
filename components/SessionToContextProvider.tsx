@@ -1,5 +1,6 @@
 "use client";
 import Loading from "@/app/(authorized)/loading";
+import { getCourseAnalyticsSettings } from "@/lib/analytics-functions";
 import { useGlobalContext } from "@/state/globalContext";
 import axios from "axios";
 import { Suspense, useEffect } from "react";
@@ -16,6 +17,10 @@ const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    fetchCourseSettings();
+  }, [globalState.courseID]);
 
   async function fetchData() {
     const sessionData = await fetchSessionData();
@@ -51,6 +56,22 @@ const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({
       }));
     } catch (error) {
       console.error(error);
+    }
+  }
+
+  async function fetchCourseSettings() {
+    try {
+      if (!globalState.courseID) return;
+      const res = await getCourseAnalyticsSettings(globalState.courseID);
+      if (!res) return;
+      setGlobalState((prev) => ({
+        ...prev,
+        shareGradeDistribution: res.shareGradeDistribution,
+        frameworkExclusions: res.frameworkExclusions,
+        assignmentExclusions: res.assignmentExclusions,
+      }));
+    } catch (err) {
+      console.error(err);
     }
   }
 

@@ -11,7 +11,7 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
   });
 
   return (
-    <div className="tw-flex tw-flex-row tw-justify-between">
+    <div className="tw-flex tw-flex-row tw-justify-between tw-max-w-[96%]">
       <SmallMetricCard
         title="Assignments"
         value={data?.assignments}
