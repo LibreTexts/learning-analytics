@@ -1,14 +1,15 @@
 "use client";
-import { GlobalState, IDWithText } from "@/lib/types";
+import { GlobalState, IDWithName } from "@/lib/types";
 import React, { useEffect, useState } from "react";
 import { Button, Form, ListGroup, Toast } from "react-bootstrap";
 import ToastContainer from "../ToastContainer";
 import { useGlobalContext } from "@/state/globalContext";
 import TransferList from "../TransferList";
 import classNames from "classnames";
-import { getCourseFrameworkData } from "@/lib/analytics-functions";
+import { getAssignments } from "@/lib/analytics-functions";
+import { useQueryClient } from "@tanstack/react-query";
 
-interface FrameworkExclusionsProps {
+interface AssignmentExclusionsProps {
   className?: string;
   saveData: (
     course_id: string,
@@ -16,36 +17,29 @@ interface FrameworkExclusionsProps {
   ) => Promise<void> | void;
 }
 
-const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
+const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
   className,
   saveData,
 }) => {
+  const queryClient = useQueryClient();
   const [globalState, setGlobalState] = useGlobalContext();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [availableItems, setAvailableItems] = useState<IDWithText[]>([]);
-  const [selectedItems, setSelectedItems] = useState<IDWithText[]>(
-    globalState.frameworkExclusions || []
+  const [availableItems, setAvailableItems] = useState<IDWithName[]>([]);
+  const [selectedItems, setSelectedItems] = useState<IDWithName[]>(
+    globalState.assignmentExclusions || []
   );
 
   useEffect(() => {
     if (!globalState.courseID) return;
-    fetchFrameworkDescriptors();
+    fetchAssignments();
   }, [globalState.courseID]);
 
-  async function fetchFrameworkDescriptors() {
+  async function fetchAssignments() {
     try {
-      const data = await getCourseFrameworkData(globalState.courseID);
-
-      const flattened = [...data.descriptors, ...data.levels];
-      const unique = Array.from(new Set(flattened.map((a) => a.text)))
-        .map((text) => {
-          return flattened.find((a) => a.text === text);
-        })
-        .filter((a) => a);
-
-      setAvailableItems(unique as IDWithText[]);
+      const data = await getAssignments(globalState.courseID, true);
+      setAvailableItems(data);
     } catch (err) {
       console.error(err);
       return [];
@@ -57,16 +51,19 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
       setLoading(true);
 
       await saveData(globalState.courseID, {
-        frameworkExclusions: selectedItems,
+        assignmentExclusions: selectedItems,
       });
 
       const newGlobalState = {
         ...globalState,
-        frameworkExclusions: selectedItems,
+        assignmentExclusions: selectedItems,
       };
 
       setGlobalState(newGlobalState);
       setShowSuccess(true);
+      queryClient.invalidateQueries({
+        queryKey: ["assignments", globalState.courseID],
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,28 +71,29 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
     }
   }
 
+  const renderItem = (item: IDWithName) => <span>{item.name}</span>;
+
   return (
     <div className={classNames(className)}>
       <ListGroup className="!tw-shadow-sm tw-w-full tw-h-fit">
         <ListGroup.Item className="tw-bg-ultra-light-gray">
-          Framework Exclusions
+          Assignment Exclusions
         </ListGroup.Item>
         <ListGroup.Item className="tw-bg-white">
           <p className="tw-mb-6 tw-text-sm tw-text-slate-500">
-            Exclude specific framework descriptors from analytics
-            visualizations.
+            Exclude specific assignments from analytics visualizations.
           </p>
-          <TransferList<IDWithText>
-            availableItemsLabel="Available Framework Descriptors"
-            selectedItemsLabel="Excluded Framework Descriptors"
+          <TransferList<IDWithName>
+            availableItemsLabel="Available Assignments"
+            selectedItemsLabel="Excluded Assignments"
             availableItems={availableItems}
             selectedItems={selectedItems}
             setAvailableItems={setAvailableItems}
             setSelectedItems={setSelectedItems}
-            renderItem={(item) => <span>{item.text}</span>}
             allowManualEntry={false}
+            renderItem={renderItem}
             compareItems={(a, b) => {
-              return a.text.localeCompare(b.text, undefined, {
+              return a.name.localeCompare(b.name, undefined, {
                 numeric: true,
                 sensitivity: "base",
               });
@@ -136,4 +134,4 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
   );
 };
 
-export default FrameworkExclusions;
+export default AssignmentExclusions;

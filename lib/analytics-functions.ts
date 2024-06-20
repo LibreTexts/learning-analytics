@@ -19,7 +19,7 @@ export async function getInstructorQuickMetrics(
   const analytics = new Analytics(course_id);
 
   const promises = [
-    analytics.getAssignments(),
+    analytics.getAssignments(true),
     analytics.countEnrolledStudents(),
     analytics.getTotalQuestionsCount(),
   ];
@@ -85,9 +85,12 @@ export async function getADAPTPerformance(
   return performance;
 }
 
-export async function getAssignments(course_id: string) {
+export async function getAssignments(
+  course_id: string,
+  ignoreExclusions = false
+) {
   const analytics = new Analytics(course_id);
-  const assignments = await analytics.getAssignments();
+  const assignments = await analytics.getAssignments(ignoreExclusions);
   return assignments;
 }
 
@@ -130,6 +133,18 @@ export async function getSubmissionTimeline(
   const analytics = new Analytics(course_id);
   const timeline = await analytics.getSubmissionTimeline(assignment_id);
   return timeline;
+}
+
+export async function getCourseFrameworkData(course_id: string) {
+  const analytics = new Analytics(course_id);
+  const frameworkData = await analytics.getCourseFrameworkData();
+  return frameworkData;
+}
+
+export async function getCourseAnalyticsSettings(course_id: string) {
+  const analytics = new Analytics(course_id);
+  const settings = await analytics.getCourseAnalyticsSettings();
+  return settings;
 }
 
 export async function updateCourseAnalyticsSettings(

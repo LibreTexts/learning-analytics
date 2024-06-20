@@ -1,33 +1,25 @@
 import connectDB from "@/lib/database";
-import Adapt, { IAdapt_Raw } from "@/lib/models/adapt";
 import AdaptCodes from "@/lib/models/adaptCourses";
 import Enrollments from "@/lib/models/enrollments";
 import Gradebook from "@/lib/models/gradebook";
-import LTAnalytics from "@/lib/models/ltanalytics";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
   ADAPTCourseAssignment,
   ActivityAccessed,
   AnalyticsRawData,
-  ArrayElement,
-  AssignmentAvgScoreCalc,
   GradeDistribution,
   IDWithName,
   IDWithText,
   PerformancePerAssignment,
   Student,
-  SubmissionTimeline,
   TextbookInteractionsCount,
   TimeInReview,
   TimeOnTask,
 } from "@/lib/types";
 import { getPaginationOffset } from "@/utils/misc";
-import { time } from "console";
 import calcADAPTSubmissionsByDate, {
-  ICalcADAPTSubmissionsByDate,
   ICalcADAPTSubmissionsByDate_Raw,
 } from "./models/calcADAPTSubmissionsByDate";
-import { sortStringsWithNumbers } from "@/utils/text-helpers";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
 import { decryptStudent, mmssToSeconds } from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
@@ -40,7 +32,6 @@ import ewsActorSummary from "./models/ewsActorSummary";
 import ewsCourseSummary from "./models/ewsCourseSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
-import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentSubmissions from "./models/assignmentSubmissions";
@@ -71,7 +62,7 @@ class Analytics {
   //   }
   // }
 
-  public async getAssignments(): Promise<IDWithName[]> {
+  public async getAssignments(ignoreExclusions = false): Promise<IDWithName[]> {
     try {
       await connectDB();
       // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
@@ -87,11 +78,20 @@ class Analytics {
         })
       );
 
-      return (
+      const mapped =
         res.map((d) => ({
           id: d.assignment_id.toString(),
           name: d.name,
-        })) ?? []
+        })) ?? [];
+
+      if (ignoreExclusions) {
+        return mapped;
+      }
+
+      // Filter out assignments that are excluded
+      const assignmentExclusions = await this._getAssignmentExclusions();
+      return mapped.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.id)
       );
     } catch (err) {
       console.error(err);
@@ -398,7 +398,11 @@ class Analytics {
         })
       );
 
-      return truncated;
+      // Filter out assignments that are excluded
+      const assignmentExclusions = await this._getAssignmentExclusions();
+      return truncated.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.assignment_id)
+      );
     } catch (err) {
       console.error(err);
       return [];
@@ -569,11 +573,97 @@ class Analytics {
     }
   }
 
+  public async getCourseFrameworkData(): Promise<{
+    descriptors: IDWithText[];
+    levels: IDWithText[];
+  }> {
+    try {
+      await connectDB();
+
+      // need to get all course assignments first
+      const courseAssignments = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const res = await frameworkQuestionAlignment.find({
+        assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
+      });
+
+      const frameworkDescriptors = res.reduce((acc, curr) => {
+        curr.framework_descriptors.forEach((d: IDWithText) => {
+          if (
+            !acc.find((f: IDWithText) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText[]);
+
+      const frameworkLevels = res.reduce((acc, curr) => {
+        curr.framework_levels.forEach((d: IDWithText) => {
+          if (
+            !acc.find((f: IDWithText) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText[]);
+
+      frameworkDescriptors.sort((a: IDWithText, b: IDWithText) =>
+        a.text.localeCompare(b.text)
+      );
+      frameworkLevels.sort((a: IDWithText, b: IDWithText) =>
+        a.text.localeCompare(b.text)
+      );
+
+      // Stringify id before returning
+      return {
+        descriptors: frameworkDescriptors.map((d: IDWithText) => ({
+          id: d.id.toString(),
+          text: d.text,
+        })),
+        levels: frameworkLevels.map((d: IDWithText) => ({
+          id: d.id.toString(),
+          text: d.text,
+        })),
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        descriptors: [],
+        levels: [],
+      };
+    }
+  }
+
+  public async getCourseAnalyticsSettings(): Promise<ICourseAnalyticsSettings_Raw | null> {
+    try {
+      await connectDB();
+
+      const res = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      if (!res) {
+        return null;
+      }
+
+      return JSON.parse(JSON.stringify(res));
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  }
+
   public async updateCourseAnalyticsSettings(
     newSettings: Partial<ICourseAnalyticsSettings_Raw>
   ): Promise<boolean> {
     try {
       await connectDB();
+
+      console.log(newSettings);
 
       const res = await CourseAnalyticsSettings.updateOne(
         {
@@ -661,10 +751,6 @@ class Analytics {
     try {
       await connectDB();
 
-      const courseSettings = await CourseAnalyticsSettings.findOne({
-        courseID: this.adaptID.toString(),
-      });
-
       const res = await frameworkQuestionAlignment.find({
         assignment_id: parseInt(assignment_id.toString()),
       });
@@ -704,17 +790,19 @@ class Analytics {
         }
       );
 
+      const frameworkExclusions = await this._getFrameworkExclusions();
+
       const filteredDescriptors = assignmentData.framework_descriptors.filter(
         (d: IDWithText<number>) => {
           return (
-            courseSettings?.frameworkExclusions?.includes(d.text) === false
+            frameworkExclusions?.find((f) => f.text === d.text) === undefined
           );
         }
       );
       const filteredLevels = assignmentData.framework_levels.filter(
         (d: IDWithText<number>) => {
           return (
-            courseSettings?.frameworkExclusions?.includes(d.text) === false
+            frameworkExclusions?.find((f) => f.text === d.text) === undefined
           );
         }
       );
@@ -892,6 +980,36 @@ class Analytics {
 
       return toMinutes;
     } catch (err: any) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private async _getAssignmentExclusions(): Promise<IDWithName[]> {
+    try {
+      await connectDB();
+
+      const courseSettings = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return courseSettings?.assignmentExclusions ?? [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private async _getFrameworkExclusions(): Promise<IDWithText[]> {
+    try {
+      await connectDB();
+
+      const courseSettings = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return courseSettings?.frameworkExclusions ?? [];
+    } catch (err) {
       console.error(err);
       return [];
     }
