@@ -21,7 +21,7 @@ import ADAPTInstructorConnector from "./ADAPTInstructorConnector";
 import ADAPTCourseConnector from "./ADAPTCourseConnector";
 import assignmentSubmissions, {
   IAssignmentScoresRaw,
-} from "./models/assignmentSubmissions";
+} from "./models/assignmentScores";
 import assignments, { IAssignmentRaw } from "./models/assignments";
 
 class AnalyticsDataCollector {
@@ -36,9 +36,10 @@ class AnalyticsDataCollector {
 
   async runCollectors() {
     //await this.updateCourseData();
-    await this.collectAllAssignments();
+    //await this.collectAllAssignments();
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
+    await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectGradebookData();
     //await this.collectQuestionFrameworkAlignment();
     //await this.collectReviewTimeData();
@@ -303,6 +304,8 @@ class AnalyticsDataCollector {
                     question_id: key,
                     score: score,
                     time_on_task: timeOnTask,
+                    first_submitted_at: null,
+                    last_submitted_at: null,
                   };
                 }),
               });
@@ -338,6 +341,100 @@ class AnalyticsDataCollector {
           continue;
         }
       }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async collectAssignmentSubmissionTimestamps() {
+    try {
+      await connectDB();
+
+      const knownCourses = await adaptCourses.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
+      );
+
+      const allAssignments = await assignments.find({
+        course_id: { $in: knownCourses.map((course) => course.course_id) },
+      });
+
+      const dataToInsert: {
+        course_id: string;
+        assignment_id: string;
+        student_id: string;
+        question_id: string;
+        first_submitted_at: string;
+        last_submitted_at: string;
+      }[] = [];
+
+      for (const course of knownCourses) {
+        console.log("Collecting submission timestamps for course", course);
+        try {
+          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+          const courseAssignments = allAssignments.filter(
+            (assignment) => assignment.course_id === course.course_id
+          );
+          console.log("COurse Assignments", courseAssignments);
+          for (const assignment of courseAssignments) {
+            const submissionData =
+              await adaptConn.getAssignmentSubmissionTimestamps(
+                assignment.assignment_id
+              );
+            if (!submissionData?.data) continue;
+            for (const submission of submissionData.data) {
+              if (!submission.auto_graded) continue;
+              const autoGradedEntries = Object.entries(submission.auto_graded);
+              autoGradedEntries.forEach((question) => {
+                const questionID = question[0];
+                const submissionData = question[1];
+                dataToInsert.push({
+                  course_id: course.course_id,
+                  assignment_id: assignment.assignment_id,
+                  student_id: submission.user_id.toString(),
+                  question_id: questionID,
+                  first_submitted_at: submissionData.first_submitted_at,
+                  last_submitted_at: submissionData.last_submitted_at,
+                });
+              });
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          continue;
+        }
+      }
+
+      // Encrypt the student IDs
+      const encryptedIds = await Promise.all(
+        dataToInsert.map((data) => encryptStudent(data.student_id))
+      );
+
+      dataToInsert.forEach((data, index) => {
+        data.student_id = encryptedIds[index];
+      });
+
+      // Bulk upsert the submission timestamps
+      const bulkOps = dataToInsert.map((data) => ({
+        updateOne: {
+          filter: {
+            course_id: data.course_id,
+            assignment_id: data.assignment_id,
+            student_id: data.student_id,
+            "questions.question_id": data.question_id,
+          },
+          update: {
+            $set: {
+              "questions.$.first_submitted_at": data.first_submitted_at,
+              "questions.$.last_submitted_at": data.last_submitted_at,
+            },
+          },
+          upsert: true,
+        },
+      }));
+
+      await assignmentSubmissions.bulkWrite(bulkOps);
     } catch (err) {
       console.error(err);
     }

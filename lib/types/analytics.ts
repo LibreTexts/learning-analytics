@@ -6,10 +6,9 @@ export type AssignmentAvgScoreCalc = {
 };
 
 export type SubmissionTimeline = {
-  _id: string;
-  count: number;
-  parsedDue: Date;
-};
+  question_id: string;
+  data: { date: string; count: number }[];
+}
 
 export type PerformancePerAssignment = {
   assignment_id: string;
