@@ -15,7 +15,7 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
       <SmallMetricCard
         title="Assignments"
         value={data?.assignments}
-        unit="Active Assignments"
+        unit="Assignments in Course"
         loading={isFetching}
       />
       <SmallMetricCard

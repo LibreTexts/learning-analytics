@@ -25,6 +25,7 @@ import assignments from "./models/assignments";
 import calcADAPTStudentActivity, {
   ICalcADAPTStudentActivity_Raw,
 } from "./models/calcADAPTStudentActivity";
+import { Assignments_AllCourseQuestionsAggregation } from "@/utils/data-helpers";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -35,14 +36,14 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTGradeDistribution();
     // await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
-    await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
+    //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
     //await this.compressReviewTime();
-    await this.compressTimeOnTask();
-    // await this.writeEWSCourseSummary();
-    // await this.writeEWSActorSummary();
+    //await this.compressTimeOnTask();
+    //await this.writeEWSCourseSummary();
+    await this.writeEWSActorSummary();
   }
 
   private async compressADAPTAverageScore(): Promise<boolean> {
@@ -241,26 +242,9 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      const allCourseQuestions = await assignments.aggregate([
-        {
-          $unwind: "$questions",
-        },
-        {
-          $group: {
-            _id: "$course_id",
-            unique_questions: {
-              $addToSet: "$questions",
-            },
-          },
-        },
-        {
-          $project: {
-            course_id: "$_id",
-            unique_questions: 1,
-            _id: 0,
-          },
-        },
-      ]);
+      const allCourseQuestions = await assignments.aggregate(
+        Assignments_AllCourseQuestionsAggregation
+      );
 
       // for each student in each course, find what questions they have seen and not seen (has a score vs no score)
       const studentActivityData: (ICalcADAPTStudentActivity_Raw | null)[] =
@@ -1180,183 +1164,181 @@ class AnalyticsDataProcessor {
       debugADP("[writeEWSActorSummary]: Starting aggregation...");
       const actors = await enrollments.aggregate([
         {
+          // ensure student_id exists
+          $match: {
+            student_id: {
+              $exists: true,
+              $ne: "",
+            },
+          },
+        },
+        {
           $group: {
             _id: {
+              student_id: "$student_id",
               email: "$email",
-              courseID: "$courseID",
+              course_id: "$course_id",
             },
           },
         },
         {
           $project: {
             _id: 0,
-            actor_id: "$_id.email",
-            course_id: "$_id.courseID",
+            student_id: "$_id.student_id",
+            email: "$_id.email",
+            course_id: "$_id.course_id",
           },
         },
       ]);
 
-      const actorWCourses = new Map<string, string[]>();
-      actors.forEach((actor) => {
-        if (actorWCourses.has(actor.actor_id)) {
-          actorWCourses.get(actor.actor_id)?.push(actor.course_id);
-        } else {
-          actorWCourses.set(actor.actor_id, [actor.course_id]);
-        }
-      });
-
-      const actorAssignments = await calcADAPTAssignments.aggregate(
-        [
-          {
-            $match: {
-              $or: Array.from(actorWCourses.entries()).map(
-                ([actorID, courseIDs]) => ({
-                  actor: actorID,
-                  courseID: { $in: courseIDs },
-                })
-              ),
-            },
-          },
-        ],
-        {
-          allowDiskUse: true,
-        }
-      );
-
-      const actorSummaries: IEWSActorSummary_Raw[] = [];
-      const assignmentsByActorIdCourseId = new Map<string, any[]>();
-      for (const [actorID, courseIDs] of Array.from(actorWCourses.entries())) {
-        for (const courseID of courseIDs) {
-          const actorCourseAssignments = actorAssignments.filter(
-            (assignment: { actor: string; courseID: string }) =>
-              assignment.actor === actorID && assignment.courseID === courseID
-          );
-
-          const actorSummary: IEWSActorSummary_Raw = {
-            actor_id: actorID,
-            course_id: courseID,
-            percent_seen: 0,
-            interaction_days: 0,
-            course_percent: 0,
-          };
-          assignmentsByActorIdCourseId.set(
-            `${actorID}:${courseID}`,
-            actorCourseAssignments
-              .at(0)
-              ?.assignments.map(
-                (assignment: { assignment_id: string; score: number }) => ({
-                  assignment_id: assignment.assignment_id,
-                  score: isNaN(assignment.score) ? 0 : assignment.score,
-                })
-              ) || []
-          );
-
-          actorSummaries.push(actorSummary);
-        }
-      }
-
-      const interactionDays = await calcADAPTInteractionDays.aggregate([
-        {
-          $group: {
-            _id: {
-              actor: "$actor",
-              courseID: "$courseID",
-            },
-            interaction_days: {
-              $sum: {
-                $size: "$days",
-              },
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            actor_id: "$_id.actor",
-            course_id: "$_id.courseID",
-            interaction_days: 1,
-          },
-        },
-      ]);
-
-      interactionDays.forEach((interaction) => {
-        const actorSummary = actorSummaries.find(
-          (summary) =>
-            summary.actor_id === interaction.actor_id &&
-            summary.course_id === interaction.course_id
-        );
-        if (actorSummary) {
-          actorSummary.interaction_days = interaction.interaction_days;
-        }
-      });
-
-      const courseAssignments = await adaptCourses.aggregate([
+      const courseAssignments = await assignments.aggregate([
         {
           $group: {
             _id: "$course_id",
-            assignments_count: {
-              $sum: {
-                $size: "$assignments",
-              },
+            assignments: {
+              $push: "$assignment_id",
             },
           },
         },
         {
           $project: {
             _id: 0,
-            courseID: "$_id",
-            assignments_count: 1,
+            course_id: "$_id",
+            assignments: "$assignments",
           },
         },
       ]);
 
-      const courseAssignmentsMap = new Map<string, number>();
-      courseAssignments.forEach((course) => {
-        courseAssignmentsMap.set(course.courseID, course.assignments_count);
-      });
-
-      actorSummaries.forEach((actorSummary) => {
-        const courseID = actorSummary.course_id;
-        const assignmentsCount = courseAssignmentsMap.get(courseID) ?? 0;
-        const foundAssignments = assignmentsByActorIdCourseId.get(
-          `${actorSummary.actor_id}:${courseID}`
-        );
-        actorSummary.percent_seen =
-          ((foundAssignments?.length ?? 0) / assignmentsCount) * 100 || 0;
-      });
-
-      // For course_percent, find the latest gradebook entry for each actor in each course and use the overall_course_percent
-      const latestGradebookEntries = await Gradebook.aggregate([
+      //TODO: Should we add per assignment data to EWS model?
+      const actorAssignments = await assignmentSubmissions.aggregate([
         {
           $group: {
             _id: {
-              actor: "$email",
-              courseID: "$course_id",
+              student_id: "$student_id",
+              course_id: "$course_id",
+              assignment_id: "$assignment_id",
             },
-            newestDocument: {
-              $last: "$$ROOT",
+            questions: {
+              $first: "$questions",
+            },
+            percent_correct: {
+              $first: "$percent_correct",
+            },
+            total_points: {
+              $first: "$total_points",
             },
           },
         },
         {
           $project: {
             _id: 0,
-            actor_id: "$_id.actor",
-            course_id: "$_id.courseID",
-            course_percent: "$newestDocument.overall_course_percent",
+            student_id: "$_id.student_id",
+            course_id: "$_id.course_id",
+            assignment_id: "$_id.assignment_id",
+            questions: 1,
+            percent_correct: 1,
+            total_points: 1,
           },
         },
       ]);
 
-      latestGradebookEntries.forEach((entry) => {
-        const actorSummary = actorSummaries.find(
-          (summary) =>
-            summary.actor_id === entry.actor_id &&
-            summary.course_id === entry.course_id
+      const adaptActivity = await calcADAPTStudentActivity.find({});
+      const activityMap = new Map<string, number>();
+
+      for (const activity of adaptActivity) {
+        const key = `${activity.student_id}:${activity.course_id}`;
+        if (activityMap.has(key)) continue;
+
+        const total = activity.seen.length + activity.unseen.length;
+
+        const percentSeenDecimal = total > 0 ? activity.seen.length / total : 0;
+        const percentSeen = (percentSeenDecimal * 100).toFixed(2);
+        activityMap.set(key, parseFloat(percentSeen));
+      }
+
+      const actorSummaries: IEWSActorSummary_Raw[] = actors.map((actor) => {
+        const key = `${actor.student_id}:${actor.course_id}`;
+        return {
+          actor_id: actor.student_id,
+          course_id: actor.course_id,
+          percent_seen: activityMap.get(key) ?? 0,
+          interaction_days: 0,
+          course_percent: 0,
+          last_updated: new Date(),
+        };
+      });
+
+      // TODO: replace this with submission timestamp data from ADAPT
+      // const interactionDays = await calcADAPTInteractionDays.aggregate([
+      //   {
+      //     $group: {
+      //       _id: {
+      //         actor: "$actor",
+      //         courseID: "$courseID",
+      //       },
+      //       interaction_days: {
+      //         $sum: {
+      //           $size: "$days",
+      //         },
+      //       },
+      //     },
+      //   },
+      //   {
+      //     $project: {
+      //       _id: 0,
+      //       actor_id: "$_id.actor",
+      //       course_id: "$_id.courseID",
+      //       interaction_days: 1,
+      //     },
+      //   },
+      // ]);
+
+      // interactionDays.forEach((interaction) => {
+      //   const actorSummary = actorSummaries.find(
+      //     (summary) =>
+      //       summary.actor_id === interaction.actor_id &&
+      //       summary.course_id === interaction.course_id
+      //   );
+      //   if (actorSummary) {
+      //     actorSummary.interaction_days = interaction.interaction_days;
+      //   }
+      // });
+
+      /**
+       * get average score for each actor based on the respective actorAssignments percent_correct.
+       * Be sure to use the total count of assignments from courseAssignments, in case an actor has not completed all assignments and/or is missing an assignment record.
+       * The percentage correct in actorAssignments is formatted as "XX%". Be sure to convert this to a float before calculating the average. If the percentage is null or "-" then it should be treated as 0.
+       */
+      actorSummaries.forEach((summary) => {
+        const actorAssignmentsForActor = actorAssignments.filter(
+          (assignment) =>
+            assignment.student_id === summary.actor_id &&
+            assignment.course_id === summary.course_id
         );
-        if (actorSummary) {
-          actorSummary.course_percent = entry.course_percent;
-        }
+
+        const courseAssignment = courseAssignments.find(
+          (course) => course.course_id === summary.course_id
+        );
+
+        const totalAssignments = courseAssignment
+          ? courseAssignment.assignments.length
+          : 0;
+
+        const avgScore =
+          actorAssignmentsForActor.reduce((acc, curr) => {
+            const percentCorrect = curr.percent_correct.includes("%")
+              ? curr.percent_correct.replace("%", "")
+              : curr.percent_correct;
+            if (!percentCorrect || percentCorrect === "-") {
+              return acc;
+            }
+
+            const percentCorrectFloat = parseFloat(percentCorrect) / 100;
+            return acc + percentCorrectFloat;
+          }, 0) / totalAssignments;
+        
+        const asPercent = (avgScore * 100).toFixed(2);
+        summary.course_percent = parseFloat(asPercent);
       });
 
       // filter missing actor_id and course_id

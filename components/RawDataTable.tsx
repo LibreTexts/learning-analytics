@@ -90,6 +90,21 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
     setData(_data);
   }
 
+  const transformQuartile = (quartile: number) => {
+    switch (quartile) {
+      case 0:
+        return "Q1";
+      case 1:
+        return "Q2";
+      case 2:
+        return "Q3";
+      case 3:
+        return "Q4";
+      default:
+        return "Unknown";
+    }
+  };
+
   const defaultColumns = [
     columnHelper.accessor("name", {
       cell: (info) => (
@@ -112,7 +127,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       cell: (info) => <div>{info.getValue()}</div>,
       header: "Unique Interaction Days",
     }),
-    columnHelper.accessor("avgPercentAssignment", {
+    columnHelper.accessor("coursePercent", {
       cell: (info) => <div>{info.getValue()}</div>,
       header: "Avg % Assignment",
     }),
@@ -121,7 +136,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       header: "Class Percentile",
     }),
     columnHelper.accessor("classQuartile", {
-      cell: (info) => <div>{info.getValue()}</div>,
+      cell: (info) => <div>{transformQuartile(info.getValue())}</div>,
       header: "Class Quartile",
     }),
   ];
@@ -151,7 +166,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
           displayed here may not be accurate.
         </Alert>
       )}
-      <div className="tw-flex tw-flex-row tw-w-1/4 tw-mb-2">
+      <div className="tw-flex tw-flex-row tw-w-1/3 tw-mb-2">
         <DebouncedInput
           value={searchInput}
           onChange={(val) => setSearchInput(val)}
