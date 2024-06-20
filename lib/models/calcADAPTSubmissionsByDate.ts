@@ -1,11 +1,13 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface ICalcADAPTSubmissionsByDate_Raw {
-  courseID: string;
-  assignmentID: string;
-  date: Date;
-  dueDate: Date;
-  count: number;
+  course_id: string;
+  assignment_id: string;
+  questions: {
+    question_id: string;
+    submissions: string[];
+  }[];
+  due_date: string;
 }
 
 export interface ICalcADAPTSubmissionsByDate
@@ -15,11 +17,15 @@ export interface ICalcADAPTSubmissionsByDate
 const CalcADAPTSubmissionsByDateSchema =
   new Schema<ICalcADAPTSubmissionsByDate>(
     {
-      courseID: String,
-      assignmentID: String,
-      date: Date,
-      dueDate: Date,
-      count: Number,
+      course_id: { type: String, required: true },
+      assignment_id: { type: String, required: true },
+      questions: [
+        {
+          question_id: { type: String, required: true },
+          submissions: [String],
+        },
+      ],
+      due_date: { type: String, required: true },
     },
     {
       collection: "calcADAPTSubmissionsByDate",
@@ -27,7 +33,7 @@ const CalcADAPTSubmissionsByDateSchema =
   );
 
 CalcADAPTSubmissionsByDateSchema.index(
-  { courseID: 1, assignmentID: 1, date: 1},
+  { course_id: 1, assignment_id: 1 },
   { unique: true }
 );
 

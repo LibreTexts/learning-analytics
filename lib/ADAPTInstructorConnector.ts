@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, Method } from "axios";
 import * as jose from "jose";
-import { ADAPTAssignmentScoresRes, ADAPTCourseAssignmentsRes, ADAPTEnrollmentDetailsRes } from "./types";
+import { ADAPTAssignmentScoresRes, ADAPTCourseAssignmentsRes, ADAPTEnrollmentDetailsRes, ADAPTSubmissionTimestampDataRes } from "./types";
 
 class ADAPTInstructorConnector {
   private axiosInstance: AxiosInstance | null = null;
@@ -81,6 +81,13 @@ class ADAPTInstructorConnector {
   public async getAssignmentScores(assignmentID: string){
     return this.makeRequest<ADAPTAssignmentScoresRes>(
       "/scores/assignment/get-assignment-questions-scores-by-user/" + assignmentID + '/on_task/0',
+      "GET"
+    )
+  }
+
+  public async getAssignmentSubmissionTimestamps(assignmentID: string){
+    return this.makeRequest<ADAPTSubmissionTimestampDataRes>(
+      `/auto-graded-and-file-submissions/${assignmentID}/get-submission-times-by-assignment-and-student`,
       "GET"
     )
   }

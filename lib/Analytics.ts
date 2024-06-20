@@ -12,6 +12,7 @@ import {
   IDWithText,
   PerformancePerAssignment,
   Student,
+  SubmissionTimeline,
   TextbookInteractionsCount,
   TimeInReview,
   TimeOnTask,
@@ -38,7 +39,7 @@ import adaptCourses from "@/lib/models/adaptCourses";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
-import assignmentSubmissions from "./models/assignmentSubmissions";
+import assignmentSubmissions from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcTimeOnTask from "./models/calcTimeOnTask";
 import calcADAPTStudentActivity from "./models/calcADAPTStudentActivity";
@@ -442,29 +443,31 @@ class Analytics {
     }
   }
 
-  public async getSubmissionTimeline(
-    assignment_id: string
-  ): Promise<ICalcADAPTSubmissionsByDate_Raw[] | undefined> {
+  public async getSubmissionTimeline(assignment_id: string): Promise<SubmissionTimeline[] | undefined> {
     try {
       await connectDB();
 
-      const res = await calcADAPTSubmissionsByDate.find({
-        courseID: this.adaptID.toString(),
-        assignmentID: assignment_id,
-      });
+      const res = (await calcADAPTSubmissionsByDate.find({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id,
+      })) as ICalcADAPTSubmissionsByDate_Raw[];
 
-      res.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-
-      // Convert to POJO
-      return res.map((d) => ({
-        courseID: d.courseID,
-        assignmentID: d.assignmentID,
-        date: d.date,
-        dueDate: d.dueDate,
-        count: d.count,
+      // for each question, count the number of occurrences of each date, without regard to the time (date only) 
+      const data = res.map((d) => ({
+        question_id: d.questions[0].question_id,
+        data: d.questions[0].submissions.reduce((acc, curr) => {
+          const date = new Date(curr).toLocaleDateString();
+          const existing = acc.find((a) => a.date === date);
+          if (existing) {
+            existing.count++;
+          } else {
+            acc.push({ date: date, count: 1 });
+          }
+          return acc;
+        }, [] as { date: string; count: number }[]),
       }));
+
+      return data.flat();
     } catch (err) {
       console.error(err);
       return undefined;

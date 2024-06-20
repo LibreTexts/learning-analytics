@@ -5,6 +5,8 @@ export interface IQuestionScoreData {
   question_id: string;
   score: string;
   time_on_task: string;
+  first_submitted_at: string | null;
+  last_submitted_at: string | null;
 }
 
 export interface IAssignmentScoresRaw {
@@ -30,6 +32,8 @@ const AssignmentScoresSchema = new Schema<IAssignmentScores>(
         question_id: String,
         score: String,
         time_on_task: String,
+        first_submitted_at: { type: String, default: null},
+        last_submitted_at: { type: String, default: null}
       },
     ],
   },

@@ -1,22 +1,16 @@
-export type ADAPTReviewTimeResponse = {
-  email: string;
-  assignment_id: number;
-  question_id: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ADAPTAutoLoginRes = {
-  type: string;
-  token: string;
-};
-
+// Assignments
 export type ADAPTCourseAssignment = {
   id: number;
   name: string;
   num_questions: number;
 };
 
+export type ADAPTCourseAssignmentsRes = {
+  type: string;
+  assignments: ADAPTCourseAssignment[];
+};
+
+// Enrollments
 export type ADAPTCourseEnrollment = {
   id: number;
   name: string;
@@ -27,29 +21,54 @@ export type ADAPTCourseEnrollment = {
   enrollment_date: string;
 };
 
-export type ADAPTQuestionScoreData = {
-  name: string;
-  percent_correct: string;
-  total_points: string;
-  userId: string;
-  [key: string]: string;
-}
-
-export type ADAPTCourseAssignmentsRes = {
-  type: string;
-  assignments: ADAPTCourseAssignment[];
-};
-
 export type ADAPTEnrollmentDetailsRes = {
   type: string;
   sections: { text: string; value: number }[];
   enrollments: ADAPTCourseEnrollment[];
 };
 
+// Scores
+export type ADAPTQuestionScoreData = {
+  name: string;
+  percent_correct: string;
+  total_points: string;
+  userId: string;
+  [key: string]: string;
+};
+
 export type ADAPTAssignmentScoresRes = {
   type: string;
   rows: ADAPTQuestionScoreData[];
-}
+};
+
+// Submission Timestamps
+
+export type ADAPTSubmissionTimestampData = {
+  user_id: number;
+  auto_graded: {
+    [key: string]: {
+      first_submitted_at: string;
+      last_submitted_at: string;
+    };
+  };
+};
+
+export type ADAPTSubmissionTimestampDataRes = ADAPTSubmissionTimestampData[];
+
+// Review Time
+export type ADAPTReviewTimeResponse = {
+  email: string;
+  assignment_id: number;
+  question_id: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// Misc
+export type ADAPTAutoLoginRes = {
+  type: string;
+  token: string;
+};
 
 export type ADAPTMiniSummaryRes = {
   type: string;

@@ -20,12 +20,13 @@ import enrollments from "./models/enrollments";
 import reviewTime from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import adaptCourses from "./models/adaptCourses";
-import assignmentSubmissions from "./models/assignmentSubmissions";
+import assignmentSubmissions from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcADAPTStudentActivity, {
   ICalcADAPTStudentActivity_Raw,
 } from "./models/calcADAPTStudentActivity";
 import { Assignments_AllCourseQuestionsAggregation } from "@/utils/data-helpers";
+import assignmentScores from "./models/assignmentScores";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -34,7 +35,7 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTAverageScore();
     // await this.compressADAPTInteractionDays();
     // await this.compressADAPTGradeDistribution();
-    // await this.compressADAPTSubmissions();
+    await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
     //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
@@ -43,7 +44,7 @@ class AnalyticsDataProcessor {
     //await this.compressReviewTime();
     //await this.compressTimeOnTask();
     //await this.writeEWSCourseSummary();
-    await this.writeEWSActorSummary();
+    //await this.writeEWSActorSummary();
   }
 
   private async compressADAPTAverageScore(): Promise<boolean> {
@@ -364,7 +365,8 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTInteractionDays]: Reading raw data...");
 
-      await ADAPT.aggregate(
+      // TODO: finish this
+      await assignmentScores.aggregate(
         [
           {
             $match: {
@@ -437,67 +439,69 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTSubmissions]: Starting aggregation...");
-      await ADAPT.aggregate(
+      await assignmentScores.aggregate(
         [
           {
-            $match: {
-              submission_time: {
-                $exists: true,
-                $ne: "",
-              },
-              due: {
-                $exists: true,
-                $ne: "",
+            $unwind: {
+              path: "$questions",
+            },
+          },
+          {
+            $project: {
+              course_id: 1,
+              assignment_id: 1,
+              question_id: "$questions.question_id",
+              submission_date: {
+                $toDate: "$questions.last_submitted_at",
               },
             },
           },
           {
-            $addFields: {
-              submissionDay: {
-                $dateToString: {
-                  format: "%Y-%m-%d",
-                  date: {
-                    $toDate: "$submission_time",
-                  },
-                },
+            $match: {
+              submission_date: {
+                $ne: null,
               },
             },
           },
           {
             $group: {
               _id: {
-                courseID: "$course_id",
-                assignmentID: "$assignment_id",
-                date: "$submissionDay",
+                course_id: "$course_id",
+                assignment_id: "$assignment_id",
+                question_id: "$question_id",
               },
               submissions: {
-                $addToSet: "$id",
+                $push: "$submission_date",
               },
-              dueDate: {
-                $first: "$due",
+            },
+          },
+          {
+            $group: {
+              _id: {
+                course_id: "$_id.course_id",
+                assignment_id: "$_id.assignment_id",
+              },
+              questions: {
+                $push: {
+                  question_id: "$_id.question_id",
+                  submissions: "$submissions",
+                },
               },
             },
           },
           {
             $project: {
               _id: 0,
-              courseID: "$_id.courseID",
-              assignmentID: "$_id.assignmentID",
-              date: {
-                $toDate: "$_id.date",
-              },
-              dueDate: {
-                $toDate: "$dueDate",
-              },
-              count: {
-                $size: "$submissions",
-              },
+              course_id: "$_id.course_id",
+              assignment_id: "$_id.assignment_id",
+              questions: 1,
+              due_date: { $literal: null },
             },
           },
           {
             $merge: {
               into: "calcADAPTSubmissionsByDate",
-              on: ["courseID", "assignmentID", "date"],
+              on: ["course_id", "assignment_id"],
               whenMatched: "replace",
               whenNotMatched: "insert",
             },
@@ -1336,7 +1340,7 @@ class AnalyticsDataProcessor {
             const percentCorrectFloat = parseFloat(percentCorrect) / 100;
             return acc + percentCorrectFloat;
           }, 0) / totalAssignments;
-        
+
         const asPercent = (avgScore * 100).toFixed(2);
         summary.course_percent = parseFloat(asPercent);
       });
