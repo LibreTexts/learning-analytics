@@ -10,6 +10,7 @@ import {
   GradeDistribution,
   IDWithName,
   IDWithText,
+  LOCData,
   PerformancePerAssignment,
   Student,
   SubmissionTimeline,
@@ -39,7 +40,7 @@ import adaptCourses from "@/lib/models/adaptCourses";
 import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
-import assignmentSubmissions from "./models/assignmentScores";
+import assignmentSubmissions, { IAssignmentScoresRaw, IQuestionScoreData } from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcTimeOnTask from "./models/calcTimeOnTask";
 import calcADAPTStudentActivity from "./models/calcADAPTStudentActivity";
@@ -968,6 +969,107 @@ class Analytics {
     } catch (err: any) {
       console.error(err);
       return [];
+    }
+  }
+
+  public async getLearningObjectiveCompletion(assignment_id: string): Promise<LOCData[]>{
+    try {
+      await connectDB();
+      const res = await frameworkQuestionAlignment.find({
+        assignment_id: parseInt(assignment_id),
+      });
+
+      const frameworkDescriptors = res.reduce((acc, curr) => {
+        curr.framework_descriptors.forEach((d: IDWithText<number>) => {
+          if (
+            !acc.find((f: IDWithText<number>) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText<number>[]);
+
+      const frameworkLevels = res.reduce((acc, curr) => {
+        curr.framework_levels.forEach((d: IDWithText<number>) => {
+          if (
+            !acc.find((f: IDWithText<number>) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText<number>[]);
+
+      frameworkDescriptors.sort((a: IDWithText<number>, b: IDWithText<number>) =>
+        a.text.localeCompare(b.text)
+      );
+      frameworkLevels.sort((a: IDWithText<number>, b: IDWithText<number>) =>
+        a.text.localeCompare(b.text)
+      );
+
+      const flat: IDWithText<number>[] = [
+        ...frameworkDescriptors.map((d: IDWithText<number>) => ({
+          id: d.id,
+          text: d.text,
+        })),
+        ...frameworkLevels.map((d: IDWithText<number>) => ({
+          id: d.id,
+          text: d.text,
+        })),
+      ];
+
+      const questionAlignment = await frameworkQuestionAlignment.find({
+        assignment_id: parseInt(assignment_id),
+      })
+
+      // for each question, collect all of the student scores from assignmentScores
+      const questionScores = await assignmentSubmissions.find({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id
+      })
+
+      // filter out scores that are "-"
+      const filteredScores = questionScores.map((d) => {
+        d.questions = d.questions.filter((q: IQuestionScoreData) => q.score !== "-");
+        return d;
+      })
+
+      const questionScoresMap = filteredScores.reduce((acc, curr) => {
+        curr.questions.forEach((q: IQuestionScoreData) => {
+          if (!acc.has(q.question_id)) {
+            acc.set(q.question_id, []);
+          }
+          acc.get(q.question_id).push(parseFloat(q.score));
+        })
+        return acc;
+      }, new Map<number, number[]>())
+
+      // Group the questions together by common framework descriptor OR level
+      const grouped = flat.map((d) => {
+        const questions = questionAlignment.reduce((acc, curr) => {
+          const framework = curr.framework_descriptors.find((f: IDWithText<number>) => f.id === d.id) || curr.framework_levels.find((f: IDWithText<number>) => f.id === d.id);
+          if (framework) {
+            acc.push({
+              question_id: curr.question_id,
+              scores: questionScoresMap.get(curr.question_id) ?? []
+            })
+          }
+          return acc;
+        }, [] as { question_id: number, scores: number[] }[])
+
+        return {
+          text: d.text,
+          questions
+        }
+      })
+      
+      console.log(grouped)
+
+      return grouped;
+    } catch (err) {
+      console.error(err);
+      return []
     }
   }
 

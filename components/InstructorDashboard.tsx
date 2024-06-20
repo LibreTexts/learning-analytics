@@ -9,6 +9,7 @@ import {
   checkFinalGradesReleased,
   getTimeInReview,
   getTimeOnTask,
+  getLearningObjectiveCompletion,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -131,8 +132,8 @@ const InstructorDashboard = ({
         tooltipDescription="Learning objective completion is determined by the number of questions answered correctly by the student, where those questions have been aligned with a framework's learning objective(s)."
       >
         <LearningObjectiveCompletion
-          getAssignmentData={(assignment_id) =>
-            getAssignmentFrameworkData(course_id, assignment_id)
+          getData={(assignment_id) =>
+            getLearningObjectiveCompletion(course_id, assignment_id)
           }
         />
       </VisualizationContainer>
