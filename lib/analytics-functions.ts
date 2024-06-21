@@ -204,12 +204,9 @@ export async function getTimeOnTask(
   return timeOnTask;
 }
 
-export async function getLearningObjectiveCompletion(
-  course_id: string,
-  assignment_id: string
-) {
+export async function getLearningObjectiveCompletion(course_id: string) {
   const analytics = new Analytics(course_id);
   const learningObjectiveCompletion =
-    await analytics.getLearningObjectiveCompletion(assignment_id);
+    await analytics.getLearningObjectiveCompletion();
   return learningObjectiveCompletion;
 }

@@ -1,6 +1,13 @@
 import axios, { AxiosInstance, Method } from "axios";
 import * as jose from "jose";
-import { ADAPTAssignmentScoresRes, ADAPTCourseAssignmentsRes, ADAPTEnrollmentDetailsRes, ADAPTSubmissionTimestampDataRes } from "./types";
+import {
+  ADAPTAssignmentScoresRes,
+  ADAPTCourseAssignmentsRes,
+  ADAPTEnrollmentDetailsRes,
+  ADAPTFrameworkQuestionSyncRes,
+  ADAPTFrameworksRes,
+  ADAPTSubmissionTimestampDataRes,
+} from "./types";
 
 class ADAPTInstructorConnector {
   private axiosInstance: AxiosInstance | null = null;
@@ -78,18 +85,31 @@ class ADAPTInstructorConnector {
     );
   }
 
-  public async getAssignmentScores(assignmentID: string){
+  public async getAssignmentScores(assignmentID: string) {
     return this.makeRequest<ADAPTAssignmentScoresRes>(
-      "/scores/assignment/get-assignment-questions-scores-by-user/" + assignmentID + '/on_task/0',
+      "/scores/assignment/get-assignment-questions-scores-by-user/" +
+        assignmentID +
+        "/on_task/0",
       "GET"
-    )
+    );
   }
 
-  public async getAssignmentSubmissionTimestamps(assignmentID: string){
+  public async getAssignmentSubmissionTimestamps(assignmentID: string) {
     return this.makeRequest<ADAPTSubmissionTimestampDataRes>(
       `/auto-graded-and-file-submissions/${assignmentID}/get-submission-times-by-assignment-and-student`,
       "GET"
-    )
+    );
+  }
+
+  public async getFrameworks() {
+    return this.makeRequest<ADAPTFrameworksRes>("/frameworks", "GET");
+  }
+
+  public async getFrameworkQuestionSync(questionID: string) {
+    return this.makeRequest<ADAPTFrameworkQuestionSyncRes>(
+      "/framework-item-sync-question/question/" + questionID,
+      "GET"
+    );
   }
 }
 

@@ -4,7 +4,6 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    console.log(searchParams)
     const course_id = searchParams.get("course_id");
   
     if (!course_id) {

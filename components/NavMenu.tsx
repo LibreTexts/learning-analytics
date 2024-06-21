@@ -36,10 +36,31 @@ const NavMenu = () => {
             onClick={() => router.push(Links.CLIENT.Dashboard)}
           >
             <span className="tw-text-link-blue">
-              {globalState.viewAs === "instructor" ? "Instructor" : "Student"}{" "}
-              Dashboard
+              {globalState.viewAs === "instructor"
+                ? "Performance & Activity"
+                : "Student Dashboard"}
             </span>
           </ListGroup.Item>
+          {globalState.viewAs === "instructor" && (
+            <ListGroup.Item
+              active={isActive("learning-curves")}
+              className={isActive("learning-curves") ? ACTIVE_CLASSES : ""}
+              action
+              onClick={() => router.push(Links.CLIENT.LearningCurves)}
+            >
+              <span className="tw-text-link-blue">Learning Curves</span>
+            </ListGroup.Item>
+          )}
+          {globalState.viewAs === "instructor" && (
+            <ListGroup.Item
+              active={isActive("learning-objectives")}
+              className={isActive("learning-objectives") ? ACTIVE_CLASSES : ""}
+              action
+              onClick={() => router.push(Links.CLIENT.LearningObjectives)}
+            >
+              <span className="tw-text-link-blue">Learning Objectives</span>
+            </ListGroup.Item>
+          )}
           {globalState.viewAs === "instructor" && (
             <ListGroup.Item
               active={isActive("early-warning")}

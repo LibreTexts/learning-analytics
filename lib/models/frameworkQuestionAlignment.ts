@@ -2,10 +2,11 @@ import { Document, Schema, model, models } from "mongoose";
 import { IDWithText } from "../types";
 
 export interface IFrameworkQuestionAlignment_Raw {
-  assignment_id: number;
-  question_id: number;
-  framework_descriptors: IDWithText<number>[];
-  framework_levels: IDWithText<number>[];
+  course_id: string;
+  assignment_id: string;
+  question_id: string;
+  framework_descriptors: IDWithText<string>[];
+  framework_levels: IDWithText<string>[];
 }
 
 export interface IFrameworkQuestionAlignment
@@ -15,14 +16,15 @@ export interface IFrameworkQuestionAlignment
 const FrameworkQuestionAlignmentSchema =
   new Schema<IFrameworkQuestionAlignment>(
     {
-      assignment_id: { type: Number, required: true },
-      question_id: { type: Number, required: true },
+      course_id: { type: String, required: true },
+      assignment_id: { type: String, required: true },
+      question_id: { type: String, required: true },
       framework_descriptors: {
-        type: [{ id: Number, text: String }],
+        type: [{ id: String, text: String }],
         required: true,
       },
       framework_levels: {
-        type: [{ id: Number, text: String }],
+        type: [{ id: String, text: String }],
         required: true,
       },
     },

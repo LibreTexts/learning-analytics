@@ -7,6 +7,8 @@ const Links = {
     EarlyWarning: "/early-warning",
     RawData: "/raw-data",
     CourseSettings: "/course-settings",
+    LearningObjectives: "/learning-objectives",
+    LearningCurves: "/learning-curves",
   },
   API: {},
 };

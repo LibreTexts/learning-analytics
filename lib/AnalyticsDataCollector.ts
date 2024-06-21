@@ -14,7 +14,9 @@ import {
   encryptStudent,
 } from "@/utils/data-helpers";
 import gradebook, { IGradebookRaw } from "./models/gradebook";
-import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
+import frameworkQuestionAlignment, {
+  IFrameworkQuestionAlignment_Raw,
+} from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import useADAPTAxios from "@/hooks/useADAPTAxios";
 import ADAPTInstructorConnector from "./ADAPTInstructorConnector";
@@ -39,9 +41,10 @@ class AnalyticsDataCollector {
     //await this.collectAllAssignments();
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
-    await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
+    //await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectGradebookData();
-    //await this.collectQuestionFrameworkAlignment();
+    //await this.collectFrameworkData();
+    await this.collectQuestionFrameworkAlignment();
     //await this.collectReviewTimeData();
   }
 
@@ -629,87 +632,119 @@ class AnalyticsDataCollector {
     }
   }
 
+  // async collectFrameworkData() {
+  //   try {
+  //     await connectDB();
+
+  //     // Get a random instructor_id to use for the API calls
+  //     const randomInstructor = await adaptCourses.findOne({
+  //       instructor_id: { $exists: true },
+  //     });
+
+  //     const adaptConn = new ADAPTInstructorConnector(randomInstructor.instructor_id);
+  //     const frameworks = await adaptConn.getFrameworks();
+  //     if (!frameworks?.data?.frameworks) return;
+
+  //     const frameworkIDs = frameworks.data.frameworks.map((framework) => framework.id);
+
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // }
+
   async collectQuestionFrameworkAlignment() {
     try {
       await connectDB();
 
       // const assignmentIds = await gradebook.distinct("assignment_id");
 
-      const assignmentIds = await gradebook
-        .distinct("assignment_id")
-        .where(
-          process.env.DEV_LOCK_COURSE_ID
-            ? { course_id: parseInt(process.env.DEV_LOCK_COURSE_ID) }
-            : {}
-        );
-
-      // Get the questions for each assignment
-      const questionsPromises = assignmentIds.map((assignmentId) => {
-        return useADAPTAxios()?.get(
-          "/assignments/" + assignmentId + "/questions/ids"
-        );
-      });
-
-      const questionsResponses = await Promise.allSettled(questionsPromises);
-
-      const questionsData: { assignment_id: string; question_ids: string[] }[] =
-        questionsResponses.map((response, idx) => {
-          if (response.status === "fulfilled" && response.value) {
-            return {
-              assignment_id: assignmentIds[idx],
-              question_ids: response.value.data.question_ids_array,
-            };
-          }
-          return {
-            assignment_id: "",
-            question_ids: [],
-          };
-        });
+      const assignmentData = await assignments.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
+      );
 
       // Spread the question_ids into individual documents
-      const questionDocs = questionsData
-        .map((data) => {
-          return data.question_ids.map((question_id) => ({
-            assignment_id: data.assignment_id,
-            question_id,
+      const questionDocs = assignmentData.reduce(
+        (
+          acc: {
+            course_id: string;
+            assignment_id: string;
+            question_id: string;
+          }[],
+          assignment
+        ) => {
+          const questions = assignment.questions.map((question: string) => ({
+            course_id: assignment.course_id,
+            assignment_id: assignment.assignment_id,
+            question_id: question,
           }));
-        })
-        .flat();
+          acc.push(...questions);
+          return acc;
+        },
+        []
+      );
+
+      // Get a random instructor_id to use for the API calls
+      const randomInstructor = await adaptCourses.findOne({
+        instructor_id: { $exists: true },
+      });
+
+      const adaptConn = new ADAPTInstructorConnector(
+        randomInstructor.instructor_id
+      );
 
       // Get the framework alignment for each question
       const frameworkPromises = questionDocs.map((doc) => {
-        return useADAPTAxios()?.get(
-          "/framework-item-sync-question/question/" + doc.question_id
-        );
+        return adaptConn.getFrameworkQuestionSync(doc.question_id);
       });
 
       const frameworkResponses = await Promise.allSettled(frameworkPromises);
 
-      const frameworkData: (FrameworkAlignment | undefined)[] =
+      const frameworkData: (IFrameworkQuestionAlignment_Raw | undefined)[] =
         frameworkResponses.map((response, idx) => {
           if (response.status === "fulfilled" && response.value) {
             return {
-              assignment_id: parseInt(questionDocs[idx].assignment_id),
-              question_id: parseInt(questionDocs[idx].question_id),
+              course_id: questionDocs[idx].course_id,
+              assignment_id: questionDocs[idx].assignment_id,
+              question_id: questionDocs[idx].question_id,
               framework_descriptors:
-                response.value.data.framework_item_sync_question?.descriptors ??
-                [],
+                response.value.data.framework_item_sync_question?.descriptors.map(
+                  (d) => ({
+                    id: d.id.toString(),
+                    text: d.text,
+                  })
+                ) ?? [],
               framework_levels:
-                response.value.data.framework_item_sync_question?.levels ?? [],
+                response.value.data.framework_item_sync_question?.levels.map(
+                  (l) => ({
+                    id: l.id.toString(),
+                    text: l.text,
+                  })
+                ) ?? [],
             };
           }
           return undefined;
         });
 
+      // Filter out any undefined documents
       const noUndefined = frameworkData.filter(
         (data) => data !== undefined
-      ) as FrameworkAlignment[];
+      ) as IFrameworkQuestionAlignment_Raw[];
+
+      // Don't save question alignment if there are no framework descriptors or levels
+      const noEmpties = noUndefined.filter(
+        (data) =>
+          data.framework_descriptors.length > 0 &&
+          data.framework_levels.length > 0
+      );
 
       // Bulk upsert the framework alignment data
       await frameworkQuestionAlignment.bulkWrite(
-        noUndefined.map((doc) => ({
+        noEmpties.map((doc) => ({
           updateOne: {
             filter: {
+              course_id: doc.course_id,
               assignment_id: doc.assignment_id,
               question_id: doc.question_id,
             },
