@@ -31,7 +31,7 @@ import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
 import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
-import LearningObjectiveCompletion from "./Visualizations/LearningObjectiveCompletion";
+import LearningObjectiveCompletion from "./LearningObjectiveCompletion";
 import TimeInReview from "./Visualizations/TimeInReview";
 import TimeOnTask from "./Visualizations/TimeOnTask";
 

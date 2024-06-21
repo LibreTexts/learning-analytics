@@ -1,6 +1,6 @@
 import PageHeader from "@/components/PageHeader";
 import GenericPageContainer from "@/components/GenericPageContainer";
-import LearningObjectiveCompletion from "@/components/Visualizations/LearningObjectiveCompletion";
+import LearningObjectiveCompletion from "@/components/LearningObjectiveCompletion";
 import { getLearningObjectiveCompletion } from "@/lib/analytics-functions";
 
 export default async function LearningObjectives() {
