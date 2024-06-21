@@ -126,7 +126,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .scaleBand()
       .domain(subgroups)
       .range([0, x.bandwidth()])
-      .padding(0.01);
+      .padding(-0.01);
 
     const y = d3
       .scaleLinear()
@@ -183,16 +183,6 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .attr("height", (d) => height - MARGIN.bottom - y(d.value))
       .attr("fill", (d) => color(d.key) as string);
 
-    // Add selected student name to the graph
-    svg
-      .append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
-      .attr("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("font-weight", "semibold")
-      .text(`Student: ${selectedStudent?.name}`);
-
     // Add one dot in the legend for each name.
     svg
       .selectAll("mydots")
@@ -200,7 +190,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .enter()
       .append("circle")
       .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 155)) // 155 is the distance between dots
-      .attr("cy", (d, i) => MARGIN.top / 2)
+      .attr("cy", (d, i) => MARGIN.top / 2 - 5)
       .attr("r", 7)
       .style("fill", (d) => color(d) as string);
 
@@ -211,7 +201,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .enter()
       .append("text")
       .attr("x", (d, i) => width - 155 - (MARGIN.right - 15 + i * 155)) // 155 is the distance between dots, 15 is space between dot and text
-      .attr("y", (d, i) => MARGIN.top / 2)
+      .attr("y", (d, i) => MARGIN.top / 2 - 5)
       .style("fill", (d) => color(d) as string)
       .text((d) => d)
       .attr("text-anchor", "left")

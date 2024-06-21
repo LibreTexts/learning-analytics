@@ -130,7 +130,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .scaleBand()
       .domain(subgroups)
       .range([0, x.bandwidth()])
-      .padding(0.01);
+      .padding(-0.01);
 
     const y = d3
       .scaleLinear()
@@ -187,7 +187,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("height", (d) => height - MARGIN.bottom - y(d.value) ?? 0)
       .attr("fill", (d) => color(d.key) as string);
 
-    // Add selected student and assignment to the graph
+    // Add selected assignment to the graph
     svg
       .append("text")
       .attr("x", width / 2)
@@ -195,9 +195,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(
-        `Assignment: ${selectedAssignmentId} | Student: ${selectedStudent?.name}`
-      );
+      .text(`Assignment: ${selectedAssignmentId}`);
 
     // Add one dot in the legend for each name.
     svg
@@ -206,7 +204,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .enter()
       .append("circle")
       .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 155)) // 155 is the distance between dots
-      .attr("cy", (d, i) => MARGIN.top / 2)
+      .attr("cy", (d, i) => MARGIN.top / 2 - 5)
       .attr("r", 7)
       .style("fill", (d) => color(d) as string);
 
@@ -217,7 +215,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .enter()
       .append("text")
       .attr("x", (d, i) => width - 155 - (MARGIN.right - 15 + i * 155)) // 155 is the distance between dots, 15 is space between dot and text
-      .attr("y", (d, i) => MARGIN.top / 2)
+      .attr("y", (d, i) => MARGIN.top / 2 - 5)
       .style("fill", (d) => color(d) as string)
       .text((d) => d)
       .attr("text-anchor", "left")

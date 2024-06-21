@@ -201,7 +201,8 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
     const x = d3
       .scaleBand()
       .domain(domain)
-      .range([MARGIN.left, width - MARGIN.right]);
+      .range([MARGIN.left, width - MARGIN.right])
+      .padding(0.05);
 
     const y = d3
       .scaleLinear()
@@ -286,7 +287,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(`Assignment: ${selectedAssignmentId} | Question: ${selectedQuestionId}`);
+      .text(`ADAPT ID: ${selectedAssignmentId}-${selectedQuestionId}`);
 
     // Add Y axis label:
     svg
