@@ -167,16 +167,6 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
     //   .style("text-anchor", "middle")
     //   .style("font-size", 17);
 
-    // Add selected student name to the graph
-    svg
-      .append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
-      .attr("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("font-weight", "semibold")
-      .text(`Student: ${selectedStudent?.name}`);
-
     // Add one dot in the legend for each name.
     svg
       .selectAll("mydots")

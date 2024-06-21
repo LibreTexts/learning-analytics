@@ -60,6 +60,14 @@ const InstructorDashboard = ({
           }
         />
       </VisualizationContainer>
+      <VisualizationContainer
+        title="Student Activity Per Assignment"
+        description="Comparison of student activity on the selected assignment"
+      >
+        <ActivityAccessed
+          getData={(student_id) => getActivityAccessed(course_id, student_id)}
+        />
+      </VisualizationContainer>
       {/* <VisualizationContainer
         title="Textbook Activity"
         description="Class average vs. selected student's activity"
@@ -113,14 +121,6 @@ const InstructorDashboard = ({
               <TextbookEngagement getData={getTextbookEngagement} />
             </VisualizationContainer> */}
       <VisualizationContainer
-        title="Student Activity"
-        description="Questions submitted by the selected student vs. all unique questions in the course"
-      >
-        <ActivityAccessed
-          getData={(student_id) => getActivityAccessed(course_id, student_id)}
-        />
-      </VisualizationContainer>
-      <VisualizationContainer
         title="Learning Curve"
         description="Performance vs. opportunity for each student"
       >
@@ -159,7 +159,7 @@ const InstructorDashboard = ({
           </VisualizationContainer>
         </>
       ) : (
-        <div className="tw-w-full tw-mt-4">
+        <div className="tw-max-w-[96%] tw-mt-4">
           <p className="tw-text-sm tw-text-center tw-text-gray-600">
             Final grades have not been released for this course. Final score and
             letter grade distribution visualizations will be available once
