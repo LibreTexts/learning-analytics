@@ -79,9 +79,16 @@ export type TimeOnTask = {
 };
 
 export type LOCData = {
-  text: string;
-  questions: {
-    question_id: number;
-    scores: number[];
+  framework_level: {
+    id: string;
+    text: string;
+    question_count: number;
+    avg_performance: number;
+  };
+  framework_descriptors: {
+    id: string;
+    text: string;
+    question_count: number;
+    avg_performance: number
   }[];
 };

@@ -77,7 +77,7 @@ const InstructorDashboard = ({
       </VisualizationContainer> */}
       <VisualizationContainer
         title="Time on Task"
-        description="Class average vs. selected student's time on task"
+        description="Class average vs. selected student's cumulative time on task"
         tooltipDescription="Time on task is the student's time spent working on a question before they submit it."
       >
         <TimeOnTask
@@ -88,7 +88,7 @@ const InstructorDashboard = ({
       </VisualizationContainer>
       <VisualizationContainer
         title="Time in Review"
-        description="Class average vs. selected student's time in review"
+        description="Class average vs. selected student's cumulative time in review"
         tooltipDescription="Time in review is the student's time spent reviewing questions after they have been submitted."
       >
         <TimeInReview
@@ -120,23 +120,6 @@ const InstructorDashboard = ({
             >
               <TextbookEngagement getData={getTextbookEngagement} />
             </VisualizationContainer> */}
-      <VisualizationContainer
-        title="Learning Curve"
-        description="Performance vs. opportunity for each student"
-      >
-        <NoData width={1200} height={400} />
-      </VisualizationContainer>
-      <VisualizationContainer
-        title="Learning Objective Completion"
-        description="Breakdown of completion for the selected learning objective"
-        tooltipDescription="Learning objective completion is determined by the number of questions answered correctly by the student, where those questions have been aligned with a framework's learning objective(s)."
-      >
-        <LearningObjectiveCompletion
-          getData={(assignment_id) =>
-            getLearningObjectiveCompletion(course_id, assignment_id)
-          }
-        />
-      </VisualizationContainer>
       {letter_grades_released ? (
         <>
           <VisualizationContainer

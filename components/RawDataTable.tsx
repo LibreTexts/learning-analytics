@@ -119,21 +119,9 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
       filterFn: "fuzzy",
       sortingFn: fuzzySort,
     }),
-    columnHelper.accessor("pagesAccessed", {
-      cell: (info) => <div>{info.getValue()}</div>,
-      header: "Pages Accessed",
-    }),
-    columnHelper.accessor("uniqueInteractionDays", {
-      cell: (info) => <div>{info.getValue()}</div>,
-      header: "Unique Interaction Days",
-    }),
     columnHelper.accessor("coursePercent", {
       cell: (info) => <div>{info.getValue()}</div>,
-      header: "Avg % Assignment",
-    }),
-    columnHelper.accessor("classPercentile", {
-      cell: (info) => <div>{info.getValue()}</div>,
-      header: "Class Percentile",
+      header: "Un-weighted Avg %",
     }),
     columnHelper.accessor("classQuartile", {
       cell: (info) => <div>{transformQuartile(info.getValue())}</div>,

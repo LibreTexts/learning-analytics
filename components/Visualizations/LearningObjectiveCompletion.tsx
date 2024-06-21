@@ -30,13 +30,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
+import { useGlobalContext } from "@/state/globalContext";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type LOCProps = VisualizationBaseProps & {
   selectedAssignmentId?: string;
-  getData: (assignmentId: string) => Promise<LOCData[]>;
+  getData: (course_id: string) => Promise<LOCData[]>;
 };
 
 const LearningObjectiveCompletion: React.FC<LOCProps> = ({
@@ -50,6 +51,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
     getSVG: () => svgRef.current,
   }));
 
+  const [globalState] = useGlobalContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
@@ -65,7 +67,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
   useEffect(() => {
     handleGetData();
-  }, [selectedAssignmentId]);
+  }, []);
 
   useEffect(() => {
     // if (
@@ -81,10 +83,12 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
   async function handleGetData() {
     try {
       setLoading(true);
-      if (!selectedAssignmentId) return;
+      if (!globalState.courseID) return;
 
-      const _assignmentData = await getData(selectedAssignmentId);
-      console.log(_assignmentData)
+      const _assignmentData = await getData(
+        globalState.courseID, 
+      );
+      console.log(_assignmentData);
 
       setAssignmentData(_assignmentData);
     } catch (err) {

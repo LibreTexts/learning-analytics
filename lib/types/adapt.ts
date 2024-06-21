@@ -1,3 +1,5 @@
+import { IDWithText } from "./misc";
+
 // Assignments
 export type ADAPTCourseAssignment = {
   id: number;
@@ -62,6 +64,28 @@ export type ADAPTReviewTimeResponse = {
   question_id: number;
   created_at: string;
   updated_at: string;
+};
+
+// Frameworks
+export type ADAPTFramework = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+export type ADAPTFrameworksRes = {
+  type: string;
+  frameworks: ADAPTFramework[];
+};
+
+export type ADAPTFrameworkQuestionSync = {
+  descriptors: IDWithText<number>[];
+  levels: IDWithText<number>[];
+};
+
+export type ADAPTFrameworkQuestionSyncRes = {
+  type: string;
+  framework_item_sync_question: ADAPTFrameworkQuestionSync;
 };
 
 // Misc
