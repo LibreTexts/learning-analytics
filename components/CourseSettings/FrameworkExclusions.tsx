@@ -25,14 +25,16 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<IDWithText[]>([]);
-  const [selectedItems, setSelectedItems] = useState<IDWithText[]>(
-    globalState.frameworkExclusions || []
-  );
+  const [selectedItems, setSelectedItems] = useState<IDWithText[]>([]);
 
   useEffect(() => {
     if (!globalState.courseID) return;
     fetchFrameworkDescriptors();
   }, [globalState.courseID]);
+
+  useEffect(() => {
+    setSelectedItems(globalState.frameworkExclusions || []);
+  }, [globalState.frameworkExclusions]);
 
   async function fetchFrameworkDescriptors() {
     try {

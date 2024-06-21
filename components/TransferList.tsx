@@ -10,7 +10,6 @@ import {
 
 function not<T>(a: T[], b: T[]) {
   if (!a || !b) return [];
-  if (typeof a === "string" || typeof b === "string") return [];
   if (!Array.isArray(a) || !Array.isArray(b)) return [];
 
   return a.filter((value) => b.indexOf(value) === -1);
@@ -18,7 +17,6 @@ function not<T>(a: T[], b: T[]) {
 
 function intersection<T>(a: T[], b: T[]) {
   if (!a || !b) return [];
-  if (typeof a === "string" || typeof b === "string") return [];
   if (!Array.isArray(a) || !Array.isArray(b)) return [];
 
   return a.filter((value) => b.indexOf(value) !== -1);

@@ -27,14 +27,16 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<IDWithName[]>([]);
-  const [selectedItems, setSelectedItems] = useState<IDWithName[]>(
-    globalState.assignmentExclusions || []
-  );
+  const [selectedItems, setSelectedItems] = useState<IDWithName[]>([]);
 
   useEffect(() => {
     if (!globalState.courseID) return;
     fetchAssignments();
   }, [globalState.courseID]);
+
+  useEffect(() => {
+    setSelectedItems(globalState.assignmentExclusions || []);
+  }, [globalState.assignmentExclusions]);
 
   async function fetchAssignments() {
     try {
