@@ -1,8 +1,4 @@
-import {
-  ADAPTCourseAssignment,
-  ADAPTReviewTimeResponse,
-  FrameworkAlignment,
-} from "./types";
+import { ADAPTReviewTimeData } from "./types";
 import enrollments, { IEnrollmentsRaw } from "./models/enrollments";
 import connectDB from "./database";
 import adaptCourses, {
@@ -44,8 +40,8 @@ class AnalyticsDataCollector {
     //await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectGradebookData();
     //await this.collectFrameworkData();
-    await this.collectQuestionFrameworkAlignment();
-    //await this.collectReviewTimeData();
+    //await this.collectQuestionFrameworkAlignment();
+    await this.collectReviewTimeData();
   }
 
   async updateCourseData() {
@@ -762,49 +758,47 @@ class AnalyticsDataCollector {
     try {
       await connectDB();
 
-      const courseAssignmentData = await gradebook.aggregate([
-        {
-          $group: {
-            _id: "$course_id",
-            unique_assignments: {
-              $addToSet: "$assignment_id",
-            },
-          },
-        },
-      ]);
-
-      const courseAssignmentPairs = courseAssignmentData.reduce(
-        (acc: { course_id: number; assignment_id: number }[], data) => {
-          const course_id = parseInt(data._id) ?? 0;
-          const assignment_ids = data.unique_assignments;
-          assignment_ids.forEach((assignment_id: number) => {
-            acc.push({ course_id, assignment_id });
-          });
-          return acc;
-        },
-        []
+      const knownCourses = await adaptCourses.find(
+        process.env.DEV_LOCK_COURSE_ID
+          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
+          : {}
       );
 
-      const reviewTimePromises = courseAssignmentPairs.map((pair) => {
-        return useADAPTAxios()?.get(
-          "/analytics/review-history/assignment/" + pair.assignment_id
-        );
+      const allAssignments = await assignments.find({
+        course_id: { $in: knownCourses.map((course) => course.course_id) },
       });
 
-      const reviewTimeResponses = await Promise.allSettled(reviewTimePromises);
+      const reviewTimeData: (ADAPTReviewTimeData & { course_id: number })[] =
+        [];
+      for (const course of knownCourses) {
+        try {
+          const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
+          const courseAssignments = allAssignments.filter(
+            (assignment) => assignment.course_id === course.course_id
+          );
 
-      const reviewTimeData: (ADAPTReviewTimeResponse & {
-        course_id: number;
-      })[] = [];
-      for (let i = 0; i < reviewTimeResponses.length; i++) {
-        const response = reviewTimeResponses[i];
-        if (response.status === "fulfilled" && response.value) {
-          response.value.data.forEach((data: ADAPTReviewTimeResponse) => {
-            reviewTimeData.push({
-              ...data,
-              course_id: courseAssignmentPairs[i].course_id,
+          for (const assignment of courseAssignments) {
+            const reviewHistory = await adaptConn.getAssignmentReviewHistory(
+              assignment.assignment_id
+            );
+            if (!reviewHistory?.data) continue;
+            const data = reviewHistory.data.review_histories;
+            if (!data) continue;
+
+            const withCourseID: (ADAPTReviewTimeData & {
+              course_id: number;
+            })[] = data.map((d) => {
+              return {
+                ...d,
+                course_id: course.course_id,
+              };
             });
-          });
+
+            reviewTimeData.push(...withCourseID);
+          }
+        } catch (err) {
+          console.error(err);
+          continue;
         }
       }
 

@@ -58,12 +58,17 @@ export type ADAPTSubmissionTimestampData = {
 export type ADAPTSubmissionTimestampDataRes = ADAPTSubmissionTimestampData[];
 
 // Review Time
-export type ADAPTReviewTimeResponse = {
+export type ADAPTReviewTimeData = {
   email: string;
   assignment_id: number;
   question_id: number;
   created_at: string;
   updated_at: string;
+};
+
+export type ADAPTReviewTimeResponse = {
+  type: string;
+  review_histories: ADAPTReviewTimeData[];
 };
 
 // Frameworks
