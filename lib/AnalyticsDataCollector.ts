@@ -1,4 +1,4 @@
-import { ADAPTReviewTimeData } from "./types";
+import { ADAPTCourseAssignment, ADAPTReviewTimeData } from "./types";
 import enrollments, { IEnrollmentsRaw } from "./models/enrollments";
 import connectDB from "./database";
 import adaptCourses, {
@@ -34,14 +34,14 @@ class AnalyticsDataCollector {
 
   async runCollectors() {
     //await this.updateCourseData();
-    //await this.collectAllAssignments();
+    await this.collectAllAssignments();
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
     //await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectGradebookData();
     //await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
-    await this.collectReviewTimeData();
+    //await this.collectReviewTimeData();
   }
 
   async updateCourseData() {
@@ -109,13 +109,19 @@ class AnalyticsDataCollector {
           if (!courseData?.data) continue;
 
           const assignments: IAssignmentRaw[] = courseData.data.assignments.map(
-            (assig) => ({
-              course_id: course.course_id,
-              assignment_id: assig.id.toString(),
-              name: assig.name,
-              num_questions: assig.num_questions,
-              questions: [],
-            })
+            (assig) => {
+              const [dueDate, finalSubmissionDeadline] =
+                this._extractDueDates(assig);
+              return {
+                course_id: course.course_id,
+                assignment_id: assig.id.toString(),
+                name: assig.name,
+                num_questions: assig.num_questions,
+                questions: [],
+                due_date: dueDate,
+                final_submission_deadline: finalSubmissionDeadline,
+              };
+            }
           );
 
           for (const assignment of assignments) {
@@ -153,6 +159,8 @@ class AnalyticsDataCollector {
               name: assignment.name,
               num_questions: assignment.num_questions,
               questions: assignment.questions,
+              due_date: assignment.due_date,
+              final_submission_deadline: assignment.final_submission_deadline
             },
           },
           upsert: true,
@@ -895,6 +903,22 @@ class AnalyticsDataCollector {
     // score should now be a string of the score, and timeOnTask should be a string of the time on task in minutes(ie "1:30")
 
     return { score, timeOnTask };
+  }
+
+  private _extractDueDates(
+    assignment: ADAPTCourseAssignment
+  ): [Date | null, Date | null] {
+    const primaryAssignTo = assignment.assign_tos.find((assignTo) =>
+      assignTo.groups.includes("Everybody")
+    ); // "Everybody" is the primary/default assignTo group
+    if (!primaryAssignTo) return [null, null];
+
+    const dueDate = primaryAssignTo.due ? new Date(primaryAssignTo.due) : null;
+    const finalSubmissionDeadline = primaryAssignTo.final_submission_deadline
+      ? new Date(primaryAssignTo.final_submission_deadline)
+      : null;
+
+    return [dueDate, finalSubmissionDeadline];
   }
 }
 

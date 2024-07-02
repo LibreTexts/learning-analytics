@@ -1,10 +1,19 @@
 import { IDWithText } from "./misc";
 
 // Assignments
+
+export type ADAPTAssignTo = {
+  available_from: string,
+  due: string,
+  final_submission_deadline: string,
+  groups: string[],
+}
+
 export type ADAPTCourseAssignment = {
   id: number;
   name: string;
   num_questions: number;
+  assign_tos: ADAPTAssignTo[];
 };
 
 export type ADAPTCourseAssignmentsRes = {

@@ -451,7 +451,7 @@ class Analytics {
 
   public async getSubmissionTimeline(
     assignment_id: string
-  ): Promise<SubmissionTimeline[] | undefined> {
+  ): Promise<SubmissionTimeline | undefined> {
     try {
       await connectDB();
 
@@ -460,22 +460,50 @@ class Analytics {
         assignment_id: assignment_id,
       })) as ICalcADAPTSubmissionsByDate_Raw[];
 
-      // for each question, count the number of occurrences of each date, without regard to the time (date only)
-      const data = res.map((d) => ({
-        question_id: d.questions[0].question_id,
-        data: d.questions[0].submissions.reduce((acc, curr) => {
-          const date = new Date(curr).toLocaleDateString();
-          const existing = acc.find((a) => a.date === date);
-          if (existing) {
-            existing.count++;
-          } else {
-            acc.push({ date: date, count: 1 });
-          }
-          return acc;
-        }, [] as { date: string; count: number }[]),
-      }));
+      const assignmentInfo = await assignments.findOne({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id,
+      });
 
-      return data.flat();
+      // for each question, count the number of occurrences of each date, without regard to the time (date only)
+      const data = res.map((d) => {
+        return d.questions.map((q) => {
+          return {
+            question_id: q.question_id,
+            data: q.submissions.reduce((acc, curr) => {
+              const date = new Date(curr).toLocaleDateString();
+              const existing = acc.find((a) => a.date === date);
+              if (existing) {
+                existing.count++;
+              } else {
+                acc.push({ date: date, count: 1 });
+              }
+              return acc;
+            }, [] as { date: string; count: number }[]),
+          };
+        });
+      });
+
+      // return the data with respect to the assignment as a whole, not individual questions
+      // so for each date, sum the counts of all questions
+      // const flattened = data.reduce((acc, curr) => {
+      //   curr.data.forEach((d) => {
+      //     const existing = acc.find((a) => a.date === d.date);
+      //     if (existing) {
+      //       existing.count += d.count;
+      //     } else {
+      //       acc.push({ date: d.date, count: d.count });
+      //     }
+      //   });
+      //   return acc;
+      // }, [] as { date: string; count: number }[]);
+
+      return {
+        assignment_id: assignment_id,
+        due_date: assignmentInfo?.due_date,
+        final_submission_deadline: assignmentInfo?.final_submission_deadline,
+        questions: data.flat(),
+      };
     } catch (err) {
       console.error(err);
       return undefined;
