@@ -35,13 +35,13 @@ class AnalyticsDataProcessor {
     // await this.compressADAPTAverageScore();
     // await this.compressADAPTInteractionDays();
     // await this.compressADAPTGradeDistribution();
-    await this.compressADAPTSubmissions();
+    //await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
     //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    //await this.compressReviewTime();
+    await this.compressReviewTime();
     //await this.compressTimeOnTask();
     //await this.writeEWSCourseSummary();
     //await this.writeEWSActorSummary();
@@ -791,8 +791,10 @@ class AnalyticsDataProcessor {
             );
           }, 0);
 
-          // convert to minutes
-          const totalReviewTime = totalReviewTimeMs / 60000;
+          // convert to minutes (2 decimal places)
+          const totalReviewTime = parseFloat(
+            (totalReviewTimeMs / 60000).toPrecision(2)
+          );
           return {
             actor,
             assignment_id,

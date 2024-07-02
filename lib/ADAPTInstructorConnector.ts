@@ -6,6 +6,7 @@ import {
   ADAPTEnrollmentDetailsRes,
   ADAPTFrameworkQuestionSyncRes,
   ADAPTFrameworksRes,
+  ADAPTReviewTimeResponse,
   ADAPTSubmissionTimestampDataRes,
 } from "./types";
 
@@ -92,6 +93,13 @@ class ADAPTInstructorConnector {
         "/on_task/0",
       "GET"
     );
+  }
+
+  public async getAssignmentReviewHistory(assignmentID: string){
+    return this.makeRequest<ADAPTReviewTimeResponse>(
+      '/assignments/' + assignmentID + '/review-history',
+      'GET'
+    )
   }
 
   public async getAssignmentSubmissionTimestamps(assignmentID: string) {
