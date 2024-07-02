@@ -120,3 +120,57 @@ export const Assignments_AllCourseQuestionsAggregation = [
     },
   },
 ];
+
+/**
+ * Takes an array of objects and returns a new array with outliers removed based on the specified key
+ * @param data - The data to remove outliers from (array of objects)
+ * @param key - The key to use for outlier detection
+ * @param upperOnly - Whether to remove only upper outliers, or both upper and lower outliers
+ * @returns - The data with outliers removed
+ */
+export function removeOutliers<T extends { [key: string]: any }>(
+  data: T[],
+  key: keyof T,
+  upperOnly = false
+): T[] {
+  // Helper function to calculate the percentile
+  function percentile(arr: number[], p: number): number {
+    const sortedArr = arr.slice().sort((a, b) => a - b);
+    const index = (p / 100) * (sortedArr.length - 1);
+    const lowerIndex = Math.floor(index);
+    const upperIndex = lowerIndex + 1;
+    const weight = index % 1;
+
+    if (upperIndex >= sortedArr.length) {
+      return sortedArr[lowerIndex];
+    }
+
+    return (
+      sortedArr[lowerIndex] * (1 - weight) + sortedArr[upperIndex] * weight
+    );
+  }
+
+  // Extract the values based on the specified key
+  const values = data.map((item) => item[key]);
+
+  // Calculate Q1 and Q3
+  const Q1 = percentile(values, 25);
+  const Q3 = percentile(values, 75);
+
+  // Calculate IQR
+  const IQR = Q3 - Q1;
+
+  // Define outlier bounds
+  const lowerBound = Q1 - 1.5 * IQR;
+  const upperBound = Q3 + 1.5 * IQR;
+
+  // Filter out the outliers
+  const filteredData = data.filter((item) => {
+    const value = item[key];
+    return upperOnly
+      ? value <= upperBound
+      : value >= lowerBound && value <= upperBound;
+  });
+
+  return filteredData;
+}

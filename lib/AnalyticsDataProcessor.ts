@@ -25,7 +25,7 @@ import assignments from "./models/assignments";
 import calcADAPTStudentActivity, {
   ICalcADAPTStudentActivity_Raw,
 } from "./models/calcADAPTStudentActivity";
-import { Assignments_AllCourseQuestionsAggregation } from "@/utils/data-helpers";
+import { Assignments_AllCourseQuestionsAggregation, removeOutliers } from "@/utils/data-helpers";
 import assignmentScores from "./models/assignmentScores";
 
 class AnalyticsDataProcessor {
@@ -805,8 +805,11 @@ class AnalyticsDataProcessor {
         }
       );
 
+      // Remove upper outliers
+      const cleaned = removeOutliers(reviewTimeAggArray, "total_review_time", true);
+
       await calcReviewTime.bulkWrite(
-        reviewTimeAggArray.map((data) => ({
+        cleaned.map((data) => ({
           updateOne: {
             filter: {
               actor: data.actor,
