@@ -38,7 +38,6 @@ const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type SubmissionTimelineTypeFlat = {
-  question_id: string;
   date: string;
   count: number;
 };
@@ -48,7 +47,7 @@ type SubmissionTimelineProps = VisualizationBaseProps & {
   studentMode?: boolean;
   getData: (
     assignment_id: string
-  ) => Promise<SubmissionTimelineType[] | undefined>;
+  ) => Promise<SubmissionTimelineType | undefined>;
 };
 
 const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
@@ -65,25 +64,10 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
-  const [rawData, setRawData] = useState<SubmissionTimelineTypeFlat[]>([]);
+  const [data, setData] = useState<SubmissionTimelineTypeFlat[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string>("");
-
-  const availableQuestionIds = useMemo(() => {
-    return Array.from(new Set(rawData.map((d) => d.question_id)));
-  }, []);
-
-  const data = useMemo(() => {
-    if (!rawData) return [];
-    if (!selectedQuestionId) return rawData;
-    const filtered = rawData.filter(
-      (d) => d.question_id === selectedQuestionId
-    );
-
-    return filtered.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-  }, [selectedQuestionId]);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [finalSubDate, setFinalSubDate] = useState<Date | null>(null);
 
   const columnHelper = createColumnHelper<SubmissionTimelineTypeFlat>();
   const table = useReactTable<SubmissionTimelineTypeFlat>({
@@ -99,10 +83,10 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
           </div>
         ),
         columns: [
-          columnHelper.accessor("question_id", {
-            cell: (info) => <div>{info.getValue()}</div>,
-            header: "Question ID",
-          }),
+          // columnHelper.accessor("question_id", {
+          //   cell: (info) => <div>{info.getValue()}</div>,
+          //   header: "Question ID",
+          // }),
           columnHelper.accessor("date", {
             cell: (info) => (
               <div>
@@ -113,7 +97,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
           }),
           columnHelper.accessor("count", {
             cell: (info) => <div>{info.getValue()}</div>,
-            header: "Submission Count",
+            header: "Question Submission Count",
           }),
         ],
       }),
@@ -138,19 +122,28 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       const _data = await getData(selectedAssignmentId);
       if (!_data) return;
 
-      const flattened = _data.flatMap((d) =>
-        d.data.map((dd) => ({
-          question_id: d.question_id,
-          date: dd.date,
-          count: dd.count,
-        }))
+      const flattened = _data.questions.reduce((acc, curr) => {
+        curr.data.forEach((d) => {
+          const existing = acc.find((a) => a.date === d.date);
+          if (existing) {
+            existing.count += d.count;
+          } else {
+            acc.push({
+              date: d.date,
+              count: d.count,
+            });
+          }
+        });
+        return acc;
+      }, [] as SubmissionTimelineTypeFlat[]);
+
+      const sorted = flattened.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
 
-      setRawData(flattened);
-
-      if (flattened.length > 0) {
-        setSelectedQuestionId(flattened[0].question_id); // Select the first question by default
-      }
+      setData(sorted);
+      setDueDate(_data.due_date);
+      setFinalSubDate(_data.final_submission_deadline);
     } catch (err) {
       console.error(err);
     } finally {
@@ -158,45 +151,32 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
     }
   }
 
-  const QuestionDropdown = () => (
-    <CustomDropdown
-      icon="question"
-      label={
-        selectedQuestionId ? `Q: ${selectedQuestionId}` : "Select Question"
-      }
-      loading={loading}
-      drop="down"
-      labelLength={12}
-      toggleClassName="!tw-w-44 !tw-p-1 !tw-overflow-x-hidden"
-    >
-      {Array.from(new Set(rawData.map((d) => d.question_id))).map((q) => (
-        <Dropdown.Item key={q} onClick={() => setSelectedQuestionId(q)}>
-          {truncateString(q, 10)}
-        </Dropdown.Item>
-      ))}
-    </CustomDropdown>
-  );
-
   const getMaxCount = useMemo(() => {
     const vals = data.map((d) => d.count);
     if (vals.length === 0) return 100; // Default value
-    return Math.max(...vals);
+    return Math.max(...vals) + 10; // Add 10 for padding
   }, [data]);
 
   function drawChart() {
-    console.log('drawChart');
+    console.log("drawChart");
     setLoading(true);
     const svg = d3.select(svgRef.current);
 
     svg.selectAll("*").remove(); // Clear existing chart
 
     const domain = data.map((d) => format(d.date, "MM/dd/yyyy"));
-    // const dueDate = format(data[0].dueDate, "MM/dd/yyyy");
+    const dueDateFormatted = dueDate ? format(dueDate, "MM/dd/yyyy") : "";
+    const finalSubDateFormatted = finalSubDate
+      ? format(finalSubDate, "MM/dd/yyyy")
+      : "";
 
-    // // check if dueDate is in the domain
-    // if (!domain.includes(dueDate)) {
-    //   domain.push(dueDate);
-    // }
+    // check if due dates are in the domain
+    if (dueDateFormatted && !domain.includes(dueDateFormatted)) {
+      domain.push(dueDateFormatted);
+    }
+    if (finalSubDateFormatted && !domain.includes(finalSubDateFormatted)) {
+      domain.push(finalSubDateFormatted);
+    }
 
     const x = d3
       .scaleBand()
@@ -225,15 +205,60 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .call(d3.axisLeft(y))
       .attr("transform", `translate(${MARGIN.left}, 0)`);
 
-    // Add a vertical line for the due date
-    // svg
-    //   .append("line")
-    //   .attr("x1", x(dueDate) ?? 0 + x.bandwidth() / 2)
-    //   .attr("x2", x(dueDate) ?? 0 + x.bandwidth() / 2)
-    //   .attr("y1", MARGIN.top)
-    //   .attr("y2", height - MARGIN.bottom)
-    //   .style("stroke", "red")
-    //   .style("stroke-dasharray", "4");
+    if (dueDateFormatted) {
+      // Add a vertical line for the due date
+      svg
+        .append("line")
+        .attr(
+          "x1",
+          x(dueDateFormatted)
+            ? (x(dueDateFormatted) as number) + x.bandwidth()
+            : 0
+        )
+        .attr(
+          "x2",
+          x(dueDateFormatted)
+            ? (x(dueDateFormatted) as number) + x.bandwidth()
+            : 0
+        )
+        .attr("y1", MARGIN.top)
+        .attr("y2", height - MARGIN.bottom)
+        .style("stroke", "green")
+        .style("stroke-dasharray", "4")
+        .style("stroke-width", 2);
+
+      // Add label for the due date
+      svg
+        .append("text")
+        .attr("x", x(dueDateFormatted) ?? 0 + x.bandwidth()) // Adjust the x position slightly for the label
+        .attr("y", MARGIN.top - 5) // Position above the line
+        .attr("text-anchor", "middle")
+        .style("fill", "green")
+        .style("font-size", "10px")
+        .text("Due Date");
+    }
+
+    if (finalSubDateFormatted) {
+      // Add a vertical line for the final submission deadline
+      svg
+        .append("line")
+        .attr("x1", x(finalSubDateFormatted) ?? 0 + x.bandwidth())
+        .attr("x2", x(finalSubDateFormatted) ?? 0 + x.bandwidth())
+        .attr("y1", MARGIN.top)
+        .attr("y2", height - MARGIN.bottom)
+        .style("stroke", "red")
+        .style("stroke-width", 2);
+
+      // Add label for the final submission deadline
+      svg
+        .append("text")
+        .attr("x", x(finalSubDateFormatted) ?? 0 + x.bandwidth() + 5) // Adjust the x position slightly for the label
+        .attr("y", MARGIN.top - 5) // Position above the line
+        .attr("text-anchor", "middle")
+        .style("fill", "red")
+        .style("font-size", "10px")
+        .text("Final Deadline");
+    }
 
     // Create tool tip
     const tooltip = d3
@@ -287,7 +312,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(`ADAPT ID: ${selectedAssignmentId}-${selectedQuestionId}`);
+      .text(`Assignment: ${selectedAssignmentId}`);
 
     // Add Y axis label:
     svg
@@ -296,7 +321,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .attr("x", `-${height / 3}`)
       .attr("y", MARGIN.left / 2 - 10)
       .attr("transform", "rotate(-90)")
-      .text("# of Submissions")
+      .text("# of Question Submissions")
       .style("font-size", "12px");
 
     setLoading(false);

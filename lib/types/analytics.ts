@@ -6,8 +6,16 @@ export type AssignmentAvgScoreCalc = {
 };
 
 export type SubmissionTimeline = {
-  question_id: string;
-  data: { date: string; count: number }[];
+  assignment_id: string;
+  due_date: Date | null;
+  final_submission_deadline: Date | null;
+  questions: {
+    question_id: string;
+    data: {
+      date: string;
+      count: number;
+    }[];
+  }[];
 };
 
 export type PerformancePerAssignment = {
@@ -89,6 +97,6 @@ export type LOCData = {
     id: string;
     text: string;
     question_count: number;
-    avg_performance: number
+    avg_performance: number;
   }[];
 };
