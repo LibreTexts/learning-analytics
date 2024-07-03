@@ -23,7 +23,7 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [globalState, setGlobalState] = useGlobalContext();
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableItems, setAvailableItems] = useState<IDWithName[]>([]);
@@ -35,22 +35,38 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
   }, [globalState.courseID]);
 
   useEffect(() => {
-    setSelectedItems(globalState.assignmentExclusions || []);
+    if (!globalState.assignmentExclusions) return;
+    updateItemsState(globalState.assignmentExclusions, availableItems);
   }, [globalState.assignmentExclusions]);
 
   async function fetchAssignments() {
     try {
       const data = await getAssignments(globalState.courseID, true);
-      setAvailableItems(data);
+      updateItemsState(globalState.assignmentExclusions ?? [], data);
     } catch (err) {
       console.error(err);
       return [];
     }
   }
 
+  function updateItemsState(
+    exclusions: IDWithName[],
+    availableItems: IDWithName[]
+  ) {
+    setSelectedItems(exclusions || []);
+    setAvailableItems(
+      exclusions
+        ? availableItems.filter(
+            (item) => !exclusions?.some((exclusion) => exclusion.id === item.id)
+          )
+        : availableItems
+    );
+  }
+
   async function handleSave() {
     try {
       setLoading(true);
+      setSaveError(false);
 
       await saveData(globalState.courseID, {
         assignmentExclusions: selectedItems,
@@ -68,12 +84,11 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
       });
     } catch (err) {
       console.error(err);
+      setSaveError(true);
     } finally {
       setLoading(false);
     }
   }
-
-  const renderItem = (item: IDWithName) => <span>{item.name}</span>;
 
   return (
     <div className={classNames(className)}>
@@ -85,34 +100,42 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
           <p className="tw-mb-6 tw-text-sm tw-text-slate-500">
             Exclude specific assignments from analytics visualizations.
           </p>
-          <TransferList<IDWithName>
-            availableItemsLabel="Available Assignments"
-            selectedItemsLabel="Excluded Assignments"
-            availableItems={availableItems}
-            selectedItems={selectedItems}
-            setAvailableItems={setAvailableItems}
-            setSelectedItems={setSelectedItems}
-            allowManualEntry={false}
-            renderItem={renderItem}
-            compareItems={(a, b) => {
-              return a.name.localeCompare(b.name, undefined, {
-                numeric: true,
-                sensitivity: "base",
-              });
-            }}
-          />
-          <Form>
-            <div className="tw-flex tw-justify-end tw-items-center">
-              {loading && (
-                <div className="spinner-border spinner-border-sm" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              )}
-              <Button disabled={loading} color="blue" onClick={handleSave}>
-                Save
-              </Button>
+          {availableItems.length === 0 && selectedItems.length === 0 ? (
+            <div className="tw-flex tw-justify-center tw-items-center tw-h-48">
+              <p className="tw-text-sm tw-text-slate-500">
+                No assignments found.
+              </p>
             </div>
-          </Form>
+          ) : (
+            <>
+              <TransferList
+                availableItemsLabel="Available Assignments"
+                selectedItemsLabel="Excluded Assignments"
+                availableItems={availableItems}
+                selectedItems={selectedItems}
+                setAvailableItems={setAvailableItems}
+                setSelectedItems={(items) => {
+                  console.log("setSelectedItems", items);
+                  setSelectedItems(items);
+                }}
+              />
+              <Form>
+                <div className="tw-flex tw-justify-end tw-items-center">
+                  {loading && (
+                    <div
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                    >
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  )}
+                  <Button disabled={loading} color="blue" onClick={handleSave}>
+                    Save
+                  </Button>
+                </div>
+              </Form>
+            </>
+          )}
         </ListGroup.Item>
       </ListGroup>
       <ToastContainer>
@@ -129,6 +152,21 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
           </Toast.Header>
           <Toast.Body className="!text-white">
             Settings saved successfully.
+          </Toast.Body>
+        </Toast>
+        <Toast
+          onClose={() => setSaveError(false)}
+          show={saveError}
+          className="tw-mt-2"
+          bg="danger"
+          delay={3000}
+          autohide
+        >
+          <Toast.Header>
+            <strong className="me-auto">Error</strong>
+          </Toast.Header>
+          <Toast.Body className="!text-white">
+            An error occurred while saving settings.
           </Toast.Body>
         </Toast>
       </ToastContainer>
