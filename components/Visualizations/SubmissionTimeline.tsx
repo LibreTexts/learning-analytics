@@ -230,9 +230,9 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       // Add label for the due date
       svg
         .append("text")
-        .attr("x", x(dueDateFormatted) ?? 0 + x.bandwidth()) // Adjust the x position slightly for the label
+        .attr("x", (x(dueDateFormatted) ?? 0) + 25) // Adjust the x position slightly for the label
         .attr("y", MARGIN.top - 5) // Position above the line
-        .attr("text-anchor", "middle")
+        .attr("text-anchor", "start")
         .style("fill", "green")
         .style("font-size", "10px")
         .text("Due Date");
