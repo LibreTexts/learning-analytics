@@ -1,5 +1,5 @@
 "use client";
-import { GlobalState, IDWithText } from "@/lib/types";
+import { GlobalState, IDWithName, IDWithText } from "@/lib/types";
 import React, { useEffect, useState } from "react";
 import { Button, Form, ListGroup, Toast } from "react-bootstrap";
 import ToastContainer from "../ToastContainer";
@@ -21,11 +21,11 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
   saveData,
 }) => {
   const [globalState, setGlobalState] = useGlobalContext();
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [availableItems, setAvailableItems] = useState<IDWithText[]>([]);
-  const [selectedItems, setSelectedItems] = useState<IDWithText[]>([]);
+  const [availableItems, setAvailableItems] = useState<IDWithName[]>([]);
+  const [selectedItems, setSelectedItems] = useState<IDWithName[]>([]);
 
   useEffect(() => {
     if (!globalState.courseID) return;
@@ -33,7 +33,14 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
   }, [globalState.courseID]);
 
   useEffect(() => {
-    setSelectedItems(globalState.frameworkExclusions || []);
+    if (!globalState.frameworkExclusions) return;
+    updateItemsState(
+      globalState.frameworkExclusions?.map((item) => ({
+        id: item.id,
+        name: item.text,
+      })) ?? [],
+      availableItems
+    );
   }, [globalState.frameworkExclusions]);
 
   async function fetchFrameworkDescriptors() {
@@ -47,30 +54,68 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
         })
         .filter((a) => a);
 
-      setAvailableItems(unique as IDWithText[]);
+      const mapped: IDWithName[] = [];
+      for (let i = 0; i < unique.length; i++) {
+        if (!unique[i]) continue;
+        mapped.push({
+          id: unique[i]?.id as string,
+          name: unique[i]?.text as string,
+        });
+      }
+
+      updateItemsState(
+        globalState.frameworkExclusions?.map((item) => ({
+          id: item.id,
+          name: item.text,
+        })) ?? [],
+        mapped
+      );
     } catch (err) {
       console.error(err);
       return [];
     }
   }
 
+  function updateItemsState(
+    exclusions: IDWithName[],
+    availableItems: IDWithName[]
+  ) {
+    setSelectedItems(exclusions || []);
+    setAvailableItems(
+      exclusions
+        ? availableItems.filter(
+            (item) => !exclusions?.some((exclusion) => exclusion.id === item.id)
+          )
+        : availableItems
+    );
+  }
+
   async function handleSave() {
     try {
       setLoading(true);
+      setSaveError(false);
+
+      // Map back to IDWithText
+      const mapped = selectedItems.map(
+        (item) =>
+          ({
+            id: item.id,
+            text: item.name,
+          } as IDWithText)
+      );
 
       await saveData(globalState.courseID, {
-        frameworkExclusions: selectedItems,
+        frameworkExclusions: mapped,
       });
 
-      const newGlobalState = {
+      setGlobalState({
         ...globalState,
-        frameworkExclusions: selectedItems,
-      };
-
-      setGlobalState(newGlobalState);
+        frameworkExclusions: mapped,
+      });
       setShowSuccess(true);
     } catch (err) {
       console.error(err);
+      setSaveError(true);
     } finally {
       setLoading(false);
     }
@@ -87,34 +132,37 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
             Exclude specific framework descriptors from analytics
             visualizations.
           </p>
-          <TransferList<IDWithText>
-            availableItemsLabel="Available Framework Descriptors"
-            selectedItemsLabel="Excluded Framework Descriptors"
-            availableItems={availableItems}
-            selectedItems={selectedItems}
-            setAvailableItems={setAvailableItems}
-            setSelectedItems={setSelectedItems}
-            renderItem={(item) => <span>{item.text}</span>}
-            allowManualEntry={false}
-            compareItems={(a, b) => {
-              return a.text.localeCompare(b.text, undefined, {
-                numeric: true,
-                sensitivity: "base",
-              });
-            }}
-          />
-          <Form>
-            <div className="tw-flex tw-justify-end tw-items-center">
-              {loading && (
-                <div className="spinner-border spinner-border-sm" role="status">
-                  <span className="visually-hidden">Loading...</span>
+          {availableItems.length === 0 && selectedItems.length === 0 ? (
+            <p className="tw-text-center tw-text-sm tw-text-slate-500">
+              No framework descriptors available.
+            </p>
+          ) : (
+            <>
+              <TransferList
+                availableItemsLabel="Available Framework Descriptors"
+                selectedItemsLabel="Excluded Framework Descriptors"
+                availableItems={availableItems}
+                selectedItems={selectedItems}
+                setAvailableItems={setAvailableItems}
+                setSelectedItems={setSelectedItems}
+              />
+              <Form>
+                <div className="tw-flex tw-justify-end tw-items-center">
+                  {loading && (
+                    <div
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                    >
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  )}
+                  <Button disabled={loading} color="blue" onClick={handleSave}>
+                    Save
+                  </Button>
                 </div>
-              )}
-              <Button disabled={loading} color="blue" onClick={handleSave}>
-                Save
-              </Button>
-            </div>
-          </Form>
+              </Form>
+            </>
+          )}
         </ListGroup.Item>
       </ListGroup>
       <ToastContainer>
@@ -131,6 +179,21 @@ const FrameworkExclusions: React.FC<FrameworkExclusionsProps> = ({
           </Toast.Header>
           <Toast.Body className="!text-white">
             Settings saved successfully.
+          </Toast.Body>
+        </Toast>
+        <Toast
+          onClose={() => setSaveError(false)}
+          show={saveError}
+          className="tw-mt-2"
+          bg="danger"
+          delay={3000}
+          autohide
+        >
+          <Toast.Header>
+            <strong className="me-auto">Error</strong>
+          </Toast.Header>
+          <Toast.Body className="!text-white">
+            An error occurred while saving settings.
           </Toast.Body>
         </Toast>
       </ToastContainer>
