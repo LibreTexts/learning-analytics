@@ -8,6 +8,8 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
   const { data, isFetching } = useQuery<InstructorQuickMetricsType>({
     queryKey: ["instructor-quick-metrics", course_id],
     queryFn: async () => await getInstructorQuickMetrics(course_id),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   return (

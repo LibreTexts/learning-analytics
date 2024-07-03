@@ -3,12 +3,17 @@ import { EarlyWarningStatus } from "../types/ews";
 
 export interface IEWSCourseSummary_Raw {
   course_id: string;
-  assignments: { assignment_id: string; avg_score: number }[];
+  assignments: {
+    assignment_id: string;
+    avg_score: number;
+    avg_time_on_task: number;
+    avg_time_in_review: number;
+  }[];
   avg_percent_seen: number;
   avg_interaction_days: number;
   avg_course_percent: number;
   last_updated: Date;
-  status: EarlyWarningStatus
+  status: EarlyWarningStatus;
 }
 
 export interface IEWSCourseSummary extends IEWSCourseSummary_Raw, Document {}
@@ -20,6 +25,8 @@ const EWSCourseSummarySchema = new Schema<IEWSCourseSummary>(
       {
         assignment_id: { type: String, required: true },
         avg_score: { type: Number, required: true },
+        avg_time_on_task: { type: Number, required: true },
+        avg_time_in_review: { type: Number, required: true },
       },
     ],
     avg_percent_seen: { type: Number, required: true },
