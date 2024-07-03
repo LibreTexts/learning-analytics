@@ -988,15 +988,15 @@ class Analytics {
 
       const toMinutes = mapped.map((d) => ({
         question_id: d.question_id,
-        student_time: Math.round(d.student_time / 60),
-        course_avg: Math.round(d.course_avg / 60),
+        student_time: parseFloat((d.student_time / 60).toPrecision(2)),
+        course_avg: parseFloat((d.course_avg / 60).toPrecision(2)),
       }));
 
       if (toMinutes.length === 0) {
         return courseAvg.map((d) => ({
           question_id: d.question_id,
           student_time: 0,
-          course_avg: Math.round(d.avg_time_seconds / 60),
+          course_avg: parseFloat((d.avg_time_seconds / 60).toPrecision(2)),
         }));
       }
 
