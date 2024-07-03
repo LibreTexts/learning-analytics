@@ -121,7 +121,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
     }),
     columnHelper.accessor("coursePercent", {
       cell: (info) => <div>{info.getValue()}</div>,
-      header: "Un-weighted Avg %",
+      header: "Un-Weighted Avg %",
     }),
     columnHelper.accessor("classQuartile", {
       cell: (info) => <div>{transformQuartile(info.getValue())}</div>,

@@ -25,8 +25,12 @@ import assignments from "./models/assignments";
 import calcADAPTStudentActivity, {
   ICalcADAPTStudentActivity_Raw,
 } from "./models/calcADAPTStudentActivity";
-import { Assignments_AllCourseQuestionsAggregation, removeOutliers } from "@/utils/data-helpers";
+import {
+  Assignments_AllCourseQuestionsAggregation,
+  removeOutliers,
+} from "@/utils/data-helpers";
 import assignmentScores from "./models/assignmentScores";
+import calcTimeOnTask from "./models/calcTimeOnTask";
 
 class AnalyticsDataProcessor {
   constructor() {}
@@ -41,9 +45,9 @@ class AnalyticsDataProcessor {
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    await this.compressReviewTime();
+    //await this.compressReviewTime();
     //await this.compressTimeOnTask();
-    //await this.writeEWSCourseSummary();
+    await this.writeEWSCourseSummary();
     //await this.writeEWSActorSummary();
   }
 
@@ -806,7 +810,11 @@ class AnalyticsDataProcessor {
       );
 
       // Remove upper outliers
-      const cleaned = removeOutliers(reviewTimeAggArray, "total_review_time", true);
+      const cleaned = removeOutliers(
+        reviewTimeAggArray,
+        "total_review_time",
+        true
+      );
 
       await calcReviewTime.bulkWrite(
         cleaned.map((data) => ({
@@ -919,9 +927,6 @@ class AnalyticsDataProcessor {
         },
         {
           $match:
-            /**
-             * query: The query in MQL.
-             */
             {
               total_seconds: {
                 $type: "number",
@@ -976,10 +981,17 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[writeEWSCourseSummary]: Starting aggregation...");
-      const coursesWAssignments = await adaptCourses.find();
+      const coursesWAssignments = await adaptCourses.find({});
+
+      console.log(coursesWAssignments);
       const courseAssignmentMap = new Map<string, string[]>();
       coursesWAssignments.forEach((course) => {
-        course.assignments.forEach((assignment: ADAPTCourseAssignment) => {
+        if (!course.assignments || course.assignments.length === 0) {
+          courseAssignmentMap.set(course.course_id, []);
+          return;
+        }
+
+        course.assignments?.forEach((assignment: ADAPTCourseAssignment) => {
           if (courseAssignmentMap.has(course.course_id)) {
             courseAssignmentMap
               .get(course.course_id)
@@ -1056,6 +1068,8 @@ class AnalyticsDataProcessor {
             (score: { assignmentID: string; averageScore: number }) => ({
               assignment_id: score.assignmentID,
               avg_score: score.averageScore,
+              avg_time_on_task: 0,
+              avg_time_in_review: 0,
             })
           ),
           avg_course_percent: calculateAvgCoursePercent(courseScores),
@@ -1095,6 +1109,90 @@ class AnalyticsDataProcessor {
         if (courseSummary) {
           courseSummary.avg_interaction_days = course.avg_interaction_days;
         }
+      });
+
+      const reviewTime = await calcReviewTime.aggregate([
+        {
+          $group: {
+            _id: "$assignment_id",
+            avg_review_time: {
+              $avg: "$total_review_time",
+            },
+          },
+        },
+        {
+          $project: {
+            assignment_id: "$_id",
+            avg_review_time: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      courseSummaries.forEach((course) => {
+        const courseData = reviewTime.filter((time) =>
+          course.assignments
+            .map((assignment) => assignment.assignment_id)
+            .includes(time.assignment_id)
+        ) as { assignment_id: string; avg_review_time: number }[];
+
+        courseData.forEach((data) => {
+          const assignment = course.assignments.find(
+            (assignment) => assignment.assignment_id === data.assignment_id
+          );
+          if (assignment) {
+            // convert to minutes (2 decimal places)
+            assignment.avg_time_in_review = parseFloat(
+              (data.avg_review_time / 60000).toPrecision(2)
+            );
+          }
+        });
+      });
+
+      const timeOnTask = await calcTimeOnTask.aggregate([
+        {
+          $group: {
+            _id: {
+              assignment_id: "$assignment_id",
+              question_id: "$question_id",
+            },
+            avg_time_seconds: {
+              $avg: "$total_time_seconds",
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.assignment_id",
+            avg_time_on_task: {
+              $avg: "$avg_time_seconds",
+            },
+          },
+        },
+        {
+          $project: {
+            assignment_id: "$_id",
+            avg_time_on_task: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      courseSummaries.forEach((course) => {
+        const courseData = timeOnTask.filter((time) =>
+          course.assignments
+            .map((assignment) => assignment.assignment_id)
+            .includes(time.assignment_id)
+        ) as { assignment_id: string; avg_time_on_task: number }[];
+
+        courseData.forEach((data) => {
+          const assignment = course.assignments.find(
+            (assignment) => assignment.assignment_id === data.assignment_id
+          );
+          if (assignment) {
+            assignment.avg_time_on_task = data.avg_time_on_task;
+          }
+        });
       });
 
       /* for percent seen, from adaptCourses, we can get the number of assignments for each course
@@ -1200,23 +1298,7 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      const courseAssignments = await assignments.aggregate([
-        {
-          $group: {
-            _id: "$course_id",
-            assignments: {
-              $push: "$assignment_id",
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            course_id: "$_id",
-            assignments: "$assignments",
-          },
-        },
-      ]);
+      const coursesWAssignments = await adaptCourses.find({});
 
       //TODO: Should we add per assignment data to EWS model?
       const actorAssignments = await assignmentSubmissions.aggregate([
@@ -1270,6 +1352,7 @@ class AnalyticsDataProcessor {
         return {
           actor_id: actor.student_id,
           course_id: actor.course_id,
+          assignments: [],
           percent_seen: activityMap.get(key) ?? 0,
           interaction_days: 0,
           course_percent: 0,
@@ -1325,12 +1408,12 @@ class AnalyticsDataProcessor {
             assignment.course_id === summary.course_id
         );
 
-        const courseAssignment = courseAssignments.find(
+        const course = coursesWAssignments.find(
           (course) => course.course_id === summary.course_id
         );
 
-        const totalAssignments = courseAssignment
-          ? courseAssignment.assignments.length
+        const totalAssignments = course
+          ? course.assignments.length
           : 0;
 
         const avgScore =
@@ -1349,6 +1432,146 @@ class AnalyticsDataProcessor {
         const asPercent = (avgScore * 100).toFixed(2);
         summary.course_percent = parseFloat(asPercent);
       });
+
+      const avgTimeOnTask = await assignmentScores.aggregate(
+        [
+          {
+            $unwind: "$questions"
+          },
+          {
+            $addFields: {
+              time_parts: {
+                $cond: {
+                  if: {
+                    $eq: ["$questions.time_on_task", "-"]
+                  },
+                  then: null,
+                  else: {
+                    $split: [
+                      "$questions.time_on_task",
+                      ":"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            $addFields: {
+              minutes: {
+                $cond: {
+                  if: {
+                    $eq: ["$time_parts", null]
+                  },
+                  then: 0,
+                  else: {
+                    $convert: {
+                      input: {
+                        $arrayElemAt: ["$time_parts", 0]
+                      },
+                      to: "int",
+                      onError: 0,
+                      onNull: 0
+                    }
+                  }
+                }
+              },
+              seconds: {
+                $cond: {
+                  if: {
+                    $eq: ["$time_parts", null]
+                  },
+                  then: 0,
+                  else: {
+                    $convert: {
+                      input: {
+                        $arrayElemAt: ["$time_parts", 1]
+                      },
+                      to: "int",
+                      onError: 0,
+                      onNull: 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            $addFields: {
+              total_seconds: {
+                $add: [
+                  {
+                    $multiply: ["$minutes", 60]
+                  },
+                  "$seconds"
+                ]
+              }
+            }
+          },
+          {
+            $match: {
+              total_seconds: {
+                $type: "number"
+              }
+            }
+          },
+          {
+            $project: {
+              assignment_id: "$assignment_id",
+              student_id: "$student_id",
+              questions: {
+                question_id: "$questions.question_id",
+                score: "$questions.score",
+                time_on_task: "$questions.time_on_task",
+                total_seconds: "$total_seconds"
+              }
+            }
+          },
+          {
+            $match:
+              /**
+               * query: The query in MQL.
+               */
+              {
+                "questions.total_seconds": {
+                  $ne: 0
+                }
+              }
+          },
+          {
+            $group: {
+              _id: {
+                student_id: "$student_id",
+                assignment_id: "$assignment_id"
+              },
+              questions: {
+                $push: "$questions"
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              student_id: "$_id.student_id",
+              assignment_id: "$_id.assignment_id",
+              avg_time_on_task: {
+                $avg: "$questions.total_seconds"
+              }
+            }
+          }
+        ]
+      )
+
+      // avgTimeOnTask.forEach((time) => {
+      //   const actorSummary = actorSummaries.find(
+      //     (summary) =>
+      //       summary.actor_id === time.student_id &&
+      //       summary.course_id === time.course_id
+      //   );
+      //   if (actorSummary) {
+      //     actorSummary.assignments.push({
+      //   }
+      // });
 
       // filter missing actor_id and course_id
       const filteredActorSummaries = actorSummaries.filter(
