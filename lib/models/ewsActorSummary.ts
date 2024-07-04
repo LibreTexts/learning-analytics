@@ -6,8 +6,8 @@ export interface IEWSActorSummary_Raw {
   assignments: {
     assignment_id: string;
     avg_unweighted_score: number; // Unweighted average of scores across assignment questions
-    avg_time_on_task: number;
-    avg_time_in_review: number;
+    avg_time_on_task: number; // In minutes
+    avg_time_in_review: number; // In minutes
   }[];
   percent_seen: number;
   interaction_days: number;

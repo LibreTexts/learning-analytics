@@ -9,7 +9,6 @@ import {
   QUESTION_SCORE_DATA_EXCLUSIONS,
   encryptStudent,
 } from "@/utils/data-helpers";
-import gradebook, { IGradebookRaw } from "./models/gradebook";
 import frameworkQuestionAlignment, {
   IFrameworkQuestionAlignment_Raw,
 } from "./models/frameworkQuestionAlignment";
@@ -17,7 +16,7 @@ import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
 import useADAPTAxios from "@/hooks/useADAPTAxios";
 import ADAPTInstructorConnector from "./ADAPTInstructorConnector";
 import ADAPTCourseConnector from "./ADAPTCourseConnector";
-import assignmentSubmissions, {
+import assignmentScores, {
   IAssignmentScoresRaw,
 } from "./models/assignmentScores";
 import assignments, { IAssignmentRaw } from "./models/assignments";
@@ -37,8 +36,7 @@ class AnalyticsDataCollector {
     //await this.collectAllAssignments();
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
-    //await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
-    //await this.collectGradebookData();
+    //await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
     await this.collectReviewTimeData();
@@ -342,7 +340,7 @@ class AnalyticsDataCollector {
             },
           }));
 
-          await assignmentSubmissions.bulkWrite(bulkOps);
+          await assignmentScores.bulkWrite(bulkOps);
         } catch (e) {
           console.error(e);
           continue;
@@ -353,7 +351,7 @@ class AnalyticsDataCollector {
     }
   }
 
-  async collectAssignmentSubmissionTimestamps() {
+  async collectSubmissionTimestamps() {
     try {
       await connectDB();
 
@@ -386,7 +384,7 @@ class AnalyticsDataCollector {
           console.log("COurse Assignments", courseAssignments);
           for (const assignment of courseAssignments) {
             const submissionData =
-              await adaptConn.getAssignmentSubmissionTimestamps(
+              await adaptConn.getSubmissionTimestamps(
                 assignment.assignment_id
               );
             if (!submissionData?.data) continue;
@@ -441,196 +439,7 @@ class AnalyticsDataCollector {
         },
       }));
 
-      await assignmentSubmissions.bulkWrite(bulkOps);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async collectGradebookData() {
-    try {
-      await connectDB();
-      const knownCourses = await adaptCourses
-        .find(
-          process.env.DEV_LOCK_COURSE_ID
-            ? { courseID: process.env.DEV_LOCK_COURSE_ID }
-            : {}
-        )
-        .select("courseID");
-
-      const knownCourseIDs = knownCourses.map((course) => course.courseID);
-
-      const promises = knownCourseIDs.map((courseID) => {
-        return useADAPTAxios()?.get("/analytics/scores/course/" + courseID);
-      });
-
-      const responses = await Promise.allSettled(promises);
-
-      // Get and parse assignment score data
-      const scoreData: { courseID: string; gradeData: string[][] | null }[] =
-        responses.map((response) => {
-          const courseID = knownCourseIDs[responses.indexOf(response)];
-          if (response.status === "fulfilled" && response.value) {
-            if (Array.isArray(response.value.data)) {
-              return {
-                courseID,
-                gradeData: response.value.data,
-              };
-            }
-            return {
-              courseID,
-              gradeData: response.value.data,
-            };
-          }
-          return {
-            courseID,
-            gradeData: null,
-          };
-        });
-
-      const parsed: {
-        courseID: string;
-        email: string;
-        weighted: string;
-        letter: string;
-        [x: string]: string;
-      }[] = [];
-
-      for (const course of scoreData) {
-        if (!course.gradeData) continue;
-        const headers = course.gradeData[0];
-        for (let i = 1; i < course.gradeData.length; i++) {
-          const email = course.gradeData[i][0]; // First 'column' is email
-          const data = course.gradeData[i].slice(
-            1,
-            course.gradeData[i].length - 2
-          ); // Rest of the 'columns' are data, excluding the last 2 columnds, which are "Weighted Score" and "Letter Grade"
-          const weighted = course.gradeData[i][course.gradeData[i].length - 2];
-          const letter = course.gradeData[i][course.gradeData[i].length - 1];
-          const reduced = data.reduce((acc, val, index) => {
-            const assignmentName = headers[index + 1];
-            // @ts-ignore
-            acc[assignmentName] = val;
-            acc["weighted"] = weighted;
-            acc["letter"] = letter;
-            return acc;
-          }, {} as { [x: string]: string });
-
-          parsed.push({
-            courseID: course.courseID,
-            email,
-            weighted: "",
-            letter: "",
-            ...reduced,
-          });
-        }
-      }
-
-      // Encrypt the emails
-      const encrpytionPromises = parsed.map((student) => {
-        return encryptStudent(student.email);
-      });
-
-      const encryptedEmails = await Promise.all(encrpytionPromises);
-      parsed.forEach((student, index) => {
-        student.email = encryptedEmails[index];
-      });
-
-      const assignmentsPromises = knownCourseIDs.map((courseID) => {
-        return useADAPTAxios()?.get("/assignments/courses/" + courseID);
-      });
-
-      const assignmentsResponses = await Promise.allSettled(
-        assignmentsPromises
-      );
-
-      const assignmentsData: {
-        courseID: string;
-        assignments: { id: string; name: string; points_possible: string }[];
-      }[] = assignmentsResponses.map((response, idx) => {
-        if (response.status === "fulfilled" && response.value) {
-          return {
-            courseID: knownCourseIDs[idx],
-            assignments: response.value.data.assignments.map(
-              (assignment: any) => ({
-                id: assignment.id,
-                name: assignment.name,
-                points_possible: assignment.total_points?.toString() ?? 0,
-              })
-            ),
-          };
-        }
-        return {
-          courseID: "",
-          assignments: [],
-        };
-      });
-
-      // map the assignment names in the parsed data to the assignment IDs in the assignmentsData
-      const mappedData: IGradebookRaw[][] = parsed.map((student) => {
-        const courseAssignments = assignmentsData.find(
-          (data) => data.courseID === student.courseID
-        )?.assignments;
-
-        if (!courseAssignments) return [];
-
-        const reduced = courseAssignments.reduce(
-          (acc: IGradebookRaw[], assignment) => {
-            const assignmentName = assignment.name;
-            const assignmentID = assignment.id;
-
-            const assignment_percent =
-              (parseFloat(student[assignmentName]) /
-                parseFloat(assignment.points_possible)) *
-              100;
-
-            const getOverallPercent = (raw: string) => {
-              if (raw === "-") return 0;
-              if (raw.includes("%")) return parseFloat(raw.replace("%", ""));
-              return parseFloat(raw);
-            };
-
-            // @ts-ignore
-            acc.push({
-              email: student.email,
-              course_id: student.courseID,
-              assignment_id: parseInt(assignmentID),
-              assignment_name: assignmentName,
-              score: parseFloat(
-                student[assignmentName] === "-" ? "0" : student[assignmentName]
-              ), // If the score is a dash, set it to 0
-              points_possible: parseFloat(assignment.points_possible),
-              assignment_percent:
-                parseFloat(assignment_percent.toFixed(2)) || 0,
-              turned_in_assignment: student[assignmentName] !== "-",
-              overall_course_grade: student.letter,
-              overall_course_percent: getOverallPercent(student.weighted),
-            });
-            // console.log(acc);
-            return acc;
-          },
-          []
-        );
-
-        return reduced;
-      });
-
-      const docsToInsert = mappedData.flat();
-
-      // Bulk upsert the gradebook data
-      await gradebook.bulkWrite(
-        docsToInsert.map((doc) => ({
-          updateOne: {
-            filter: {
-              email: doc.email,
-              course_id: doc.course_id,
-              assignment_id: doc.assignment_id,
-            },
-            update: { $set: doc },
-            upsert: true,
-          },
-        }))
-      );
+      await assignmentScores.bulkWrite(bulkOps);
     } catch (err) {
       console.error(err);
     }

@@ -1,9 +1,8 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface ICalcADAPTInteractionDays_Raw {
-  actor: string;
-  courseID: string;
-  days: Date[];
+  course_id: string;
+  student_id: string;
   days_count: number;
 }
 
@@ -13,9 +12,8 @@ export interface ICalcADAPTInteractionDays
 
 const CalcADAPTInteractionDaysSchema = new Schema<ICalcADAPTInteractionDays>(
   {
-    actor: String,
-    courseID: String,
-    days: [Date],
+    course_id: String,
+    student_id: String,
     days_count: Number,
   },
   {
@@ -23,7 +21,10 @@ const CalcADAPTInteractionDaysSchema = new Schema<ICalcADAPTInteractionDays>(
   }
 );
 
-CalcADAPTInteractionDaysSchema.index({ actor: 1, courseID: 1 }, { unique: true });
+CalcADAPTInteractionDaysSchema.index(
+  { course_id: 1, student_id: 1 },
+  { unique: true }
+);
 
 export default models.CalcADAPTInteractionDays ||
   model<ICalcADAPTInteractionDays>(
