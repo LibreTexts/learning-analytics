@@ -5,7 +5,7 @@ export interface IEWSActorSummary_Raw {
   course_id: string;
   assignments: {
     assignment_id: string;
-    avg_score: number;
+    avg_unweighted_score: number; // Unweighted average of scores across assignment questions
     avg_time_on_task: number;
     avg_time_in_review: number;
   }[];
@@ -23,7 +23,7 @@ const EWSActorSummarySchema = new Schema<IEWSActorSummary>(
     assignments: [
       {
         assignment_id: { type: String, required: true },
-        avg_score: { type: Number, required: true },
+        avg_unweighted_score: { type: Number, required: true },
         avg_time_on_task: { type: Number, required: true },
         avg_time_in_review: { type: Number, required: true },
       },

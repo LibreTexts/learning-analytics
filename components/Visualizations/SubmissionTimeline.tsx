@@ -33,6 +33,7 @@ import { DATE_ONLY_FORMAT } from "@/utils/misc";
 import CustomDropdown from "../CustomDropdown";
 import { Dropdown } from "react-bootstrap";
 import { truncateString } from "@/utils/text-helpers";
+import useAssignments from "@/hooks/useAssignmentName";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -68,6 +69,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   const [loading, setLoading] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [finalSubDate, setFinalSubDate] = useState<Date | null>(null);
+  const { getName} = useAssignments();
 
   const columnHelper = createColumnHelper<SubmissionTimelineTypeFlat>();
   const table = useReactTable<SubmissionTimelineTypeFlat>({
@@ -78,7 +80,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
         header: () => (
           <div className="tw-mb-0">
             <p className="text-center tw-mb-0">
-              Assignment: {selectedAssignmentId ?? "Unknown"}
+              Assignment: {getName(selectedAssignmentId) ?? "Unknown"}
             </p>
           </div>
         ),
@@ -158,7 +160,6 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   }, [data]);
 
   function drawChart() {
-    console.log("drawChart");
     setLoading(true);
     const svg = d3.select(svgRef.current);
 
@@ -312,7 +313,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(`Assignment: ${selectedAssignmentId}`);
+      .text(`Assignment: ${getName(selectedAssignmentId)}`);
 
     // Add Y axis label:
     svg
