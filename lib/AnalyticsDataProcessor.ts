@@ -2,8 +2,6 @@ import LTAnalytics from "./models/ltanalytics";
 import TextbookInteractionsByDate from "./models/textbookInteractionsByDate";
 import connectDB from "./database";
 import { debugADP } from "@/utils/misc";
-import ADAPT from "./models/adapt";
-import Gradebook from "./models/gradebook";
 import useADAPTAxiosicsAxios from "@/hooks/useADAPTAxios";
 import { ADAPTCourseAssignment, IDWithName } from "./types";
 import textbookInteractionsByDate from "./models/textbookInteractionsByDate";
@@ -20,7 +18,7 @@ import enrollments from "./models/enrollments";
 import reviewTime from "./models/reviewTime";
 import calcReviewTime from "./models/calcReviewTime";
 import adaptCourses from "./models/adaptCourses";
-import assignmentSubmissions from "./models/assignmentScores";
+import assignmentScores from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcADAPTStudentActivity, {
   ICalcADAPTStudentActivity_Raw,
@@ -29,15 +27,13 @@ import {
   Assignments_AllCourseQuestionsAggregation,
   removeOutliers,
 } from "@/utils/data-helpers";
-import assignmentScores from "./models/assignmentScores";
 import calcTimeOnTask from "./models/calcTimeOnTask";
 
 class AnalyticsDataProcessor {
   constructor() {}
 
   public async runProcessors() {
-    // await this.compressADAPTAverageScore();
-    // await this.compressADAPTInteractionDays();
+    //await this.compressADAPTInteractionDays();
     // await this.compressADAPTGradeDistribution();
     //await this.compressADAPTSubmissions();
     //await this.compressADAPTScores();
@@ -45,66 +41,10 @@ class AnalyticsDataProcessor {
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    await this.compressReviewTime();
+    //await this.compressReviewTime();
     //await this.compressTimeOnTask();
-    //await this.writeEWSCourseSummary();
+    await this.writeEWSCourseSummary();
     //await this.writeEWSActorSummary();
-  }
-
-  private async compressADAPTAverageScore(): Promise<boolean> {
-    try {
-      await connectDB();
-
-      debugADP("[compressADAPTAverageScore]: Starting aggregation...");
-      await Gradebook.aggregate(
-        [
-          {
-            $group: {
-              _id: {
-                courseID: "$course_id",
-                actor: "$email",
-              },
-              scores: {
-                $push: "$assignment_percent",
-              },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              courseID: "$_id.courseID",
-              actor: "$_id.actor",
-              avg_score: {
-                $round: [
-                  {
-                    $avg: "$scores",
-                  },
-                  2,
-                ],
-              },
-            },
-          },
-          {
-            $merge: {
-              into: "calcADAPTAverageScore",
-              on: ["actor", "courseID"],
-              whenMatched: "replace",
-              whenNotMatched: "insert",
-            },
-          },
-        ],
-        { allowDiskUse: true }
-      );
-
-      debugADP("[compressADAPTAverageScore]: Finished aggregation.");
-      return true;
-    } catch (err: any) {
-      debugADP(
-        err.message ??
-          "Unknown error occured while compressing ADAPT average scores"
-      );
-      return false;
-    }
   }
 
   private async compressADAPTScores(): Promise<boolean> {
@@ -112,7 +52,7 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[compressADAPTScores]: Starting aggregation...");
-      await assignmentSubmissions.aggregate(
+      await assignmentScores.aggregate(
         [
           {
             $match: {
@@ -205,7 +145,7 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTStudentActivity]: Starting aggregation...");
 
-      const hasScoreData = await assignmentSubmissions.aggregate([
+      const hasScoreData = await assignmentScores.aggregate([
         {
           $unwind: "$questions",
         },
@@ -311,7 +251,8 @@ class AnalyticsDataProcessor {
     try {
       await connectDB();
 
-      await Gradebook.aggregate(
+      //TODO: USE ASSIGNMENT SCORES INSTEAD OF GRADEBOOK
+      await assignmentScores.aggregate(
         [
           {
             $group: {
@@ -369,12 +310,20 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTInteractionDays]: Reading raw data...");
 
-      // TODO: finish this
       await assignmentScores.aggregate(
         [
           {
+            $unwind: {
+              path: "$questions",
+            },
+          },
+          {
             $match: {
-              submission_time: {
+              "questions.first_submitted_at": {
+                $exists: true,
+                $ne: "",
+              },
+              "questions.last_submitted_at": {
                 $exists: true,
                 $ne: "",
               },
@@ -382,11 +331,19 @@ class AnalyticsDataProcessor {
           },
           {
             $addFields: {
-              submissionDay: {
+              firstSubmittedDay: {
                 $dateToString: {
                   format: "%Y-%m-%d",
                   date: {
-                    $toDate: "$submission_time",
+                    $toDate: "$questions.first_submitted_at",
+                  },
+                },
+              },
+              lastSubmittedDay: {
+                $dateToString: {
+                  format: "%Y-%m-%d",
+                  date: {
+                    $toDate: "$questions.last_submitted_at",
                   },
                 },
               },
@@ -395,12 +352,17 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                courseID: "$course_id",
-                actor: "$anon_student_id",
+                course_id: "$course_id",
+                student_id: "$student_id",
               },
-              days: {
+              firstDays: {
                 $addToSet: {
-                  $toDate: "$submissionDay",
+                  $toDate: "$firstSubmittedDay",
+                },
+              },
+              lastDays: {
+                $addToSet: {
+                  $toDate: "$lastSubmittedDay",
                 },
               },
             },
@@ -408,18 +370,19 @@ class AnalyticsDataProcessor {
           {
             $project: {
               _id: 0,
-              courseID: "$_id.courseID",
-              actor: "$_id.actor",
-              days: 1,
+              course_id: "$_id.course_id",
+              student_id: "$_id.student_id",
               days_count: {
-                $size: "$days",
+                $size: {
+                  $setUnion: ["$firstDays", "$lastDays"],
+                },
               },
             },
           },
           {
             $merge: {
               into: "calcADAPTInteractionDays",
-              on: ["actor", "courseID"],
+              on: ["course_id", "student_id"],
               whenMatched: "replace",
               whenNotMatched: "insert",
             },
@@ -427,6 +390,7 @@ class AnalyticsDataProcessor {
         ],
         { allowDiskUse: true }
       );
+
       debugADP(`[compressADAPTInteractionDays]: Finished aggregation.`);
       return true;
     } catch (err: any) {
@@ -786,7 +750,8 @@ class AnalyticsDataProcessor {
 
       const reviewTimeAggArray = Array.from(reviewTimeAgg.entries()).map(
         ([key, value]) => {
-          const [student_id, assignment_id, course_id, question_id] = key.split(":");
+          const [student_id, assignment_id, course_id, question_id] =
+            key.split(":");
           const totalReviewTimeMs = value.reduce((acc, curr) => {
             return (
               acc +
@@ -847,7 +812,7 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressTimeOnTask]: Starting aggregation...");
 
-      await assignmentSubmissions.aggregate([
+      await assignmentScores.aggregate([
         {
           $match: {
             course_id: "2904",
@@ -926,12 +891,11 @@ class AnalyticsDataProcessor {
           },
         },
         {
-          $match:
-            {
-              total_seconds: {
-                $type: "number",
-              },
+          $match: {
+            total_seconds: {
+              $type: "number",
             },
+          },
         },
         {
           $group: {
@@ -981,38 +945,39 @@ class AnalyticsDataProcessor {
       await connectDB();
 
       debugADP("[writeEWSCourseSummary]: Starting aggregation...");
-      const coursesWAssignments = await adaptCourses.find({});
-
-      console.log(coursesWAssignments);
-      const courseAssignmentMap = new Map<string, string[]>();
-      coursesWAssignments.forEach((course) => {
-        if (!course.assignments || course.assignments.length === 0) {
-          courseAssignmentMap.set(course.course_id, []);
-          return;
-        }
-
-        course.assignments?.forEach((assignment: ADAPTCourseAssignment) => {
-          if (courseAssignmentMap.has(course.course_id)) {
-            courseAssignmentMap
-              .get(course.course_id)
-              ?.push(assignment.id.toString());
-          } else {
-            courseAssignmentMap.set(course.course_id, [
-              assignment.id.toString(),
-            ]);
-          }
-        });
-      });
+      const coursesWAssignments = await assignments.aggregate([
+        {
+          $group: {
+            _id: "$course_id",
+            assignments: {
+              $addToSet: "$assignment_id",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            course_id: "$_id",
+            assignments: 1,
+          },
+        },
+      ]);
 
       // for each course + assignment, find the scores from calcADAPTScores collection and calculate the average score
       const aggScores = await calcADAPTScores.aggregate(
         [
           {
             $match: {
-              $or: Array.from(courseAssignmentMap.entries()).map(
-                ([courseID, assignmentIDs]) => ({
-                  courseID: courseID,
-                  assignmentID: { $in: assignmentIDs },
+              $or: coursesWAssignments.map(
+                ({
+                  course_id,
+                  assignments,
+                }: {
+                  course_id: string;
+                  assignments: string[];
+                }) => ({
+                  course_id,
+                  assignment_id: { $in: assignments },
                 })
               ),
             },
@@ -1023,8 +988,8 @@ class AnalyticsDataProcessor {
           {
             $group: {
               _id: {
-                courseID: "$courseID",
-                assignmentID: "$assignmentID",
+                course_id: "$course_id",
+                assignment_id: "$assignment_id",
               },
               averageScore: { $avg: "$scores" },
             },
@@ -1032,8 +997,8 @@ class AnalyticsDataProcessor {
           {
             $project: {
               _id: 0,
-              courseID: "$_id.courseID",
-              assignmentID: "$_id.assignmentID",
+              course_id: "$_id.course_id",
+              assignment_id: "$_id.assignment_id",
               averageScore: 1,
             },
           },
@@ -1041,42 +1006,22 @@ class AnalyticsDataProcessor {
         { allowDiskUse: true }
       );
 
-      const calculateAvgCoursePercent = (scores: any[]) => {
-        // filter out null, undefined and NaN values
-        scores = scores.filter((score) => score.averageScore);
-        const sum = scores.reduce(
-          (acc: number, score: { averageScore: number }) =>
-            acc + score.averageScore,
-          0
-        );
-        return sum / scores.length || 0;
-      };
-
+      // Init course summaries
       const courseSummaries: IEWSCourseSummary_Raw[] = [];
-      for (const [courseID, assignmentIDs] of Array.from(
-        courseAssignmentMap.entries()
-      )) {
-        const courseScores = aggScores.filter(
-          (score: { courseID: string; assignmentID: string }) =>
-            score.courseID === courseID &&
-            assignmentIDs.includes(score.assignmentID)
-        );
-
+      for (const course of coursesWAssignments) {
         const courseSummary: IEWSCourseSummary_Raw = {
-          course_id: courseID,
-          assignments: courseScores.map(
-            (score: { assignmentID: string; averageScore: number }) => ({
-              assignment_id: score.assignmentID,
-              avg_score: score.averageScore,
-              avg_time_on_task: 0,
-              avg_time_in_review: 0,
-            })
-          ),
-          avg_course_percent: calculateAvgCoursePercent(courseScores),
+          course_id: course.course_id,
+          assignments: course.assignments.map((a: string) => ({
+            assignment_id: a,
+            avg_unweighted_score: 0,
+            avg_time_on_task: 0,
+            avg_time_in_review: 0,
+          })),
+          avg_course_percent: 0,
           avg_interaction_days: 0,
           avg_percent_seen: 0,
           last_updated: new Date(),
-          status: "insufficient-data", // set this for now, we will update with updateCourseSummaryStatus below
+          status: "insufficient-data", // init as insufficient data, will be updated later
         };
 
         courseSummaries.push(courseSummary);
@@ -1085,31 +1030,20 @@ class AnalyticsDataProcessor {
       const interactionDays = await calcADAPTInteractionDays.aggregate([
         {
           $group: {
-            _id: "$courseID",
+            _id: "$course_id",
             avg_interaction_days: {
-              $avg: {
-                $size: "$days",
-              },
+              $avg: "$days_count",
             },
           },
         },
         {
           $project: {
             _id: 0,
-            courseID: "$_id",
+            course_id: "$_id",
             avg_interaction_days: 1,
           },
         },
       ]);
-
-      interactionDays.forEach((course) => {
-        const courseSummary = courseSummaries.find(
-          (summary) => summary.course_id === course.courseID
-        );
-        if (courseSummary) {
-          courseSummary.avg_interaction_days = course.avg_interaction_days;
-        }
-      });
 
       const reviewTime = await calcReviewTime.aggregate([
         {
@@ -1122,32 +1056,14 @@ class AnalyticsDataProcessor {
         },
         {
           $project: {
-            assignment_id: "$_id",
+            assignment_id: {
+              $toString: "$_id",
+            },
             avg_review_time: 1,
             _id: 0,
           },
         },
       ]);
-
-      courseSummaries.forEach((course) => {
-        const courseData = reviewTime.filter((time) =>
-          course.assignments
-            .map((assignment) => assignment.assignment_id)
-            .includes(time.assignment_id)
-        ) as { assignment_id: string; avg_review_time: number }[];
-
-        courseData.forEach((data) => {
-          const assignment = course.assignments.find(
-            (assignment) => assignment.assignment_id === data.assignment_id
-          );
-          if (assignment) {
-            // convert to minutes (2 decimal places)
-            assignment.avg_time_in_review = parseFloat(
-              (data.avg_review_time / 60000).toPrecision(2)
-            );
-          }
-        });
-      });
 
       const timeOnTask = await calcTimeOnTask.aggregate([
         {
@@ -1178,60 +1094,87 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      courseSummaries.forEach((course) => {
-        const courseData = timeOnTask.filter((time) =>
-          course.assignments
-            .map((assignment) => assignment.assignment_id)
-            .includes(time.assignment_id)
-        ) as { assignment_id: string; avg_time_on_task: number }[];
-
-        courseData.forEach((data) => {
-          const assignment = course.assignments.find(
-            (assignment) => assignment.assignment_id === data.assignment_id
-          );
-          if (assignment) {
-            assignment.avg_time_on_task = data.avg_time_on_task;
-          }
-        });
-      });
-
-      /* for percent seen, from adaptCourses, we can get the number of assignments for each course
-      and from calcADAPTAssignments, we can get the number of assignments completed by each student in each course.
-      Then, we can calculate the average percent seen for each course. */
-
-      const courseAssignments = await adaptCourses.find();
-      const courseAssignmentsMap = new Map<string, number>();
-      courseAssignments.forEach((course) => {
-        courseAssignmentsMap.set(
-          course.courseID,
-          course.assignments.length ?? 0
-        );
-      });
-
-      const courseAssignmentsCompleted = await calcADAPTAssignments.aggregate([
+      const studentActivity = await calcADAPTStudentActivity.aggregate([
         {
           $group: {
-            _id: "$courseID",
-            avg_percent_seen: { $avg: "$assignments_count" },
+            _id: {
+              course_id: "$course_id",
+            },
+            avg_percent_seen: {
+              $avg: {
+                $divide: [
+                  {
+                    $size: {
+                      $setUnion: ["$seen", "$unseen"],
+                    },
+                  },
+                  {
+                    $size: "$seen",
+                  },
+                ],
+              },
+            },
           },
         },
         {
           $project: {
-            _id: 0,
-            courseID: "$_id",
+            course_id: "$_id.course_id",
             avg_percent_seen: 1,
+            _id: 0,
           },
         },
       ]);
 
-      courseAssignmentsCompleted.forEach((course) => {
-        const courseSummary = courseSummaries.find(
-          (summary) => summary.course_id === course.courseID
+      for (const summary of courseSummaries) {
+        const interaction = interactionDays.find(
+          (interaction) => interaction.course_id === summary.course_id
         );
-        if (courseSummary) {
-          courseSummary.avg_percent_seen = course.avg_percent_seen;
+        if (interaction) {
+          summary.avg_interaction_days = interaction.avg_interaction_days;
         }
-      });
+
+        const percentSeen = studentActivity.find(
+          (activity) => activity.course_id === summary.course_id
+        );
+        if (percentSeen) {
+          summary.avg_percent_seen = percentSeen.avg_percent_seen;
+        }
+
+        // calculate the average course percent
+        summary.avg_course_percent = this._calculateAvgCoursePercent(
+          aggScores.filter((score) => score.course_id === summary.course_id)
+        )
+
+        for (const assignment of summary.assignments) {
+          const score = aggScores.find(
+            (score) =>
+              score.course_id === summary.course_id &&
+              score.assignment_id === assignment.assignment_id
+          );
+          if (score) {
+            assignment.avg_unweighted_score = score.averageScore;
+          }
+
+          const inReview = reviewTime.find(
+            (time) => time.assignment_id === assignment.assignment_id
+          );
+          if (inReview) {
+            // already in minutes
+            assignment.avg_time_in_review = parseFloat(inReview.avg_review_time.toFixed(2));
+          }
+
+          const onTask = timeOnTask.find(
+            (time) => time.assignment_id === assignment.assignment_id
+          );
+          if (onTask) {
+            // convert ms to minutes
+            const converted = parseFloat(
+              (onTask.avg_time_on_task / 60000).toPrecision(2)
+            );
+            assignment.avg_time_on_task = converted;
+          }
+        }
+      }
 
       // filter missing course_id
       const filteredCourseSummaries = courseSummaries.filter(
@@ -1298,10 +1241,25 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      const coursesWAssignments = await adaptCourses.find({});
+      const coursesWAssignments = await assignments.aggregate([
+        {
+          $group: {
+            _id: "$course_id",
+            assignments: {
+              $addToSet: "$assignment_id",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            course_id: "$_id",
+            assignments: 1,
+          },
+        },
+      ]);
 
-      //TODO: Should we add per assignment data to EWS model?
-      const actorAssignments = await assignmentSubmissions.aggregate([
+      const actorAssignments = await assignmentScores.aggregate([
         {
           $group: {
             _id: {
@@ -1333,9 +1291,13 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      const adaptActivity = await calcADAPTStudentActivity.find({});
-      const activityMap = new Map<string, number>();
+      const adaptActivity = await calcADAPTStudentActivity.find({
+        course_id: {
+          $in: coursesWAssignments.map((course) => course.course_id),
+        },
+      });
 
+      const activityMap = new Map<string, number>();
       for (const activity of adaptActivity) {
         const key = `${activity.student_id}:${activity.course_id}`;
         if (activityMap.has(key)) continue;
@@ -1352,7 +1314,15 @@ class AnalyticsDataProcessor {
         return {
           actor_id: actor.student_id,
           course_id: actor.course_id,
-          assignments: [],
+          // Fill the assignments array with all known assignments for the course
+          assignments: coursesWAssignments
+            .find((course) => course.course_id === actor.course_id)
+            ?.assignments.map((a: string) => ({
+              assignment_id: a,
+              avg_unweighted_score: 0,
+              avg_time_on_task: 0,
+              avg_time_in_review: 0,
+            })),
           percent_seen: activityMap.get(key) ?? 0,
           interaction_days: 0,
           course_percent: 0,
@@ -1360,41 +1330,27 @@ class AnalyticsDataProcessor {
         };
       });
 
-      // TODO: replace this with submission timestamp data from ADAPT
-      // const interactionDays = await calcADAPTInteractionDays.aggregate([
-      //   {
-      //     $group: {
-      //       _id: {
-      //         actor: "$actor",
-      //         courseID: "$courseID",
-      //       },
-      //       interaction_days: {
-      //         $sum: {
-      //           $size: "$days",
-      //         },
-      //       },
-      //     },
-      //   },
-      //   {
-      //     $project: {
-      //       _id: 0,
-      //       actor_id: "$_id.actor",
-      //       course_id: "$_id.courseID",
-      //       interaction_days: 1,
-      //     },
-      //   },
-      // ]);
-
-      // interactionDays.forEach((interaction) => {
-      //   const actorSummary = actorSummaries.find(
-      //     (summary) =>
-      //       summary.actor_id === interaction.actor_id &&
-      //       summary.course_id === interaction.course_id
-      //   );
-      //   if (actorSummary) {
-      //     actorSummary.interaction_days = interaction.interaction_days;
-      //   }
-      // });
+      const interactionDays = await calcADAPTInteractionDays.aggregate([
+        {
+          $group: {
+            _id: {
+              course_id: "$course_id",
+              student_id: "$student_id",
+            },
+            days_count: {
+              $first: "$days_count",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            course_id: "$_id.course_id",
+            days_count: 1,
+          },
+        },
+      ]);
 
       /**
        * get average score for each actor based on the respective actorAssignments percent_correct.
@@ -1412,9 +1368,7 @@ class AnalyticsDataProcessor {
           (course) => course.course_id === summary.course_id
         );
 
-        const totalAssignments = course
-          ? course.assignments.length
-          : 0;
+        const totalAssignments = course ? course.assignments?.length : 0;
 
         const avgScore =
           actorAssignmentsForActor.reduce((acc, curr) => {
@@ -1430,145 +1384,245 @@ class AnalyticsDataProcessor {
           }, 0) / totalAssignments;
 
         const asPercent = (avgScore * 100).toFixed(2);
-        summary.course_percent = parseFloat(asPercent);
+        summary.course_percent = parseFloat(asPercent) || 0;
       });
 
-      const avgTimeOnTask = await assignmentScores.aggregate(
-        [
-          {
-            $unwind: "$questions"
-          },
-          {
-            $addFields: {
-              time_parts: {
-                $cond: {
-                  if: {
-                    $eq: ["$questions.time_on_task", "-"]
-                  },
-                  then: null,
-                  else: {
-                    $split: [
-                      "$questions.time_on_task",
-                      ":"
-                    ]
-                  }
-                }
-              }
-            }
-          },
-          {
-            $addFields: {
-              minutes: {
-                $cond: {
-                  if: {
-                    $eq: ["$time_parts", null]
-                  },
-                  then: 0,
-                  else: {
-                    $convert: {
-                      input: {
-                        $arrayElemAt: ["$time_parts", 0]
-                      },
-                      to: "int",
-                      onError: 0,
-                      onNull: 0
-                    }
-                  }
-                }
-              },
-              seconds: {
-                $cond: {
-                  if: {
-                    $eq: ["$time_parts", null]
-                  },
-                  then: 0,
-                  else: {
-                    $convert: {
-                      input: {
-                        $arrayElemAt: ["$time_parts", 1]
-                      },
-                      to: "int",
-                      onError: 0,
-                      onNull: 0
-                    }
-                  }
-                }
-              }
-            }
-          },
-          {
-            $addFields: {
-              total_seconds: {
-                $add: [
-                  {
-                    $multiply: ["$minutes", 60]
-                  },
-                  "$seconds"
-                ]
-              }
-            }
-          },
-          {
-            $match: {
-              total_seconds: {
-                $type: "number"
-              }
-            }
-          },
-          {
-            $project: {
+      const avgScorePerAssignment = await assignmentScores.aggregate([
+        {
+          $unwind: "$questions",
+        },
+        {
+          $group: {
+            _id: {
               assignment_id: "$assignment_id",
               student_id: "$student_id",
-              questions: {
-                question_id: "$questions.question_id",
-                score: "$questions.score",
-                time_on_task: "$questions.time_on_task",
-                total_seconds: "$total_seconds"
-              }
-            }
-          },
-          {
-            $match:
-              {
-                "questions.total_seconds": {
-                  $ne: 0
-                }
-              }
-          },
-          {
-            $group: {
-              _id: {
-                student_id: "$student_id",
-                assignment_id: "$assignment_id"
+            },
+            avg_score: {
+              $avg: {
+                $cond: {
+                  if: {
+                    $eq: ["$questions.time_on_task", "-"],
+                  },
+                  then: 0,
+                  else: {
+                    $toDouble: "$questions.score",
+                  },
+                },
               },
-              questions: {
-                $push: "$questions"
-              }
-            }
+            },
           },
-          {
-            $project: {
-              _id: 0,
-              student_id: "$_id.student_id",
-              assignment_id: "$_id.assignment_id",
-              avg_time_on_task: {
-                $avg: "$questions.total_seconds"
-              }
-            }
-          }
-        ]
-      )
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            assignment_id: "$_id.assignment_id",
+            avg_score: 1,
+          },
+        },
+      ]);
 
-      // avgTimeOnTask.forEach((time) => {
-      //   const actorSummary = actorSummaries.find(
-      //     (summary) =>
-      //       summary.actor_id === time.student_id &&
-      //       summary.course_id === time.course_id
-      //   );
-      //   if (actorSummary) {
-      //     actorSummary.assignments.push({
-      //   }
-      // });
+      const avgTimeOnTask = await assignmentScores.aggregate([
+        {
+          $unwind: "$questions",
+        },
+        {
+          $addFields: {
+            time_parts: {
+              $cond: {
+                if: {
+                  $eq: ["$questions.time_on_task", "-"],
+                },
+                then: null,
+                else: {
+                  $split: ["$questions.time_on_task", ":"],
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            minutes: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 0],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+            seconds: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 1],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            total_seconds: {
+              $add: [
+                {
+                  $multiply: ["$minutes", 60],
+                },
+                "$seconds",
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            total_seconds: {
+              $type: "number",
+            },
+          },
+        },
+        {
+          $project: {
+            assignment_id: "$assignment_id",
+            student_id: "$student_id",
+            questions: {
+              question_id: "$questions.question_id",
+              score: "$questions.score",
+              time_on_task: "$questions.time_on_task",
+              total_seconds: "$total_seconds",
+            },
+          },
+        },
+        {
+          $match: {
+            "questions.total_seconds": {
+              $ne: 0,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
+            },
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            assignment_id: "$_id.assignment_id",
+            avg_time_on_task: {
+              $avg: "$questions.total_seconds",
+            },
+          },
+        },
+      ]);
+
+      const avgReviewTime = await calcReviewTime.aggregate([
+        {
+          $group: {
+            _id: {
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
+            },
+            total_review_time: {
+              $sum: "$total_review_time",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            assignment_id: {
+              $toString: "$_id.assignment_id",
+            },
+            avg_review_time: {
+              $avg: "$total_review_time",
+            },
+          },
+        },
+      ]);
+
+      // Set data
+      for (const summary of actorSummaries) {
+        const interaction = interactionDays.find(
+          (interaction) =>
+            interaction.student_id === summary.actor_id &&
+            interaction.course_id === summary.course_id
+        );
+
+        summary.interaction_days = interaction.days_count || 0;
+
+        const courseAvg = this._calculateAvgCoursePercent(
+          actorAssignments.filter(
+            (assignment) =>
+              assignment.student_id === summary.actor_id &&
+              assignment.course_id === summary.course_id
+          )
+        );
+
+        summary.course_percent = courseAvg;
+
+        // Set data for each assignment
+        for (const assignment of summary.assignments) {
+          const avgOnTask = avgTimeOnTask.find(
+            (time) =>
+              time.student_id === summary.actor_id &&
+              time.assignment_id === assignment.assignment_id
+          );
+          const avgInReview = avgReviewTime.find(
+            (time) =>
+              time.student_id === summary.actor_id &&
+              time.assignment_id === assignment.assignment_id
+          );
+
+          const avgScore = avgScorePerAssignment.find(
+            (score) =>
+              score.student_id === summary.actor_id &&
+              score.assignment_id === assignment.assignment_id
+          );
+
+          if (avgOnTask) {
+            // convert to minutes (2 decimal places)
+            assignment.avg_time_on_task = parseFloat(
+              (avgOnTask.avg_time_on_task / 60).toPrecision(2)
+            );
+          }
+          if (avgInReview) {
+            // already in minutes
+            assignment.avg_time_in_review = avgInReview.avg_review_time;
+          }
+
+          if (avgScore) {
+            assignment.avg_unweighted_score = avgScore.avg_score;
+          }
+        }
+      }
 
       // filter missing actor_id and course_id
       const filteredActorSummaries = actorSummaries.filter(
@@ -1605,6 +1659,17 @@ class AnalyticsDataProcessor {
       summary.status = "insufficient-data";
     }
   }
+
+  private _calculateAvgCoursePercent = (scores: any[]) => {
+    // filter out null, undefined and NaN values
+    scores = scores.filter((score) => score.averageScore);
+    const sum = scores.reduce(
+      (acc: number, score: { averageScore: number }) =>
+        acc + score.averageScore,
+      0
+    );
+    return sum / scores.length || 0;
+  };
 }
 
 export default AnalyticsDataProcessor;

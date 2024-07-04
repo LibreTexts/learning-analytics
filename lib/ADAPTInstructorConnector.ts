@@ -102,7 +102,7 @@ class ADAPTInstructorConnector {
     )
   }
 
-  public async getAssignmentSubmissionTimestamps(assignmentID: string) {
+  public async getSubmissionTimestamps(assignmentID: string) {
     return this.makeRequest<ADAPTSubmissionTimestampDataRes>(
       `/auto-graded-and-file-submissions/${assignmentID}/get-submission-times-by-assignment-and-student`,
       "GET"

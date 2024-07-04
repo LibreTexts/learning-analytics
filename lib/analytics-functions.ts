@@ -52,16 +52,15 @@ export async function getStudentQuickMetrics(
   const promises = [
     analytics.getStudentTextbookEngagement(student_id),
     analytics.getStudentAssignmentsCount(student_id),
-    analytics.getStudentAverageScore(student_id),
   ];
 
-  const [textbookEngagement, assignmentsCount, averageScore] =
+  const [textbookEngagement, assignmentsCount] =
     await Promise.all(promises);
 
   return {
     textbookEngagement,
     assignmentsCount,
-    averageScore,
+    averageScore: 0
   };
 }
 

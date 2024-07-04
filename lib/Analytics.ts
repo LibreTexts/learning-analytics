@@ -1,7 +1,6 @@
 import connectDB from "@/lib/database";
 import AdaptCodes from "@/lib/models/adaptCourses";
 import Enrollments from "@/lib/models/enrollments";
-import Gradebook from "@/lib/models/gradebook";
 import TextbookInteractionsByDate from "@/lib/models/textbookInteractionsByDate";
 import {
   ADAPTCourseAssignment,
@@ -29,7 +28,6 @@ import {
   mmssToSeconds,
 } from "@/utils/data-helpers";
 import CalcADAPTAssignments from "./models/calcADAPTAssignments";
-import CalcADAPTActorAvgScore from "./models/calcADAPTActorAvgScore";
 import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
 import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
@@ -42,7 +40,7 @@ import frameworkQuestionAlignment, {
 } from "./models/frameworkQuestionAlignment";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
-import assignmentSubmissions, {
+import assignmentScores, {
   IAssignmentScoresRaw,
   IQuestionScoreData,
 } from "./models/assignmentScores";
@@ -218,7 +216,7 @@ class Analytics {
     try {
       await connectDB();
 
-      const assignment = await Gradebook.findOne({
+      const assignment = await assignmentScores.findOne({
         assignment_id: assignment_id,
       });
 
@@ -226,7 +224,7 @@ class Analytics {
         throw new Error("Assignment not found");
       }
 
-      const res = await Gradebook.aggregate([
+      const res = await assignmentScores.aggregate([
         {
           $match: {
             course_id: this.adaptID.toString(),
@@ -306,7 +304,7 @@ class Analytics {
         },
       ]);
 
-      const studentScorePromise = assignmentSubmissions.aggregate([
+      const studentScorePromise = assignmentScores.aggregate([
         {
           $match: {
             course_id: this.adaptID.toString(),
@@ -586,22 +584,6 @@ class Analytics {
     }
   }
 
-  public async getStudentAverageScore(student_id: string): Promise<number> {
-    try {
-      await connectDB();
-
-      const res = await CalcADAPTActorAvgScore.findOne({
-        actor: student_id,
-        courseID: this.adaptID.toString(),
-      });
-
-      return res?.avg_score ?? 0;
-    } catch (err) {
-      console.error(err);
-      return 0;
-    }
-  }
-
   public async getCourseFrameworkData(): Promise<{
     descriptors: IDWithText[];
     levels: IDWithText[];
@@ -728,7 +710,7 @@ class Analytics {
         return quartile === 4 ? 3 : quartile;
       };
 
-      const avgTimeOnTask = await assignmentSubmissions.aggregate([
+      const avgTimeOnTask = await assignmentScores.aggregate([
         {
           $match: {
             course_id: this.adaptID.toString(),
@@ -1132,7 +1114,7 @@ class Analytics {
         };
       });
 
-      const studentData = await assignmentSubmissions.find({
+      const studentData = await assignmentScores.find({
         course_id: this.adaptID.toString(),
         student_id,
         assignment_id,
@@ -1225,7 +1207,7 @@ class Analytics {
         }, new Set<string>())
       );
 
-      const scoreData = (await assignmentSubmissions.find({
+      const scoreData = (await assignmentScores.find({
         course_id: this.adaptID.toString(),
         "questions.question_id": { $in: Array.from(uniqueQuestionIDs) },
       })) as IAssignmentScoresRaw[];
