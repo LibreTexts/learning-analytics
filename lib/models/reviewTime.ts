@@ -4,7 +4,7 @@ import { IDWithText } from "../types";
 export interface IReviewTime_Raw {
   course_id: number;
   assignment_id: number;
-  actor: string;
+  student_id: string;
   questions: {
     question_id: number;
     review_time_start: string;
@@ -18,7 +18,7 @@ const ReviewTimeSchema = new Schema<IReviewTime>(
   {
     course_id: { type: Number, required: true },
     assignment_id: { type: Number, required: true },
-    actor: { type: String, required: true },
+    student_id: { type: String, required: true },
     questions: [
       {
         question_id: { type: Number, required: true },
@@ -33,7 +33,7 @@ const ReviewTimeSchema = new Schema<IReviewTime>(
 );
 
 ReviewTimeSchema.index(
-  { course_id: 1, assignment_id: 1, actor: 1 },
+  { course_id: 1, assignment_id: 1, student_id: 1 },
   { unique: true }
 );
 

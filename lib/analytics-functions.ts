@@ -187,7 +187,7 @@ export async function getTimeInReview(
   assignment_id: string
 ) {
   const analytics = new Analytics(course_id);
-  const timeInReview = await analytics.getTimeInReviewTime(
+  const timeInReview = await analytics.getTimeInReview(
     student_id,
     assignment_id
   );

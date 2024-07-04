@@ -45,9 +45,9 @@ class AnalyticsDataProcessor {
     // await this.compressTextbookActivityTime();
     // await this.compressTexbookInteractionsByDate();
     // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-    //await this.compressReviewTime();
+    await this.compressReviewTime();
     //await this.compressTimeOnTask();
-    await this.writeEWSCourseSummary();
+    //await this.writeEWSCourseSummary();
     //await this.writeEWSActorSummary();
   }
 
@@ -722,9 +722,9 @@ class AnalyticsDataProcessor {
         {
           $group: {
             _id: {
-              actor: "$actor",
-              assignment_id: "$assignment_id",
               course_id: "$course_id",
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
             },
             questions: {
               $push: "$questions",
@@ -734,7 +734,7 @@ class AnalyticsDataProcessor {
         {
           $project: {
             _id: 0,
-            actor: "$_id.actor",
+            student_id: "$_id.student_id",
             assignment_id: "$_id.assignment_id",
             course_id: "$_id.course_id",
             questions: {
@@ -744,18 +744,18 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      // Returns this format: { actor: string, assignment_id: string, course_id: string, questions: { question_id: string, review_time_start: string, review_time_end: string}[] }
+      // Returns this format: { student_id: string, assignment_id: string, course_id: string, questions: { question_id: string, review_time_start: string, review_time_end: string}[] }
       const reviewTimeData: {
-        actor: string;
+        student_id: string;
         assignment_id: string;
         course_id: string;
         question_id: string;
         review_time_start: Date;
         review_time_end: Date;
       }[] = reviewTimeRaw.map((data) => {
-        const { actor, assignment_id, course_id, questions } = data;
+        const { student_id, assignment_id, course_id, questions } = data;
         return questions.map((question: any) => ({
-          actor,
+          student_id,
           assignment_id,
           course_id,
           question_id: question.question_id,
@@ -767,7 +767,7 @@ class AnalyticsDataProcessor {
       const reviewTimeFlattened = reviewTimeData.flat();
 
       const reviewTimeAgg = reviewTimeFlattened.reduce((acc, curr) => {
-        const key = `${curr.actor}:${curr.assignment_id}:${curr.course_id}:${curr.question_id}`;
+        const key = `${curr.student_id}:${curr.assignment_id}:${curr.course_id}:${curr.question_id}`;
         if (acc.has(key)) {
           acc.get(key)?.push({
             review_time_start: curr.review_time_start,
@@ -786,7 +786,7 @@ class AnalyticsDataProcessor {
 
       const reviewTimeAggArray = Array.from(reviewTimeAgg.entries()).map(
         ([key, value]) => {
-          const [actor, assignment_id, course_id, question_id] = key.split(":");
+          const [student_id, assignment_id, course_id, question_id] = key.split(":");
           const totalReviewTimeMs = value.reduce((acc, curr) => {
             return (
               acc +
@@ -800,7 +800,7 @@ class AnalyticsDataProcessor {
             (totalReviewTimeMs / 60000).toPrecision(2)
           );
           return {
-            actor,
+            student_id,
             assignment_id,
             course_id,
             question_id,
@@ -820,7 +820,7 @@ class AnalyticsDataProcessor {
         cleaned.map((data) => ({
           updateOne: {
             filter: {
-              actor: data.actor,
+              student_id: data.student_id,
               assignment_id: data.assignment_id,
               course_id: data.course_id,
               question_id: data.question_id,
@@ -1529,9 +1529,6 @@ class AnalyticsDataProcessor {
           },
           {
             $match:
-              /**
-               * query: The query in MQL.
-               */
               {
                 "questions.total_seconds": {
                   $ne: 0

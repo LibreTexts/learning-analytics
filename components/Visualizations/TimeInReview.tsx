@@ -89,9 +89,9 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudent?.email || !selectedAssignmentId) return;
+      if (!selectedStudent?.id || !selectedAssignmentId) return;
       setLoading(true);
-      const data = await getData(selectedStudent.email, selectedAssignmentId);
+      const data = await getData(selectedStudent.id, selectedAssignmentId);
       setData(data ?? []);
     } catch (err) {
       console.error(err);
