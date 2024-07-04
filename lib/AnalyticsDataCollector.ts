@@ -34,14 +34,14 @@ class AnalyticsDataCollector {
 
   async runCollectors() {
     //await this.updateCourseData();
-    await this.collectAllAssignments();
+    //await this.collectAllAssignments();
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
     //await this.collectAssignmentSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectGradebookData();
     //await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
-    //await this.collectReviewTimeData();
+    await this.collectReviewTimeData();
   }
 
   async updateCourseData() {
@@ -160,7 +160,7 @@ class AnalyticsDataCollector {
               num_questions: assignment.num_questions,
               questions: assignment.questions,
               due_date: assignment.due_date,
-              final_submission_deadline: assignment.final_submission_deadline
+              final_submission_deadline: assignment.final_submission_deadline,
             },
           },
           upsert: true,
@@ -776,8 +776,14 @@ class AnalyticsDataCollector {
         course_id: { $in: knownCourses.map((course) => course.course_id) },
       });
 
-      const reviewTimeData: (ADAPTReviewTimeData & { course_id: number })[] =
-        [];
+      const enrollmentData = await enrollments.find({
+        course_id: { $in: knownCourses.map((course) => course.course_id) },
+      });
+
+      const reviewTimeData: (ADAPTReviewTimeData & {
+        student_id: string;
+        course_id: number;
+      })[] = [];
       for (const course of knownCourses) {
         try {
           const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
@@ -793,11 +799,26 @@ class AnalyticsDataCollector {
             const data = reviewHistory.data.review_histories;
             if (!data) continue;
 
+            const encryptedEmails = await Promise.all(
+              data.map((d) => encryptStudent(d.email))
+            );
+
+            data.forEach((d, index) => {
+              d.email = encryptedEmails[index];
+            });
+
             const withCourseID: (ADAPTReviewTimeData & {
+              student_id: string;
               course_id: number;
             })[] = data.map((d) => {
+              // Use (encrypted) email to find student_id (if it exists)
+              const studentID = enrollmentData.find(
+                (enrollment) => enrollment.email === d.email
+              )?.student_id;
+
               return {
                 ...d,
+                student_id: studentID ?? "",
                 course_id: course.course_id,
               };
             });
@@ -810,14 +831,6 @@ class AnalyticsDataCollector {
         }
       }
 
-      const encryptedEmails = await Promise.all(
-        reviewTimeData.map((data) => encryptStudent(data.email))
-      );
-
-      reviewTimeData.forEach((data, index) => {
-        data.email = encryptedEmails[index];
-      });
-
       // for each actor + course_id + assignment_id, group the questions
 
       const docsToInsert = reviewTimeData.reduce(
@@ -826,7 +839,7 @@ class AnalyticsDataCollector {
             (doc) =>
               doc.course_id === curr.course_id &&
               doc.assignment_id === curr.assignment_id &&
-              doc.actor === curr.email
+              doc.student_id === curr.student_id
           );
 
           if (existing) {
@@ -839,7 +852,7 @@ class AnalyticsDataCollector {
             acc.push({
               course_id: curr.course_id,
               assignment_id: curr.assignment_id,
-              actor: curr.email,
+              student_id: curr.student_id,
               questions: [
                 {
                   question_id: curr.question_id,
@@ -857,7 +870,7 @@ class AnalyticsDataCollector {
 
       // Filter out any docs that are missing required fields
       const filteredDocs = docsToInsert.filter((doc) => {
-        return doc.actor && doc.course_id && doc.assignment_id;
+        return doc.student_id && doc.course_id && doc.assignment_id;
       });
 
       // Bulk upsert the review time data
@@ -867,7 +880,7 @@ class AnalyticsDataCollector {
             filter: {
               course_id: doc.course_id,
               assignment_id: doc.assignment_id,
-              actor: doc.actor,
+              student_id: doc.student_id,
             },
             update: { $set: doc },
             upsert: true,

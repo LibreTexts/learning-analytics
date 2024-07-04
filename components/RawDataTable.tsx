@@ -87,19 +87,20 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   async function fetchData() {
     if (!globalState.courseID) return;
     const _data = await getData(globalState.courseID, globalState.ferpaPrivacy);
+    console.log(_data)
     setData(_data);
   }
 
   const transformQuartile = (quartile: number) => {
     switch (quartile) {
       case 0:
-        return "Q1";
+        return "Q1 (Bottom 25%)";
       case 1:
         return "Q2";
       case 2:
         return "Q3";
       case 3:
-        return "Q4";
+        return "Q4 (Top 25%)";
       default:
         return "Unknown";
     }
@@ -114,16 +115,43 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
           </span>
         </div>
       ),
-      header: "Student",
+      header: "Student ID",
       // @ts-ignore
       filterFn: "fuzzy",
       sortingFn: fuzzySort,
     }),
-    columnHelper.accessor("coursePercent", {
+    columnHelper.accessor("not_submitted", {
+      cell: (info) => <div>{info.getValue()}</div>,
+      header: "Questions Not Submitted",
+    }),
+    columnHelper.accessor("submitted", {
+      cell: (info) => <div>{info.getValue()}</div>,
+      header: "Questions Submitted",
+    }),
+    columnHelper.display({
+      id: "percent_submitted",
+      header: "% Submitted",
+      cell: (info) => {
+        const total =
+          info.row.original.not_submitted + info.row.original.submitted;
+        const percent = (info.row.original.submitted / total) * 100;
+        const formatted = percent === 100 ? "100" : percent.toPrecision(3);
+        return <div>{formatted}%</div>;
+      },
+    }),
+    columnHelper.accessor("avg_time_on_task", {
+      cell: (info) => <div>{Math.round(info.getValue() ?? "0")}</div>,
+      header: "Avg Time on Task (min)",
+    }),
+    columnHelper.accessor("avg_time_in_review", {
+      cell: (info) => <div>{Math.round(info.getValue()) ?? "0"}</div>,
+      header: "Avg Time in Review (min)",
+    }),
+    columnHelper.accessor("course_percent", {
       cell: (info) => <div>{info.getValue()}</div>,
       header: "Un-Weighted Avg %",
     }),
-    columnHelper.accessor("classQuartile", {
+    columnHelper.accessor("class_quartile", {
       cell: (info) => <div>{transformQuartile(info.getValue())}</div>,
       header: "Class Quartile",
     }),

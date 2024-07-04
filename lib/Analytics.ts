@@ -717,14 +717,9 @@ class Analytics {
         course_id: this.adaptID.toString(),
       });
 
-      const actorIds = res.map((d) => d.actor_id);
-
       // Calculate course percentile and quartile
       const allScores = res.map((d) => d.course_percent);
       const sortedScores = allScores.sort((a, b) => a - b);
-
-      const getPercentile = (score: number) =>
-        (sortedScores.indexOf(score) / allScores.length) * 100;
 
       const getQuartile = (score: number) => {
         const quartile = Math.floor(
@@ -733,18 +728,197 @@ class Analytics {
         return quartile === 4 ? 3 : quartile;
       };
 
-      const data = res.map((d) => ({
-        actor_id: d.actor_id,
-        name: d.actor_id,
-        pagesAccessed: 0,
-        uniqueInteractionDays: d.interaction_days,
-        percentSeen: d.percent_seen,
-        coursePercent: d.course_percent,
-        // round percentile to two decimal places
-        classPercentile:
-          Math.round(getPercentile(d.course_percent) * 100) / 100,
-        classQuartile: getQuartile(d.course_percent),
-      }));
+      const avgTimeOnTask = await assignmentSubmissions.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $unwind: "$questions",
+        },
+        {
+          $addFields: {
+            time_parts: {
+              $cond: {
+                if: {
+                  $eq: ["$questions.time_on_task", "-"],
+                },
+                then: null,
+                else: {
+                  $split: ["$questions.time_on_task", ":"],
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            minutes: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 0],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+            seconds: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 1],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            total_seconds: {
+              $add: [
+                {
+                  $multiply: ["$minutes", 60],
+                },
+                "$seconds",
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            total_seconds: {
+              $type: "number",
+            },
+          },
+        },
+        {
+          $project: {
+            assignment_id: "$assignment_id",
+            student_id: "$student_id",
+            questions: {
+              question_id: "$questions.question_id",
+              score: "$questions.score",
+              time_on_task: "$questions.time_on_task",
+              total_seconds: "$total_seconds",
+            },
+          },
+        },
+        {
+          $match: {
+            "questions.total_seconds": {
+              $ne: 0,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
+            },
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            assignment_id: "$_id.assignment_id",
+            avg_time_on_task: {
+              $avg: "$questions.total_seconds",
+            },
+          },
+        },
+      ]) as { student_id: string; assignment_id: string; avg_time_on_task: number }[];
+
+      const avgReviewTime = await calcReviewTime.aggregate(
+        [
+          {
+            $match: {
+              course_id: this.adaptID,
+            }
+          },
+          {
+            $group: {
+              _id: {
+                student_id: "$student_id",
+                assignment_id: "$assignment_id"
+              },
+              avg_review_time: {
+                $avg: "$total_review_time"
+              }
+            }
+          },
+          {
+            $project: {
+              student_id: "$_id.student_id",
+              assignment_id: {
+                $toString: "$_id.assignment_id"
+              },
+              avg_review_time: 1,
+              _id: 0
+            }
+          }
+        ]) as { student_id: string; assignment_id: string; avg_review_time: number }[];
+
+        const allCourseActivity = await calcADAPTStudentActivity
+        .find({
+          course_id: this.adaptID.toString(),
+        })
+        .lean();
+
+      const data = res.map((d) => {
+        const timeOnTask = avgTimeOnTask.find(
+          (a) => a.student_id === d.actor_id
+        );
+        const onTaskToMinutes = parseFloat(
+          ((timeOnTask?.avg_time_on_task ?? 0) / 60).toPrecision(2)
+        );
+
+        const reviewTime = avgReviewTime.find(
+          (a) => a.student_id === d.actor_id
+        );
+        const reviewTimeRounded = parseFloat(
+          (reviewTime?.avg_review_time ?? 0).toPrecision(2)
+        );
+
+        const activity = allCourseActivity.find((a) => a.student_id === d.actor_id);
+
+        return {
+          actor_id: d.actor_id,
+          name: d.actor_id,
+          pages_accessed: 0,
+          unique_interaction_days: 0,
+          not_submitted: activity?.unseen.length ?? 0,
+          submitted: activity?.seen.length ?? 0,
+          avg_time_on_task: onTaskToMinutes,
+          avg_time_in_review: reviewTimeRounded,
+          course_percent: d.course_percent,
+          class_quartile: getQuartile(d.course_percent),
+        };
+      });
 
       if (privacy_mode) {
         return data;
@@ -858,7 +1032,7 @@ class Analytics {
     }
   }
 
-  public async getTimeInReviewTime(
+  public async getTimeInReview(
     student_id: string,
     assignment_id: string
   ): Promise<TimeInReview[]> {
@@ -867,7 +1041,7 @@ class Analytics {
 
       const studentRes = await calcReviewTime.find({
         course_id: this.adaptID,
-        actor: student_id,
+        student_id,
         assignment_id: parseInt(assignment_id),
       });
 

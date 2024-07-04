@@ -1,7 +1,7 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface ICalcReviewTime_Raw {
-  actor: string;
+  student_id: string;
   course_id: number;
   assignment_id: number;
   question_id: number;
@@ -12,7 +12,7 @@ export interface ICalcReviewTime extends ICalcReviewTime_Raw, Document {}
 
 const CalcReviewTimeSchema = new Schema<ICalcReviewTime>(
   {
-    actor: { type: String, required: true },
+    student_id: { type: String, required: true },
     course_id: { type: Number, required: true },
     assignment_id: { type: Number, required: true },
     question_id: { type: Number, required: true },
@@ -24,7 +24,7 @@ const CalcReviewTimeSchema = new Schema<ICalcReviewTime>(
 );
 
 CalcReviewTimeSchema.index(
-  { course_id: 1, assignment_id: 1, actor: 1, question_id: 1 },
+  { course_id: 1, assignment_id: 1, student_id: 1, question_id: 1 },
   { unique: true }
 );
 

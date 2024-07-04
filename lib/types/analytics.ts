@@ -56,12 +56,14 @@ export type ActivityAccessed = {
 export type AnalyticsRawData = {
   actor_id: string;
   name: string;
-  pagesAccessed: number;
-  uniqueInteractionDays: number;
-  percentSeen: number;
-  coursePercent: number;
-  classPercentile: number;
-  classQuartile: number;
+  pages_accessed?: number;
+  unique_interaction_days?: number;
+  not_submitted: number;
+  submitted: number;
+  avg_time_on_task: number;
+  avg_time_in_review: number;
+  course_percent: number;
+  class_quartile: number;
 };
 
 export type FrameworkData = {
