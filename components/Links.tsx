@@ -10,7 +10,9 @@ const Links = {
     LearningObjectives: "/learning-objectives",
     LearningCurves: "/learning-curves",
   },
-  API: {},
+  API: {
+    Assignments: "/api/assignments",
+  },
 };
 
 export default Links;

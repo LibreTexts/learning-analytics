@@ -28,6 +28,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
+import useAssignments from "@/hooks/useAssignmentName";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -57,6 +58,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
   const svgRef = useRef(null);
   const [data, setData] = useState<TimeInReviewType[]>([]);
   const [loading, setLoading] = useState(false);
+  const { getName } = useAssignments();
 
   const columnHelper = createColumnHelper<TimeInReviewType>();
   const table = useReactTable<TimeInReviewType>({
@@ -195,7 +197,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(`Assignment: ${selectedAssignmentId}`);
+      .text(`Assignment: ${getName(selectedAssignmentId)}`);
 
     // Add one dot in the legend for each name.
     svg

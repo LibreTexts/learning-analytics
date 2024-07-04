@@ -2,30 +2,22 @@
 import { Card, Dropdown } from "react-bootstrap";
 import CustomDropdown from "./CustomDropdown";
 import { truncateString } from "@/utils/text-helpers";
-
-import { getAssignments, getStudents } from "@/lib/analytics-functions";
+import { getStudents } from "@/lib/analytics-functions";
 import { useQuery } from "@tanstack/react-query";
-import { IDWithName, Student } from "@/lib/types";
+import { Student } from "@/lib/types";
 import { useEffect, useMemo, useRef } from "react";
 import { useGlobalContext } from "@/state/globalContext";
 import classNames from "classnames";
+import useAssignments from "@/hooks/useAssignmentName";
 
 const InstructorDashboardControls = ({ className }: { className?: string }) => {
   const [globalState, setGlobalState] = useGlobalContext();
+  const { assignments, assignmentsStatus } = useAssignments();
   const elementRef = useRef<HTMLDivElement>(null);
 
   const { data: students, status: studentsStatus } = useQuery<Student[]>({
     queryKey: ["students", globalState.courseID, globalState.ferpaPrivacy],
     queryFn: fetchStudents,
-    staleTime: 1000 * 60 * 15, // 15 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: assignments, status: assignmentsStatus } = useQuery<
-    IDWithName[]
-  >({
-    queryKey: ["assignments", globalState.courseID],
-    queryFn: fetchAssignments,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
   });
@@ -53,17 +45,6 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
         100,
         globalState.ferpaPrivacy
       );
-      return data;
-    } catch (err) {
-      console.error(err);
-      return [];
-    }
-  }
-
-  async function fetchAssignments(): Promise<IDWithName[]> {
-    try {
-      if (!globalState.courseID) return [];
-      const data = await getAssignments(globalState.courseID);
       return data;
     } catch (err) {
       console.error(err);

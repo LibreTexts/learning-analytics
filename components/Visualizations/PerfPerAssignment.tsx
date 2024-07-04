@@ -29,6 +29,7 @@ import {
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
 import { truncateString } from "@/utils/text-helpers";
+import useAssignments from "@/hooks/useAssignmentName";
 
 const MARGIN = DEFAULT_MARGINS;
 const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
@@ -53,6 +54,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
   const svgRef = useRef(null);
   const [data, setData] = useState<PerformancePerAssignment[]>([]);
   const [loading, setLoading] = useState(false);
+  const { getName } = useAssignments();
 
   const columnHelper = createColumnHelper<PerformancePerAssignment>();
   const table = useReactTable<PerformancePerAssignment>({
@@ -142,7 +144,7 @@ const PerfPerAssignment: React.FC<PerfPerAssignmentProps> = ({
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
       .style("font-size", "8px")
-      .text((d) => truncateString(d as string, 10));
+      .text((d) => truncateString(getName(d as string), 15));
 
     // Add y-axis
     svg
