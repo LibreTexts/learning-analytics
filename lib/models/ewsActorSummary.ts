@@ -12,6 +12,7 @@ export interface IEWSActorSummary_Raw {
   percent_seen: number;
   interaction_days: number;
   course_percent: number;
+  latest_predicted_percent?: number;
 }
 
 export interface IEWSActorSummary extends IEWSActorSummary_Raw, Document {}
@@ -31,6 +32,7 @@ const EWSActorSummarySchema = new Schema<IEWSActorSummary>(
     percent_seen: { type: Number, required: true },
     interaction_days: { type: Number, required: true },
     course_percent: { type: Number, required: true },
+    latest_predicted_percent: { type: Number },
   },
   {
     collection: "ewsActorSummary",

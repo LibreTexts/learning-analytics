@@ -7,6 +7,10 @@ export const debugADP = (msg: string) => {
   console.log(`[ADP]: ${msg}`);
 };
 
+export const debugEWS = (msg: string) => {
+  console.log(`[EWS]: ${msg}`);
+};
+
 export const queryObjFromSearchParams = (searchParams: URLSearchParams) => {
   const queryObj: { [key: string]: string } = {};
   searchParams.forEach((value, key) => {

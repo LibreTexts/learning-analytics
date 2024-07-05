@@ -5,9 +5,10 @@ import FERPAPrivacySwitch from "./FERPAPrivacySwitch";
 interface PageHeaderProps {
   title: string;
   subtitle: string;
+  children?: React.ReactNode;
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
+const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children }) => {
   const [globalState] = useGlobalContext();
 
   return (
@@ -21,6 +22,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
         {subtitle} Data is updated every 12 hours - current changes may not be
         reflected.
       </p>
+      {children}
     </div>
   );
 };
