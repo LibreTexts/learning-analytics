@@ -5,13 +5,8 @@ import { GetAssignmentsSchema, validateZod } from "@/validators";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams; // https://stackoverflow.com/a/78010468/18636508
   try {
-    // const { session } = await validateRequest();
-    // if (!session) {
-    //   return Response.json({ error: "Unauthorized" }, { status: 401 });
-    // }
-
-    const searchParams = request.nextUrl.searchParams;
     const queryObj = queryObjFromSearchParams(searchParams);
     await validateZod(GetAssignmentsSchema, {
       query: queryObj,

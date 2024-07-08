@@ -5,6 +5,7 @@ import {
   ADAPTCourseAssignmentsRes,
   ADAPTEnrollmentDetailsRes,
   ADAPTFrameworkQuestionSyncRes,
+  ADAPTFrameworkRes,
   ADAPTFrameworksRes,
   ADAPTReviewTimeResponse,
   ADAPTSubmissionTimestampDataRes,
@@ -111,6 +112,10 @@ class ADAPTInstructorConnector {
 
   public async getFrameworks() {
     return this.makeRequest<ADAPTFrameworksRes>("/frameworks", "GET");
+  }
+
+  public async getFramework(frameworkID: string){
+    return this.makeRequest<ADAPTFrameworkRes>('/frameworks/' + frameworkID, 'GET')
   }
 
   public async getFrameworkQuestionSync(questionID: string) {

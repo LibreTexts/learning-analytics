@@ -1,4 +1,8 @@
-import { ADAPTCourseAssignment, ADAPTReviewTimeData } from "./types";
+import {
+  ADAPTCourseAssignment,
+  ADAPTFrameworkRes,
+  ADAPTReviewTimeData,
+} from "./types";
 import enrollments, { IEnrollmentsRaw } from "./models/enrollments";
 import connectDB from "./database";
 import adaptCourses, {
@@ -20,6 +24,7 @@ import assignmentScores, {
   IAssignmentScoresRaw,
 } from "./models/assignmentScores";
 import assignments, { IAssignmentRaw } from "./models/assignments";
+import framework from "./models/framework";
 
 class AnalyticsDataCollector {
   constructor() {
@@ -37,9 +42,9 @@ class AnalyticsDataCollector {
     //await this.collectEnrollments();
     //await this.collectAssignmentScores();
     //await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
-    //await this.collectFrameworkData();
+    await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
-    await this.collectReviewTimeData();
+    //await this.collectReviewTimeData();
   }
 
   async updateCourseData() {
@@ -383,10 +388,9 @@ class AnalyticsDataCollector {
           );
           console.log("COurse Assignments", courseAssignments);
           for (const assignment of courseAssignments) {
-            const submissionData =
-              await adaptConn.getSubmissionTimestamps(
-                assignment.assignment_id
-              );
+            const submissionData = await adaptConn.getSubmissionTimestamps(
+              assignment.assignment_id
+            );
             if (!submissionData?.data) continue;
             for (const submission of submissionData.data) {
               if (!submission.auto_graded) continue;
@@ -445,25 +449,71 @@ class AnalyticsDataCollector {
     }
   }
 
-  // async collectFrameworkData() {
-  //   try {
-  //     await connectDB();
+  async collectFrameworkData() {
+    try {
+      await connectDB();
 
-  //     // Get a random instructor_id to use for the API calls
-  //     const randomInstructor = await adaptCourses.findOne({
-  //       instructor_id: { $exists: true },
-  //     });
+      // Get a random instructor_id to use for the API calls
+      const randomInstructor = await adaptCourses.findOne({
+        instructor_id: { $exists: true },
+      });
 
-  //     const adaptConn = new ADAPTInstructorConnector(randomInstructor.instructor_id);
-  //     const frameworks = await adaptConn.getFrameworks();
-  //     if (!frameworks?.data?.frameworks) return;
+      const adaptConn = new ADAPTInstructorConnector(
+        randomInstructor.instructor_id
+      );
+      const frameworks = await adaptConn.getFrameworks();
+      if (!frameworks?.data?.frameworks) return;
 
-  //     const frameworkIDs = frameworks.data.frameworks.map((framework) => framework.id);
+      const frameworkIDs = frameworks.data.frameworks.map(
+        (framework) => framework.id
+      );
 
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // }
+      const promises = frameworkIDs.map((id) =>
+        adaptConn.getFramework(id.toString())
+      );
+
+      const responses = await Promise.allSettled(promises);
+      const successResponses = responses.filter(
+        (response) => response.status === "fulfilled"
+      );
+
+      const docsToUpsert = successResponses.map((response) => {
+        const responseValue = response as PromiseFulfilledResult<any>;
+        const data = responseValue.value.data as ADAPTFrameworkRes;
+        return {
+          framework_id: data.properties.id.toString(),
+          title: data.properties.title,
+          description: data.properties.description,
+          framework_levels: data.framework_levels.map((level) => ({
+            id: level.id.toString(),
+            framework_id: level.framework_id.toString(),
+            level: level.level.toString(),
+            title: level.title,
+            description: level.description ?? "",
+            order: level.order,
+            parent_id: level.parent_id?.toString() ?? null,
+          })),
+          descriptors: data.descriptors.map((descriptor) => ({
+            id: descriptor.id.toString(),
+            descriptor: descriptor.descriptor,
+            framework_level_id: descriptor.framework_level_id.toString(),
+          })),
+        };
+      });
+
+      await framework.bulkWrite(
+        docsToUpsert.map((doc) => ({
+          updateOne: {
+            filter: { framework_id: doc.framework_id },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async collectQuestionFrameworkAlignment() {
     try {

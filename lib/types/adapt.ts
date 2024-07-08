@@ -3,11 +3,11 @@ import { IDWithText } from "./misc";
 // Assignments
 
 export type ADAPTAssignTo = {
-  available_from: string,
-  due: string,
-  final_submission_deadline: string,
-  groups: string[],
-}
+  available_from: string;
+  due: string;
+  final_submission_deadline: string;
+  groups: string[];
+};
 
 export type ADAPTCourseAssignment = {
   id: number;
@@ -90,6 +90,31 @@ export type ADAPTFramework = {
 export type ADAPTFrameworksRes = {
   type: string;
   frameworks: ADAPTFramework[];
+};
+
+export type ADAPTFrameworkLevel = {
+  id: number;
+  framework_id: number;
+  level: number;
+  title: string;
+  description: string | null;
+  order: number;
+  parent_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ADAPTFrameworkDescriptor = {
+  id: number;
+  descriptor: string;
+  framework_level_id: number;
+};
+
+export type ADAPTFrameworkRes = {
+  type: string;
+  properties: ADAPTFramework;
+  framework_levels: ADAPTFrameworkLevel[];
+  descriptors: ADAPTFrameworkDescriptor[];
 };
 
 export type ADAPTFrameworkQuestionSync = {
