@@ -77,13 +77,13 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({
         <Card.Body className="!tw-p-0">
           <div className="tw-flex tw-flex-row tw-justify-between tw-items-center !tw-mt-4">
             <Metric
-              value={data.course_avg_diff}
-              unit={`${direction} Class Average`}
+              value={data.estimated_final}
+              unit="Estimated Final Score"
               percent={true}
             />
             <Metric
-              value={data.estimated_final}
-              unit="Estimated Final Grade"
+              value={data.course_avg_diff}
+              unit={`${direction} Class Average`}
               percent={true}
             />
             <Metric
