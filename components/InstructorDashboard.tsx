@@ -65,7 +65,7 @@ const InstructorDashboard = ({
         description="Comparison of student activity on the selected assignment"
       >
         <ActivityAccessed
-          getData={(student_id) => getActivityAccessed(course_id, student_id)}
+          getData={(student_id, assignment_id) => getActivityAccessed(course_id, student_id, assignment_id)}
         />
       </VisualizationContainer>
       {/* <VisualizationContainer

@@ -64,17 +64,7 @@ class Analytics {
       throw new Error("Invalid ADAPT ID");
     }
     this.adaptID = parsed;
-    //    this.initDatabase();
   }
-
-  // private async initDatabase() {
-  //   try {
-  //     await connectDB();
-  //   } catch (err) {
-  //     console.error(err);
-  //     throw new Error("Failed to connect to database");
-  //   }
-  // }
 
   public async getAssignments(ignoreExclusions = false): Promise<IDWithName[]> {
     try {
@@ -162,57 +152,35 @@ class Analytics {
     }
   }
 
-  public async getADAPTActivity(student_id: string): Promise<ActivityAccessed> {
+  public async getADAPTActivity(
+    student_id: string,
+    assignment_id: string
+  ): Promise<ActivityAccessed> {
     try {
       await connectDB();
 
-      const allCourseQuestions = await assignments.aggregate(
-        Assignments_AllCourseQuestionsAggregation
-      );
+      const studentAssignment = await calcADAPTStudentActivity.findOne({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id,
+        student_id: student_id,
+      });
 
-      const courseRecord = allCourseQuestions.find(
-        (d) => d.course_id === this.adaptID.toString()
-      );
-
-      const COURSE_TOTAL_COUNT = courseRecord?.unique_questions?.length ?? 0;
-
-      const allCourse = await calcADAPTStudentActivity
-        .find({
-          course_id: this.adaptID.toString(),
-        })
-        .lean();
-
-      const courseAvgPercentSeen =
-        allCourse.reduce((acc, curr) => {
-          if (!curr.seen || !curr.seen.length) return acc;
-          const percentSeen = curr.seen.length / COURSE_TOTAL_COUNT;
-          if (isNaN(percentSeen)) {
-            return acc;
-          }
-          return acc + percentSeen;
-        }, 0) / allCourse.length;
-
-      const studentCourse = allCourse.find((d) => d.student_id === student_id);
-
-      if (!studentCourse) {
+      if (!studentAssignment) {
         return {
           seen: [],
-          unseen: courseRecord?.unique_assignment_count ?? [],
-          course_avg_percent_seen: courseAvgPercentSeen,
+          unseen: [],
         };
       }
 
       return {
-        seen: studentCourse.seen,
-        unseen: studentCourse.unseen,
-        course_avg_percent_seen: courseAvgPercentSeen,
+        seen: studentAssignment.seen,
+        unseen: studentAssignment.unseen,
       };
     } catch (err) {
       console.error(err);
       return {
         seen: [],
         unseen: [],
-        course_avg_percent_seen: 0,
       };
     }
   }
@@ -1367,11 +1335,10 @@ class Analytics {
       (s) => s && question_ids.includes(s.question_id)
     );
     if (questionScores.length === 0) return 0;
-    const avg = (
+    const avg =
       questionScores.reduce((acc, curr) => acc + (curr?.score || 0), 0) /
-      questionScores.length
-    ) 
-    if(avg === 0) return 0
+      questionScores.length;
+    if (avg === 0) return 0;
     return parseFloat((avg * 100).toPrecision(2));
   }
 }

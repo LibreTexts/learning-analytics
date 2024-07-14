@@ -27,12 +27,23 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
+import useAssignments from "@/hooks/useAssignmentName";
 
 const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
+const UNSUBMITTED_LIMIT = 10;
+
+type ActivityAccessedSingle = {
+  seen: number;
+  unseen: number;
+};
 
 type StudentActivityProps = VisualizationBaseProps & {
   selectedStudent?: Student;
-  getData: (student_id: string) => Promise<ActivityAccessedType>;
+  selectedAssignmentId?: string;
+  getData: (
+    student_id: string,
+    assignment_id: string
+  ) => Promise<ActivityAccessedType>;
 };
 
 const StudentActivity: React.FC<StudentActivityProps> = ({
@@ -40,6 +51,7 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   height = DEFAULT_HEIGHT,
   tableView = false,
   selectedStudent,
+  selectedAssignmentId,
   getData,
   innerRef,
 }) => {
@@ -48,23 +60,16 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   }));
 
   const svgRef = useRef(null);
-  const [data, setData] = useState<{
-    seen: number;
-    unseen: number;
-    course_avg_percent_seen: number;
-  }>({
+  const [data, setData] = useState<ActivityAccessedSingle>({
     seen: 0,
     unseen: 0,
-    course_avg_percent_seen: 0,
   });
+  const [unsubmitted, setUnsubmitted] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [radius, setRadius] = useState(0);
+  const { getName } = useAssignments();
 
-  const columnHelper = createColumnHelper<{
-    seen: number;
-    unseen: number;
-    course_avg_percent_seen: number;
-  }>();
+  const columnHelper = createColumnHelper<ActivityAccessedSingle>();
   const table = useReactTable({
     data: [data],
     columns: [
@@ -81,9 +86,9 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   });
 
   useEffect(() => {
-    if (!selectedStudent?.id) return;
+    if (!selectedStudent?.id || !selectedAssignmentId) return;
     handleGetData();
-  }, [selectedStudent?.id]);
+  }, [selectedStudent?.id, selectedAssignmentId]);
 
   useLayoutEffect(() => {
     if (!data || tableView) return;
@@ -93,17 +98,17 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
 
   async function handleGetData() {
     try {
-      if (!selectedStudent?.id) return;
+      if (!selectedStudent?.id || !selectedAssignmentId) return;
       setLoading(true);
-      const initData = await getData(selectedStudent?.id);
+      const initData = await getData(selectedStudent?.id, selectedAssignmentId);
 
       const mapped = {
         seen: initData.seen.length,
         unseen: initData.unseen.length,
-        course_avg_percent_seen: initData.course_avg_percent_seen,
       };
 
       setData(mapped);
+      setUnsubmitted(initData.unseen.map((id) => id.toString()));
     } catch (err) {
       console.error(err);
     } finally {
@@ -115,7 +120,9 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
     setLoading(true);
     const svg = d3.select(svgRef.current);
     const subgroups = ["submitted", "not_submitted"];
-    const subgroupsPretty = ["Submitted", "Not Submitted"];
+
+    // Truncate the unsubmitted questions to UNSUBMITTED_LIMIT
+    const unsubmittedTruncated = unsubmitted.slice(0, UNSUBMITTED_LIMIT);
 
     svg.selectAll("*").remove(); // Clear existing chart
 
@@ -150,53 +157,79 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .style("opacity", 0.7)
       .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
-    // svg
-    //   .selectAll("slices")
-    //   .data(dataReady)
-    //   .enter()
-    //   .append("text")
-    //   // @ts-ignore
-    //   .text((d) => `${capitalizeFirstLetter(d.data[0] ?? "")}: ${d.data[1]}`)
-    //   .attr("transform", (d) => {
-    //     // @ts-ignore
-    //     return `translate(${arcGenerator.centroid(d)[0] + width / 2}, ${
-    //       // @ts-ignore
-    //       arcGenerator.centroid(d)[1] + height / 2
-    //     })`;
-    //   })
-    //   .style("text-anchor", "middle")
-    //   .style("font-size", 17);
+    if (unsubmitted.length > 0) {
+      // Add "Not Submitted" to the legend
+      svg
+        .append("text")
+        .attr("x", width - 155 - (MARGIN.right + 10)) // 10 is space between dot and text
+        .attr("y", MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
+        .attr("text-anchor", "left")
+        .style("font-size", "14px")
+        .style("font-weight", "semibold")
+        .style("fill", "#ff7f0e") // orange
+        .text(
+          `Not Submitted (${
+            (data.unseen / (data.seen + data.unseen)) * 100
+          }%) :`
+        );
 
-    // Add one dot in the legend for each name.
+      // Add one dot in the legend for each unseen question
+      svg
+        .selectAll("mydots")
+        .data(unsubmittedTruncated)
+        .enter()
+        .append("circle")
+        .attr("cx", width - 155 - (MARGIN.right + 10)) // Align dots vertically
+        .attr("cy", (d, i) => MARGIN.top / 2 + 15 * (i + 1)) // 15 is the distance between dots vertically
+        .attr("r", 3)
+        .style("fill", "#ff7f0e"); // orange
+
+      // Add text to the legend for each unseen question
+      svg
+        .selectAll("mylabels")
+        .data(unsubmittedTruncated)
+        .enter()
+        .append("text")
+        .attr("x", width - 145 - (MARGIN.right + 10)) // Align text next to the dots
+        .attr("y", (d, i) => MARGIN.top / 2 + 15 * (i + 1)) // Match the vertical position of the corresponding dot
+        .style("fill", "#ff7f0e") // orange
+        .text((d, i) => `Q: ${d}`)
+        .attr("text-anchor", "left")
+        .style("alignment-baseline", "middle");
+
+      if (unsubmitted.length > UNSUBMITTED_LIMIT) {
+        // Add "..." to the legend
+        svg
+          .append("text")
+          .attr("x", width - 145 - (MARGIN.right + 10)) // Align text next to the dots
+          .attr("y", MARGIN.top / 2 + 15 * (unsubmittedTruncated.length + 1)) // Match the vertical position of the corresponding dot
+          .style("fill", "#ff7f0e") // orange
+          .text(`+ ${unsubmitted.length - UNSUBMITTED_LIMIT} more...`)
+          .attr("text-anchor", "left")
+          .style("alignment-baseline", "middle");
+      }
+    } else {
+      // Add "All Questions Submitted" to the legend
+      svg
+        .append("text")
+        .attr("x", width - 155 - MARGIN.right)
+        .attr("y", MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
+        .attr("text-anchor", "left")
+        .style("font-size", "14px")
+        .style("font-weight", "semibold")
+        .style("fill", "#1f77b4") // blue
+        .text("All Questions Submitted");
+    }
+
+    // Add selected assignment to the graph
     svg
-      .selectAll("mydots")
-      .data(subgroupsPretty)
-      .enter()
-      .append("circle")
-      .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 165)) // 165 is the distance between dots
-      .attr("cy", (d, i) => MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
-      .attr("r", 7)
-      .style("fill", (d) => colorScale(d) as string);
-
-    const getCountForLabel = (label: string) => {
-      if (!data) return 0;
-      if (label.toLowerCase() === "submitted") return data["seen"];
-      if (label.toLowerCase() === "not submitted") return data["unseen"];
-      return 0;
-    };
-
-    // Add one dot in the legend for each name.
-    svg
-      .selectAll("mylabels")
-      .data(subgroupsPretty)
-      .enter()
       .append("text")
-      .attr("x", (d, i) => width - 165 - (MARGIN.right - 20 + i * 165)) // 165 is the distance between dots, 15 is space between dot and text
-      .attr("y", (d, i) => MARGIN.top / 2)
-      .style("fill", (d) => colorScale(d) as string)
-      .text((d) => `${d}: ${getCountForLabel(d)}`)
-      .attr("text-anchor", "left")
-      .style("alignment-baseline", "middle");
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("font-weight", "semibold")
+      .text(`Assignment: ${getName(selectedAssignmentId)}`);
 
     setLoading(false);
   }

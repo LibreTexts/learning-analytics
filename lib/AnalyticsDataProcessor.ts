@@ -25,15 +25,15 @@ class AnalyticsDataProcessor {
       // await this.compressADAPTGradeDistribution();
       //await this.compressADAPTSubmissions();
       //await this.compressADAPTScores();
-      //await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
+      await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
       // await this.compressTextbookActivityTime();
       // await this.compressTexbookInteractionsByDate();
       // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
       //await this.compressReviewTime();
       //await this.compressTimeOnTask();
 
-      const ews = new EarlyWarningSystem(); // This should always be the last one
-      await ews.updateEWSData();
+      //const ews = new EarlyWarningSystem(); // This should always be the last one
+      //await ews.updateEWSData();
     } catch (err: any) {
       debugADP(err.message ?? "Unknown error occured while running processors");
     }
@@ -163,6 +163,7 @@ class AnalyticsDataProcessor {
             _id: {
               course_id: "$course_id",
               student_id: "$student_id",
+              assignment_id: "$assignment_id",
             },
             unique_questions: {
               $addToSet: "$questions.question_id",
@@ -174,35 +175,38 @@ class AnalyticsDataProcessor {
             _id: 0,
             course_id: "$_id.course_id",
             student_id: "$_id.student_id",
+            assignment_id: "$_id.assignment_id",
             unique_questions: "$unique_questions",
           },
         },
       ]);
 
-      const allCourseQuestions = await assignments.aggregate(
-        Assignments_AllCourseQuestionsAggregation
-      );
+      const allAssignments = await assignments.find({}).lean();
 
       // for each student in each course, find what questions they have seen and not seen (has a score vs no score)
       const studentActivityData: (ICalcADAPTStudentActivity_Raw | null)[] =
         hasScoreData.map((data) => {
-          const { course_id, student_id, unique_questions } = data;
-          const courseQuestions = allCourseQuestions.find(
-            (course) => course.course_id === course_id
+          const { course_id, student_id, assignment_id, unique_questions } =
+            data;
+
+          const foundAssignment = allAssignments.find(
+            (assignment) => assignment.assignment_id === assignment_id
           );
-          if (!courseQuestions) {
+          if (!foundAssignment) {
             return null;
           }
 
+          const assignmentQuestions =
+            (foundAssignment.questions as string[]) || [];
+
           const seenQuestions = unique_questions;
-          const unseenQuestions = courseQuestions.unique_questions
-            .map((question: string) => question)
-            .filter(
-              (questionID: string) => !seenQuestions.includes(questionID)
-            );
+          const unseenQuestions = assignmentQuestions.filter(
+            (questionID: string) => !seenQuestions.includes(questionID)
+          );
 
           return {
             course_id,
+            assignment_id,
             student_id,
             seen: seenQuestions,
             unseen: unseenQuestions,
@@ -218,6 +222,7 @@ class AnalyticsDataProcessor {
         updateOne: {
           filter: {
             course_id: data.course_id,
+            assignment_id: data.assignment_id,
             student_id: data.student_id,
           },
           update: data,

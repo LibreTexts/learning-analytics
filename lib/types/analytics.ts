@@ -50,7 +50,6 @@ export type StudentQuickMetrics = {
 export type ActivityAccessed = {
   seen: number[];
   unseen: number[];
-  course_avg_percent_seen: number;
 };
 
 export type AnalyticsRawData = {
