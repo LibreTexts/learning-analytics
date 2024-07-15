@@ -33,25 +33,21 @@ import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
 } from "./models/courseAnalyticsSettings";
 import ewsActorSummary from "./models/ewsActorSummary";
-import ewsCourseSummary from "./models/ewsCourseSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
-import frameworkQuestionAlignment, {
-  IFrameworkQuestionAlignment_Raw,
-} from "./models/frameworkQuestionAlignment";
+import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentScores, {
   IAssignmentScoresRaw,
-  IQuestionScoreData,
 } from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcTimeOnTask from "./models/calcTimeOnTask";
 import calcADAPTStudentActivity from "./models/calcADAPTStudentActivity";
-import framework, {
-  IFrameworkDescriptor_Raw,
+import framework, { IFramework_Raw } from "./models/framework";
+import frameworkLevels, {
   IFrameworkLevel_Raw,
-  IFramework_Raw,
-} from "./models/framework";
+  IFrameworkDescriptor_Raw,
+} from "./models/frameworkLevels";
 
 class Analytics {
   private adaptID: number;
@@ -1172,81 +1168,61 @@ class Analytics {
         assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
       });
 
-      const alignment = rawAlignment.map((d) => {
-        return {
-          question_id: d.question_id,
-          framework_descriptors: d.framework_descriptors,
-          framework_levels: d.framework_levels,
-        };
-      });
-
-      const out: {
-        level: IDWithText<string>;
-        descriptors: IDWithText<string>[];
-      }[] = [];
+      const alignment = rawAlignment.map((d) => ({
+        question_id: d.question_id,
+        framework_descriptors: d.framework_descriptors,
+        framework_levels: d.framework_levels,
+      }));
 
       const uniqueLevelIDs = new Set<string>(
         alignment
           .map((a) => a.framework_levels.map((l: IDWithText) => l.id))
           .flat()
       );
-      const foundByDescriptor = await framework.find({
-        "descriptors.framework_level_id": { $in: Array.from(uniqueLevelIDs) },
+
+      const frameworkLevelData = await frameworkLevels.find({
+        level_id: { $in: Array.from(uniqueLevelIDs) },
       });
 
+      const out: IFrameworkLevel_Raw[] = [];
       for (const a of alignment) {
         // for all levels of alignment, gather all the associated descriptors
         for (const l of a.framework_levels) {
-          const existLevel = out.find((a) => a.level?.id === l.id);
-          const descriptors: IDWithText<string>[] = [];
+          // Skip if the level is already in the output
+          const existing = out.find((o) => o.level_id === l.id);
+          if (existing) continue;
 
-          // lookup all descriptors that belong to this level
-          const found = foundByDescriptor.filter((d) => {
-            return d.descriptors.find(
-              (a: IFrameworkDescriptor_Raw) => a.framework_level_id === l.id
-            );
-          });
+          const foundLevel = frameworkLevelData.find(
+            (d) => d.level_id.toString() === l.id.toString()
+          );
+          if (!foundLevel) continue;
 
-          const flattened = found.map((d) => d.descriptors).flat();
-
-          // if level.descriptorIds.includes(a.framework_descriptors.id)
-          for (const d of a.framework_descriptors) {
-            const existDescriptor = flattened.find((a) => a.id === d.id);
-            if (!existDescriptor) {
-              descriptors.push({
-                id: d.id.toString(),
-                text: d.text,
-              });
-            }
-          }
-
-          if (!existLevel) {
-            out.push({
-              level: l,
-              descriptors: [],
-            });
-          } else {
-            existLevel.descriptors = existLevel.descriptors.concat(descriptors);
-          }
+          out.push(foundLevel);
         }
       }
+
       // out is now a list of all levels and each level has its associated descriptors in this alignment
       const final: LOCData[] = [];
 
       for (const o of out) {
         const descriptors = new Set<LOCData["framework_descriptors"][0]>();
+
         o.descriptors.map(async (d) => {
-          const found = Array.from(descriptors).find((a) => a.id === d.id);
+          const found = Array.from(descriptors).find(
+            (a) => a.id.toString() === d.id.toString()
+          );
           if (!found) {
             const descriptorQuestionIds = alignment
               .filter((a) =>
-                a.framework_descriptors.find((l: IDWithText) => l.id === d.id)
+                a.framework_descriptors.find(
+                  (l: IDWithText) => l.id.toString() === d.id.toString()
+                )
               )
               .map((a) => a.question_id);
 
             descriptors.add({
-              id: d.id,
-              text: d.text,
+              id: d.id.toString(),
+              text: d.descriptor,
               avg_performance: await this._learningObjectivesGetAvgScore(
                 descriptorQuestionIds
               ),
@@ -1257,14 +1233,35 @@ class Analytics {
 
         const levelQuestionIds = alignment
           .filter((a) =>
-            a.framework_levels.find((l: IDWithText) => l.id === o.level.id)
+            a.framework_levels.find(
+              (l: IDWithText) => l.id.toString() === o.level_id.toString()
+            )
           )
           .map((a) => a.question_id);
 
+        const existing = final.find(
+          (f) => f.framework_level.id === o.level_id.toString()
+        );
+        if (existing) {
+          const existingDescriptors = new Set(
+            existing.framework_descriptors.map((d) => d.id)
+          );
+          const newDescriptors = Array.from(descriptors).filter(
+            (d) => !existingDescriptors.has(d.id)
+          );
+
+          // Add any new descriptors to the existing framework level
+          existing.framework_descriptors = Array.from([
+            ...existing.framework_descriptors,
+            ...newDescriptors,
+          ]);
+          continue;
+        }
+
         final.push({
           framework_level: {
-            id: o.level.id,
-            text: o.level.text,
+            id: o.level_id.toString(),
+            text: o.title,
             question_count: levelQuestionIds.length ?? 0,
             avg_performance: await this._learningObjectivesGetAvgScore(
               levelQuestionIds
@@ -1345,6 +1342,7 @@ class Analytics {
   }
 
   private async _learningObjectivesGetAvgScore(question_ids: string[]) {
+    if (question_ids.length === 0) return 0;
     const scoreData = await this._learningObjectivesGetScoreData(question_ids);
     const parsed = this._learningObjectivesParseScoreData(scoreData);
     const questionScores = parsed.filter(
