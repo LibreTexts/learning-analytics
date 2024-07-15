@@ -1001,6 +1001,16 @@ class Analytics {
     assignment_id: string
   ): Promise<TimeInReview[]> {
     try {
+      type _StudentData = {
+        question_id: number;
+        total_review_time: number;
+      };
+
+      type _QuestionData = {
+        question_id: number;
+        total_review_time: number;
+      };
+
       await connectDB();
 
       const studentRes = await calcReviewTime.find({
@@ -1017,12 +1027,13 @@ class Analytics {
       const studentData = studentRes.map((d) => ({
         question_id: d.question_id,
         total_review_time: d.total_review_time,
-      }));
+      })) as _StudentData[];
 
-      // Get the total review time for each question
+      // calculate the grand total review time for each question
       const courseData = courseRes.reduce((acc, curr) => {
-        // @ts-ignore
-        const existing = acc.find((a) => a.question_id === curr.question_id);
+        const existing = acc.find(
+          (a: _QuestionData) => a.question_id === curr.question_id
+        );
         if (existing) {
           existing.total_review_time += curr.total_review_time;
         } else {
@@ -1032,22 +1043,27 @@ class Analytics {
           });
         }
         return acc;
-      }, [] as { question_id: number; total_review_time: number }[]);
+      }, [] as _QuestionData[]);
 
       // Calculate the average review time for each question
-      const courseDataAvg = courseData.map((d: any) => ({
-        question_id: d.question_id,
-        total_review_time:
-          d.total_review_time /
-          courseData.filter((c: any) => c.question_id === d.question_id).length,
-      }));
+      const courseDataAvg = courseData.map((d: _QuestionData) => {
+        const totalStudents = courseRes.length || 0;
+
+        const avg = totalStudents > 0 ? d.total_review_time / totalStudents : 0;
+
+        return {
+          question_id: d.question_id,
+          total_review_time: avg,
+        };
+      }) as _QuestionData[];
 
       const mapped = studentData.map((d) => ({
         question_id: d.question_id,
         student_time: d.total_review_time,
         course_avg:
-          courseDataAvg.find((c: any) => c.question_id === d.question_id)
-            ?.total_review_time ?? 0,
+          courseDataAvg.find(
+            (c: _QuestionData) => c.question_id === d.question_id
+          )?.total_review_time ?? 0, // find the corresponding course avg
       }));
 
       if (mapped.length === 0) {
