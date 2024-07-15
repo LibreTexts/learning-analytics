@@ -41,10 +41,12 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
   async function handleGetData() {
     try {
+      console.log('Loading data for course', globalState.courseID);
       setLoading(true);
       if (!globalState.courseID) return;
 
       const _data = await getData(globalState.courseID);
+      console.log('Data loaded:', _data)
       setData(_data);
     } catch (err) {
       console.error(err);

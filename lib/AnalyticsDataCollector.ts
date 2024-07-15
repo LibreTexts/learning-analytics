@@ -17,14 +17,14 @@ import frameworkQuestionAlignment, {
   IFrameworkQuestionAlignment_Raw,
 } from "./models/frameworkQuestionAlignment";
 import reviewTime, { IReviewTime_Raw } from "./models/reviewTime";
-import useADAPTAxios from "@/hooks/useADAPTAxios";
 import ADAPTInstructorConnector from "./ADAPTInstructorConnector";
 import ADAPTCourseConnector from "./ADAPTCourseConnector";
 import assignmentScores, {
   IAssignmentScoresRaw,
 } from "./models/assignmentScores";
 import assignments, { IAssignmentRaw } from "./models/assignments";
-import framework from "./models/framework";
+import framework, { IFramework_Raw } from "./models/framework";
+import frameworkLevels, { IFrameworkLevel_Raw } from "./models/frameworkLevels";
 
 class AnalyticsDataCollector {
   constructor() {
@@ -458,53 +458,75 @@ class AnalyticsDataCollector {
         instructor_id: { $exists: true },
       });
 
+      // Create a new ADAPTInstructorConnector instance
       const adaptConn = new ADAPTInstructorConnector(
         randomInstructor.instructor_id
       );
       const frameworks = await adaptConn.getFrameworks();
       if (!frameworks?.data?.frameworks) return;
 
+      // Get the IDs of the frameworks
       const frameworkIDs = frameworks.data.frameworks.map(
         (framework) => framework.id
       );
 
-      const promises = frameworkIDs.map((id) =>
-        adaptConn.getFramework(id.toString())
+      // Get the framework data for each framework
+      const responses = await Promise.allSettled(
+        frameworkIDs.map((id) => adaptConn.getFramework(id.toString()))
       );
-
-      const responses = await Promise.allSettled(promises);
       const successResponses = responses.filter(
         (response) => response.status === "fulfilled"
       );
 
-      const docsToUpsert = successResponses.map((response) => {
+      // Map data out of the responses
+      const frameworksToUpsert: IFramework_Raw[] = [];
+      const levelsToUpsert: IFrameworkLevel_Raw[] = [];
+      for (const response of successResponses) {
         const responseValue = response as PromiseFulfilledResult<any>;
         const data = responseValue.value.data as ADAPTFrameworkRes;
-        return {
-          framework_id: data.properties.id.toString(),
+
+        frameworksToUpsert.push({
+          framework_id: data.properties.id,
           title: data.properties.title,
           description: data.properties.description,
-          framework_levels: data.framework_levels.map((level) => ({
-            id: level.id.toString(),
-            framework_id: level.framework_id.toString(),
-            level: level.level.toString(),
+        });
+
+        for (const level of data.framework_levels) {
+          const descriptors = data.descriptors.filter(
+            (descriptor) => descriptor.framework_level_id === level.id
+          );
+          levelsToUpsert.push({
+            level_id: level.id,
+            framework_id: level.framework_id,
             title: level.title,
             description: level.description ?? "",
             order: level.order,
-            parent_id: level.parent_id?.toString() ?? null,
-          })),
-          descriptors: data.descriptors.map((descriptor) => ({
-            id: descriptor.id.toString(),
-            descriptor: descriptor.descriptor,
-            framework_level_id: descriptor.framework_level_id.toString(),
-          })),
-        };
-      });
+            parent_id: level.parent_id ?? null,
+            descriptors: descriptors.map((descriptor) => ({
+              id: descriptor.id,
+              descriptor: descriptor.descriptor,
+              framework_level_id: descriptor.framework_level_id,
+            })),
+          });
+        }
+      }
 
+      // Bulk upsert the framework data
       await framework.bulkWrite(
-        docsToUpsert.map((doc) => ({
+        frameworksToUpsert.map((doc) => ({
           updateOne: {
             filter: { framework_id: doc.framework_id },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
+
+      // Bulk upsert the framework level data
+      await frameworkLevels.bulkWrite(
+        levelsToUpsert.map((doc) => ({
+          updateOne: {
+            filter: { level_id: doc.level_id },
             update: { $set: doc },
             upsert: true,
           },
