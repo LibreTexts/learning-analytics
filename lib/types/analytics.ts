@@ -91,12 +91,14 @@ export type LOCData = {
   framework_level: {
     id: string;
     text: string;
+    questions: string[];
     question_count: number;
     avg_performance: number;
   };
   framework_descriptors: {
     id: string;
     text: string;
+    questions: string[];
     question_count: number;
     avg_performance: number;
   }[];

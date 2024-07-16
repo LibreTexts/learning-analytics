@@ -12,6 +12,7 @@ import adaptCourses, {
 import {
   QUESTION_SCORE_DATA_EXCLUSIONS,
   encryptStudent,
+  extractScoreFromLabel,
 } from "@/utils/data-helpers";
 import frameworkQuestionAlignment, {
   IFrameworkQuestionAlignment_Raw,
@@ -40,9 +41,9 @@ class AnalyticsDataCollector {
     //await this.updateCourseData();
     //await this.collectAllAssignments();
     //await this.collectEnrollments();
-    //await this.collectAssignmentScores();
+    await this.collectAssignmentScores();
     //await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
-    await this.collectFrameworkData();
+    //await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
     //await this.collectReviewTimeData();
   }
@@ -251,8 +252,8 @@ class AnalyticsDataCollector {
         const assignments = assignmentData.filter(
           (assignment) => assignment.course_id === course.course_id
         );
-        return { ...course, assignments };
-      });
+        return { ...course.toObject(), assignments };
+      }) as (IAdaptCoursesRaw & { assignments: IAssignmentRaw[] })[];
 
       for (const course of withAssignments) {
         try {
@@ -260,6 +261,7 @@ class AnalyticsDataCollector {
             (assignment) => assignment.assignment_id
           );
 
+          if (!course.instructor_id) continue;
           const adaptConn = new ADAPTInstructorConnector(
             course.instructor_id.toString()
           );
@@ -270,19 +272,24 @@ class AnalyticsDataCollector {
 
           const responses = await Promise.allSettled(promises);
 
-          const scoreData: { assignment_id: string; rows: any[] }[] =
-            responses.map((response, idx) => {
-              if (response.status === "fulfilled" && response.value) {
-                return {
-                  assignment_id: assignmentIDs[idx].toString(),
-                  rows: response.value.data.rows,
-                };
-              }
+          const scoreData: {
+            assignment_id: string;
+            rows: any[];
+            fields: any[];
+          }[] = responses.map((response, idx) => {
+            if (response.status === "fulfilled" && response.value) {
               return {
-                assignment_id: "",
-                rows: [],
+                assignment_id: assignmentIDs[idx].toString(),
+                rows: response.value.data.rows,
+                fields: response.value.data.fields,
               };
-            });
+            }
+            return {
+              assignment_id: "",
+              rows: [],
+              fields: [],
+            };
+          });
 
           const parsed: IAssignmentScoresRaw[] = [];
 
@@ -297,6 +304,17 @@ class AnalyticsDataCollector {
                 acc[key] = row[key];
                 return acc;
               }, {} as { [x: string]: string });
+
+              const getMaxScore = (question_id: string) => {
+                const field = assignment.fields.find(
+                  (field) =>
+                    field.key === question_id && field.isRowHeader === true
+                );
+                if (field) {
+                  return extractScoreFromLabel(field.label) ?? "-";
+                }
+                return "-";
+              };
 
               parsed.push({
                 student_id,
@@ -316,6 +334,7 @@ class AnalyticsDataCollector {
                     time_on_task: timeOnTask,
                     first_submitted_at: null,
                     last_submitted_at: null,
+                    max_score: getMaxScore(key),
                   };
                 }),
               });

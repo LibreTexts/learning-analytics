@@ -41,12 +41,12 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
   async function handleGetData() {
     try {
-      console.log('Loading data for course', globalState.courseID);
+      console.log("Loading data for course", globalState.courseID);
       setLoading(true);
       if (!globalState.courseID) return;
 
       const _data = await getData(globalState.courseID);
-      console.log('Data loaded:', _data)
+      console.log("Data loaded:", _data);
       setData(_data);
     } catch (err) {
       console.error(err);
@@ -57,18 +57,33 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
   return (
     <div ref={containerRef}>
-      {noFrameworkAlignment && (
-        <div className="tw-flex tw-flex-row tw-justify-center">
-          <p>No questions have been aligned to frameworks in this course.</p>
-        </div>
+      {!loading && (
+        <>
+          {noFrameworkAlignment && (
+            <div className="tw-flex tw-flex-row tw-justify-center">
+              <p>
+                No questions have been aligned to frameworks in this course.
+              </p>
+            </div>
+          )}
+          {!noFrameworkAlignment && (
+            <div className="tw-flex tw-flex-col">
+              {data.map((d, index) => (
+                <LearningObjectiveLevel key={crypto.randomUUID()} data={d} />
+              ))}
+            </div>
+          )}
+        </>
       )}
-      {!noFrameworkAlignment && (
-        <div className="tw-flex tw-flex-col">
-          {data.map((d, index) => (
-            <LearningObjectiveLevel key={crypto.randomUUID()} data={d} />
-          ))}
-        </div>
-      )}
+      {
+        loading && (
+          <div className="tw-flex tw-flex-row tw-justify-center tw-items-center">
+            <div className="spinner-border tw-mb-1" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        )
+      }
     </div>
   );
 };
