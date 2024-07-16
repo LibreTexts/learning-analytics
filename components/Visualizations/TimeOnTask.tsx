@@ -103,14 +103,18 @@ const TimeOnTask: React.FC<TimeOnTaskProps> = ({
   }
 
   const getMax = useMemo(() => {
+    const DEFAULT = 20;
     let max = 0;
     if (data.length === 0) {
-      return 15; //Default value (if no data is present)
+      return DEFAULT; //Default value (if no data is present)
     }
+
     data.forEach((d) => {
       if (d.student_time > max) max = d.student_time;
       if (d.course_avg > max) max = d.course_avg;
     });
+
+    if (max < DEFAULT) return DEFAULT;
     return max;
   }, [data]);
 

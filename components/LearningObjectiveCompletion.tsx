@@ -9,6 +9,7 @@ import {
 import { LOCData, VisualizationBaseProps } from "@/lib/types";
 import { useGlobalContext } from "@/state/globalContext";
 import LearningObjectiveLevel from "./LearningObjectiveLevel";
+import LoadingComponent from "./LoadingComponent";
 
 type LOCProps = VisualizationBaseProps & {
   getData: (course_id: string) => Promise<LOCData[]>;
@@ -75,15 +76,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
           )}
         </>
       )}
-      {
-        loading && (
-          <div className="tw-flex tw-flex-row tw-justify-center tw-items-center">
-            <div className="spinner-border tw-mb-1" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        )
-      }
+      {loading && <LoadingComponent />}
     </div>
   );
 };
