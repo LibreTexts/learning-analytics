@@ -18,14 +18,27 @@ const Metric = ({
   value,
   unit,
   percent,
+  absolute = false,
+  color,
 }: {
   value: string | number;
   unit: string;
   percent: boolean;
+  absolute?: boolean;
+  color?: "red" | "green";
 }) => {
+  const textColorClass =
+    color === "red"
+      ? "tw-text-red-500"
+      : color === "green"
+      ? "tw-text-black"
+      : "";
+
   return (
     <div className="tw-rounded-md tw-border tw-border-slate-300 tw-border-solid tw-w-52 xl:tw-w-72 tw-p-1 xl:tw-p-2 tw-shadow-sm">
-      <p className="tw-text-4xl xl:tw-text-5xl tw-font-semibold tw-text-center">
+      <p
+        className={`tw-text-4xl xl:tw-text-5xl tw-font-semibold tw-text-center ${textColorClass}`}
+      >
         {!value
           ? 0
           : typeof value === "string"
@@ -34,10 +47,10 @@ const Metric = ({
               style: "decimal",
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,
-            }).format(Math.abs(value))}
+            }).format(absolute ? Math.abs(value) : value)}
         {percent && "%"}
       </p>
-      <p className="tw-mb-0 tw-font-semibold tw-text-center">{unit}</p>
+      <p className={`tw-mb-0 tw-font-semibold tw-text-center`}>{unit}</p>
     </div>
   );
 };
@@ -78,8 +91,9 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({
           <div className="tw-flex tw-flex-row tw-justify-between tw-items-center !tw-mt-4">
             <Metric
               value={data.estimated_final}
-              unit="Estimated Final Score"
+              unit="Predicted Final Score"
               percent={true}
+              color={data.estimated_final > 70 ? "green" : "red"}
             />
             <Metric
               value={data.course_avg_diff}
@@ -87,9 +101,9 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({
               percent={true}
             />
             <Metric
-              value={data.passing_prob}
-              unit="Likelihood of Passing"
-              percent={true}
+              value={data.z_score}
+              unit="Z-Score"
+              percent={false}
             />
           </div>
         </Card.Body>

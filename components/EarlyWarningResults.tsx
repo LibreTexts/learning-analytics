@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EWSResult, EarlyWarningStatus } from "@/lib/types";
 import EarlyWarningStudentRow from "./EarlyWarningStudentRow";
 import EarlyWarningBanner from "./EarlyWarningBanner";
+import EarlyWarningCourseMetrics from "./EarlyWarningCourseMetrics";
 
 interface EarlyWarningResultsProps {
   getData: (course_id: string, privacy: boolean) => Promise<EWSResult[]>;
@@ -25,6 +26,7 @@ const EarlyWarningResults: React.FC<EarlyWarningResultsProps> = ({
       const res = await getData(globalState.courseID, globalState.ferpaPrivacy);
 
       if (!res) return;
+      console.log(res)
       setData(res);
     } catch (err) {
       console.error(err);
@@ -44,6 +46,10 @@ const EarlyWarningResults: React.FC<EarlyWarningResultsProps> = ({
   return (
     <div className="tw-flex tw-flex-col">
       <EarlyWarningBanner status={overallStatus} />
+      <EarlyWarningCourseMetrics
+        course_avg={data[0]?.course_avg}
+        course_std_dev={data[0]?.course_std_dev}
+      />
       {data.length > 0 &&
         data.map((result) => (
           <EarlyWarningStudentRow key={result.name} data={result} />

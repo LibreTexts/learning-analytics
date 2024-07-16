@@ -10,8 +10,10 @@ export type EWSResult = {
   name: string;
   estimated_final: number;
   course_avg_diff: number;
-  passing_prob: number;
+  z_score: number;
   status: EarlyWarningStatus;
+  course_avg: number;
+  course_std_dev: number;
 };
 
 export type BatchPredictWebhookData =
