@@ -100,6 +100,18 @@ export function mmssToSeconds(mmss: string): number {
   return minutes * 60 + seconds;
 }
 
+export function extractScoreFromLabel(label: string): string | null {
+  // Label comes in the form of "Questionname (score)". We need to extract the score between the parentheses, or null if it doesn't exist
+  const regex = /\(([^)]+)\)/;
+  const match = regex.exec(label);
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1];
+}
+
 export const Assignments_AllCourseQuestionsAggregation = [
   {
     $unwind: "$questions",

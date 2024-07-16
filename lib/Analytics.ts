@@ -1204,10 +1204,15 @@ class Analytics {
       // out is now a list of all levels and each level has its associated descriptors in this alignment
       const final: LOCData[] = [];
 
+      const allQuestionIds = alignment.map((a) => a.question_id);
+      const allScores = await this._learningObjectivesGetScoreData(
+        allQuestionIds
+      );
+
       for (const o of out) {
         const descriptors = new Set<LOCData["framework_descriptors"][0]>();
 
-        o.descriptors.map(async (d) => {
+        for (const d of o.descriptors) {
           const found = Array.from(descriptors).find(
             (a) => a.id.toString() === d.id.toString()
           );
@@ -1220,16 +1225,20 @@ class Analytics {
               )
               .map((a) => a.question_id);
 
+            if (descriptorQuestionIds.length === 0) continue; // Skip if no questions are associated with this descriptor
+
             descriptors.add({
               id: d.id.toString(),
               text: d.descriptor,
-              avg_performance: await this._learningObjectivesGetAvgScore(
-                descriptorQuestionIds
+              avg_performance: this._learningObjectivesGetAvgScore(
+                descriptorQuestionIds,
+                allScores
               ),
+              questions: descriptorQuestionIds,
               question_count: descriptorQuestionIds.length,
             });
           }
-        });
+        }
 
         const levelQuestionIds = alignment
           .filter((a) =>
@@ -1262,23 +1271,37 @@ class Analytics {
           framework_level: {
             id: o.level_id.toString(),
             text: o.title,
+            questions: levelQuestionIds,
             question_count: levelQuestionIds.length ?? 0,
-            avg_performance: await this._learningObjectivesGetAvgScore(
-              levelQuestionIds
+            avg_performance: this._learningObjectivesGetAvgScore(
+              levelQuestionIds,
+              allScores
             ),
           },
           framework_descriptors: Array.from(descriptors),
         });
       }
 
+      // Filter out exclusions
       const frameworkExclusions = await this._getFrameworkExclusions();
       const exclusionIDs = frameworkExclusions.map((d) => d.id);
-
       const finalFiltered = final.filter((d) => {
         return !exclusionIDs.includes(d.framework_level.id);
       });
 
-      return finalFiltered;
+      // Sort by framework level
+      const sorted = finalFiltered.sort((a, b) => {
+        return a.framework_level.text.localeCompare(
+          b.framework_level.text,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base",
+          }
+        );
+      });
+
+      return sorted
     } catch (err) {
       console.error(err);
       return [];
@@ -1329,31 +1352,42 @@ class Analytics {
     }
   }
 
-  private _learningObjectivesParseScoreData(data: IAssignmentScoresRaw[]) {
-    return data.map((d) => {
+  private _learningObjectivesParseScoreData(
+    data: IAssignmentScoresRaw[]
+  ): { question_id: string; score: number; max_score: number }[] {
+    const results = [];
+    for (const d of data) {
       for (const q of d.questions) {
         if (!q.score || q.score === "-") continue;
-        return {
+        results.push({
           question_id: q.question_id,
           score: parseFloat(q.score),
-        };
+          max_score: parseFloat(q.max_score),
+        });
       }
-    });
+    }
+
+    return results;
   }
 
-  private async _learningObjectivesGetAvgScore(question_ids: string[]) {
+  private _learningObjectivesGetAvgScore(
+    question_ids: string[],
+    scoreData: IAssignmentScoresRaw[]
+  ) {
     if (question_ids.length === 0) return 0;
-    const scoreData = await this._learningObjectivesGetScoreData(question_ids);
     const parsed = this._learningObjectivesParseScoreData(scoreData);
     const questionScores = parsed.filter(
       (s) => s && question_ids.includes(s.question_id)
     );
     if (questionScores.length === 0) return 0;
-    const avg =
-      questionScores.reduce((acc, curr) => acc + (curr?.score || 0), 0) /
-      questionScores.length;
-    if (avg === 0) return 0;
-    return parseFloat((avg * 100).toPrecision(2));
+
+    // each question has a max_score and the score the student received. for each question, calculate the percentage. then, average all the percentages
+    const avg = questionScores.reduce((acc, curr) => {
+      if (!curr) return acc;
+      return acc + (curr.score / curr.max_score) * 100;
+    }, 0);
+
+    return parseFloat((avg / questionScores.length).toPrecision(2));
   }
 }
 

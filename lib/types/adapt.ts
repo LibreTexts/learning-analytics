@@ -39,6 +39,11 @@ export type ADAPTEnrollmentDetailsRes = {
 };
 
 // Scores
+export type ADAPTAssignmentQuestionField = {
+  key: string;
+  label: string;
+  isRowHeader: boolean;
+}
 export type ADAPTQuestionScoreData = {
   name: string;
   percent_correct: string;
@@ -50,6 +55,7 @@ export type ADAPTQuestionScoreData = {
 export type ADAPTAssignmentScoresRes = {
   type: string;
   rows: ADAPTQuestionScoreData[];
+  fields: ADAPTAssignmentQuestionField[];
 };
 
 // Submission Timestamps

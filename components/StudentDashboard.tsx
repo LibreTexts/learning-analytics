@@ -29,7 +29,7 @@ const StudentDashboard = ({course_id}:{course_id: string}) => {
         description="Compare your engagement with the course material."
         studentMode
       >
-        <ActivityAccessed getData={(student_id) => getActivityAccessed(course_id, student_id)} />
+        <ActivityAccessed getData={(student_id, assignment_id) => getActivityAccessed(course_id, student_id, assignment_id)} />
       </VisualizationContainer>
     </GenericPageContainer>
   );

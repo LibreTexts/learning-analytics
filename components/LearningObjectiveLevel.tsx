@@ -1,9 +1,15 @@
 import { LOCData } from "@/lib/types";
-import { useEffect, useRef, useState } from "react";
+import { createRef, useEffect, useRef, useState } from "react";
 import { Accordion, Card } from "react-bootstrap";
 import * as d3 from "d3";
 import { DEFAULT_MARGINS, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
-import { ChevronRight, ChevronDown } from "react-bootstrap-icons";
+import {
+  ChevronRight,
+  ChevronDown,
+  ArrowRight,
+  ArrowLeft,
+} from "react-bootstrap-icons";
+import LearningObjectiveQuestionsAligned from "./LearningObjectiveQuestionsAligned";
 
 const MARGIN = DEFAULT_MARGINS;
 const DEFAULT_HEIGHT = 150;
@@ -18,10 +24,14 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
+  const [subRefs, setSubRefs] = useState<
+    React.RefObject<SVGSVGElement | null>[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
-  const [subObjectivesOpen, setSubObjectivesOpen] = useState(false);
+  const [viewingSubobjectives, setViewingSubobjectives] = useState(false);
+  const [questionsModalOpen, setQuestionsModalOpen] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -36,13 +46,27 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
 
   useEffect(() => {
     if (!data || !width || !height) return;
-    drawChart();
+    if (viewingSubobjectives) return;
+    drawChart(); // Need to redraw the main chart when no longer viewing subobjectives
+
+    // Ensure svgRefs array has the correct length
+    setSubRefs((subRefs) =>
+      Array(data.framework_descriptors.length)
+        .fill(undefined)
+        .map((_, i) => subRefs[i] || createRef())
+    );
+  }, [data, width, viewingSubobjectives]);
+
+  useEffect(() => {
+    if (!viewingSubobjectives) return;
     drawSubCharts();
-  }, [data, width]);
+  }, [viewingSubobjectives]);
 
   function drawChart() {
     setLoading(true);
     const svg = d3.select(svgRef.current);
+    console.log("main svg");
+    console.log(svg);
     svg.selectAll("*").remove();
 
     const x = d3
@@ -92,36 +116,20 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
     const chartWidth = width - MARGIN.left - MARGIN.right;
     const chartInnerHeight = chartHeight - MARGIN.top - MARGIN.bottom;
 
-    SUB_DATA.forEach((d, index) => {
-      container
-        .append("svg")
-        .attr("width", width)
-        .attr("height", chartHeight)
-        .attr("id", `chart-${index}`)
-        .style("margin-bottom", "20px");
+    subRefs.forEach((d, index) => {
+      const svg = d3.select(d.current);
+      svg.selectAll("*").remove(); // clear svg
+      const descriptor = SUB_DATA[index];
 
-      const svg = d3.select(`#chart-${index}`);
-
-      const group = svg
-        .append("g")
-        .attr("transform", `translate(${MARGIN.left}, ${MARGIN.top})`);
+      const group = svg.append("g").attr("transform", `translate(10, 50)`);
 
       const x = d3.scaleLinear().domain([0, 100]).range([0, chartWidth]);
 
       const y = d3
         .scaleBand()
-        .domain([d.text])
+        .domain([descriptor.text])
         .range([0, chartInnerHeight])
         .padding(0.1);
-
-      // add title to top left of chart
-      group
-        .append("text")
-        .attr("x", 0)
-        .attr("y", index * chartHeight - 10)
-        .attr("text-anchor", "start")
-        .style("font-size", "14px")
-        .text(d.text);
 
       group
         .append("g")
@@ -130,17 +138,18 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
         .enter()
         .append("rect")
         .attr("x", 0)
-        .attr("y", y(d.text) || 0)
-        .attr("width", x(d.avg_performance))
+        .attr("y", y(descriptor.text) || 0)
+        .attr("width", x(descriptor.avg_performance))
         .attr("height", y.bandwidth())
         .attr("fill", "steelblue");
 
       group
         .append("g")
         .call(d3.axisBottom(x).ticks(5))
-        .attr("transform", `translate(0, ${chartInnerHeight})`);
+        .attr("transform", `translate(0, 0)`);
 
-      group.append("g").call(d3.axisLeft(y));
+      // remove the text from the axis
+      group.append("g").call(d3.axisLeft(y)).selectAll("text").remove();
     });
 
     setLoading(false);
@@ -158,37 +167,89 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
               {data.framework_level.text}
             </h3>
           </div>
-          <p className="tw-text-xs tw-text-gray-500 tw-mt-0">
-            Average performance across associated questions (
-            {data.framework_level.question_count} questions aligned)
-          </p>
+          {!viewingSubobjectives && (
+            <p className="tw-text-xs tw-text-gray-500 tw-mt-0">
+              Average performance across associated questions (
+              <LearningObjectiveQuestionsAligned
+                questions={data.framework_level.questions}
+              />
+              )
+            </p>
+          )}
         </div>
       </div>
-      <div className="tw-rounded-md tw-min-h-36">
-        <svg ref={svgRef} width={width} height={height}></svg>
-      </div>
-      <div className="tw-border-[0.75px] tw-border-solid tw-border-slate-300 tw-shadow-sm tw-rounded-md tw-flex tw-flex-col">
+      {!viewingSubobjectives && (
+        <>
+          <div className="tw-rounded-md tw-min-h-30">
+            <svg ref={svgRef} width={width} height={height}></svg>
+          </div>
+          <div className="tw-flex tw-flex-col">
+            <div className="tw-flex tw-items-center tw-justify-end tw-p-2 tw-cursor-pointer">
+              {data.framework_descriptors.length > 0 ? (
+                <p
+                  className="!tw-my-0 !tw-py-0 tw-ml-2 tw-text-blue-500"
+                  onClick={() => setViewingSubobjectives(true)}
+                >
+                  View Sub-Objective Completion
+                  <ArrowRight className="tw-ml-2" />
+                </p>
+              ) : (
+                <p className="!tw-my-0 !tw-py-0 tw-ml-2 tw-text-gray-500">
+                  No Sub-Objectives Aligned
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+      {viewingSubobjectives && (
         <div
-          className="tw-flex tw-items-center tw-p-2 tw-cursor-pointer"
-          onClick={() => setSubObjectivesOpen(!subObjectivesOpen)}
+          key="subobjectives"
+          className={`tw-transition-transform tw-duration-500 tw-transform ${
+            viewingSubobjectives ? "tw-translate-x-0" : "tw-translate-x-full"
+          } tw-border-t tw-border-solid tw-border-t-slate-300 tw-border-l-0 tw-border-r-0 tw-border-b-0 tw-pt-2`}
         >
-          {subObjectivesOpen ? <ChevronDown /> : <ChevronRight />}
-          <p className="!tw-my-0 !tw-py-0 tw-ml-2">
-            View Sub-Objective Completion
-          </p>
-        </div>
-        {subObjectivesOpen && (
-          <>
-            {data.framework_descriptors.length === 0 ? (
-              <div className="tw-p-2">
-                <p>No sub-objectives aligned to this learning objective.</p>
+          <div className="tw-flex tw-items-center tw-p-2 tw-cursor-pointer">
+            <p
+              className="!tw-my-0 !tw-py-0 tw-text-blue-500"
+              onClick={() => setViewingSubobjectives(false)}
+            >
+              <ArrowLeft className="tw-mr-2" />
+              Back to Main Objective
+            </p>
+          </div>
+          {data.framework_descriptors.map((d, index) => (
+            <div
+              key={crypto.randomUUID()}
+              className={`${
+                index < data.framework_descriptors.length - 1 && "tw-mb-4"
+              }`}
+            >
+              <div className="tw-flex tw-flex-row tw-justify-between">
+                <div className="tw-flex tw-flex-col">
+                  <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">
+                    <h3 className="tw-text-lg tw-font-semibold">{d.text}</h3>
+                  </div>
+                  <p className="tw-text-xs tw-text-gray-500 tw-mt-0">
+                    Average performance across associated questions (
+                    <LearningObjectiveQuestionsAligned
+                      questions={d.questions}
+                    />
+                    )
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div ref={chartsRef} className="tw-p-2"></div>
-            )}
-          </>
-        )}
-      </div>
+              <div className="tw-rounded-md tw-min-h-[75px]">
+                <svg
+                  ref={subRefs[index] as React.RefObject<SVGSVGElement>}
+                  width={width}
+                  height={75}
+                ></svg>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 };
