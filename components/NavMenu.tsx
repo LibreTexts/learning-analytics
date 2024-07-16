@@ -4,7 +4,7 @@ import Links from "./Links";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useGlobalContext } from "@/state/globalContext";
-import InstructorDashboardControls from "./InstructorDashboardControls";
+import DashboardControls from "./DashboardControls";
 
 const ACTIVE_CLASSES = "tw-bg-light-gray tw-border-none";
 
@@ -92,8 +92,8 @@ const NavMenu = () => {
             </ListGroup.Item>
           )}
         </ListGroup>
-        {globalState.viewAs === "instructor" && isActive("dashboard") && (
-          <InstructorDashboardControls />
+        {isActive("dashboard") && (
+          <DashboardControls context={globalState.viewAs} />
         )}
       </div>
     </div>

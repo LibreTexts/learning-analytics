@@ -22,12 +22,7 @@ import calcADAPTSubmissionsByDate, {
   ICalcADAPTSubmissionsByDate_Raw,
 } from "./models/calcADAPTSubmissionsByDate";
 import calcTextbookActivityTime from "./models/calcTextbookActivityTime";
-import {
-  Assignments_AllCourseQuestionsAggregation,
-  decryptStudent,
-  mmssToSeconds,
-} from "@/utils/data-helpers";
-import CalcADAPTAssignments from "./models/calcADAPTAssignments";
+import { decryptStudent, mmssToSeconds } from "@/utils/data-helpers";
 import calcADAPTGradeDistribution from "./models/calcADAPTGradeDistribution";
 import CourseAnalyticsSettings, {
   ICourseAnalyticsSettings_Raw,
@@ -541,12 +536,87 @@ class Analytics {
     try {
       await connectDB();
 
-      const res = await CalcADAPTAssignments.findOne({
-        actor: student_id,
-        courseID: this.adaptID.toString(),
-      });
+      const res = await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+          },
+        },
+        { $group: { _id: "$assignment_id" } },
+        { $count: "unique_assignments" },
+      ]);
 
-      return res?.assignments_count ?? 0;
+      return res[0]?.unique_assignments ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getStudentAverageScore(student_id: string): Promise<number> {
+    try {
+      await connectDB();
+
+      const studentScoreCalc = await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+            percent_correct: {
+              $regex: "^[0-9]+(\\.[0-9]+)?%$",
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_stripped: {
+              $substr: [
+                "$percent_correct",
+                0,
+                {
+                  $subtract: [
+                    {
+                      $strLenCP: "$percent_correct",
+                    },
+                    1,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_float: {
+              $convert: {
+                input: "$percent_correct_stripped",
+                to: "double",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            percent_correct_float: {
+              $ne: null,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            avg_score: {
+              $avg: "$percent_correct_float",
+            },
+          },
+        },
+      ]);
+
+      const result = studentScoreCalc[0]?.avg_score ?? 0;
+      return parseFloat(result.toPrecision(2));
     } catch (err) {
       console.error(err);
       return 0;
@@ -1301,7 +1371,7 @@ class Analytics {
         );
       });
 
-      return sorted
+      return sorted;
     } catch (err) {
       console.error(err);
       return [];

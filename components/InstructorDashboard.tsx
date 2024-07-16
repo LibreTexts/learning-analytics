@@ -1,37 +1,21 @@
 import {
   getPerformancePerAssignment,
   getSubmissionTimeline,
-  getTextbookEngagement,
   getADAPTPerformance,
   getGradeDistribution,
   getActivityAccessed,
-  getAssignmentFrameworkData,
-  checkFinalGradesReleased,
   getTimeInReview,
   getTimeOnTask,
-  getLearningObjectiveCompletion,
 } from "@/lib/analytics-functions";
 import GenericPageContainer from "@/components/GenericPageContainer";
 import PageHeader from "@/components/PageHeader";
-import SmallMetricCard from "@/components/SmallMetricCard";
 import VisualizationContainer from "@/components/VisualizationContainer";
 import PerfPerAssignment from "@/components/Visualizations/PerfPerAssignment";
 import SubmissionTimeline from "@/components/Visualizations/SubmissionTimeline";
-import { useEffect, useState } from "react";
-import NoData from "@/components/NoData";
-import TextbookEngagement from "@/components/Visualizations/TextbookEngagement";
-import TextbookActivity from "@/components/Visualizations/TextbookActivity";
 import InstructorQuickMetrics from "@/components/InstructorQuickMetrics";
-import {
-  HydrationBoundary,
-  QueryClient,
-  dehydrate,
-} from "@tanstack/react-query";
 import ADAPTPerformance from "./Visualizations/ADAPTPerformance";
-import InstructorDashboardControls from "./InstructorDashboardControls";
 import GradeDistribution from "./Visualizations/GradeDistribution";
 import ActivityAccessed from "./Visualizations/StudentActivity";
-import LearningObjectiveCompletion from "./LearningObjectiveCompletion";
 import TimeInReview from "./Visualizations/TimeInReview";
 import TimeOnTask from "./Visualizations/TimeOnTask";
 
@@ -65,7 +49,9 @@ const InstructorDashboard = ({
         description="Comparison of student activity on the selected assignment"
       >
         <ActivityAccessed
-          getData={(student_id, assignment_id) => getActivityAccessed(course_id, student_id, assignment_id)}
+          getData={(student_id, assignment_id) =>
+            getActivityAccessed(course_id, student_id, assignment_id)
+          }
         />
       </VisualizationContainer>
       {/* <VisualizationContainer

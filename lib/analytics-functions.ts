@@ -52,15 +52,23 @@ export async function getStudentQuickMetrics(
   const promises = [
     analytics.getStudentTextbookEngagement(student_id),
     analytics.getStudentAssignmentsCount(student_id),
+    analytics.getStudentAverageScore(student_id),
   ];
 
-  const [textbookEngagement, assignmentsCount] =
-    await Promise.all(promises);
+  const [textbookResult, assignmentsResult, averageResult] =
+    await Promise.allSettled(promises);
 
-  return {
+  const textbookEngagement =
+    textbookResult.status === "fulfilled" ? textbookResult.value : 0;
+  const assignmentsCount =
+    assignmentsResult.status === "fulfilled" ? assignmentsResult.value : 0;
+  const averageScore =
+    averageResult.status === "fulfilled" ? averageResult.value : 0;
+
+    return {
     textbookEngagement,
     assignmentsCount,
-    averageScore: 0
+    averageScore,
   };
 }
 
@@ -71,7 +79,10 @@ export async function getActivityAccessed(
 ): Promise<ActivityAccessed> {
   const analytics = new Analytics(course_id);
 
-  const activityAccessed = await analytics.getADAPTActivity(student_id, assignment_id);
+  const activityAccessed = await analytics.getADAPTActivity(
+    student_id,
+    assignment_id
+  );
 
   return activityAccessed;
 }
