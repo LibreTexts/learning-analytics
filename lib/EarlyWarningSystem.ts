@@ -103,6 +103,19 @@ class EarlyWarningSystem {
         .findOne({ course_id: course_id })
         .orFail();
 
+      // All predicted values (that are valid numbers)
+      const allPredicted = students
+        .map((student) => student.latest_predicted_percent)
+        .filter((v) => ![undefined, null].includes(v)) as number[];
+      const courseStdDev = parseFloat(
+        this.calculateStandardDeviation(allPredicted).toPrecision(2)
+      );
+      const courseMean = parseFloat(
+        this.calculateMean(allPredicted).toPrecision(2)
+      );
+
+      console.log(courseMean)
+
       // Only return at-risk students
       const results = students.filter(
         (student) =>
@@ -118,10 +131,16 @@ class EarlyWarningSystem {
           name: student.name,
           estimated_final: student.latest_predicted_percent,
           course_avg_diff: courseAvgDiff,
-          passing_prob: this.calcluatePassingProbability(student.latest_predicted_percent),
+          z_score: this.calculateZScore(
+            student.latest_predicted_percent,
+            courseMean,
+            courseStdDev
+          ),
           status: this._getActorStatusFromPrediction(
             student.latest_predicted_percent
           ),
+          course_avg: courseMean,
+          course_std_dev: courseStdDev,
         };
       });
 
@@ -872,11 +891,21 @@ class EarlyWarningSystem {
     }
   }
 
-  private calcluatePassingProbability(estimatedFinal: number) {
-    const diffToPass = 70 - estimatedFinal; // Assume passing grade is 70
-    const flipped = diffToPass < 0 ? Math.abs(diffToPass) : diffToPass;
-    const likelihood = 50 + (flipped * 5); // 5% increase in passing probability for every 1% difference in course average
-    return likelihood > 100 ? 0 : likelihood;
+  private calculateMean(values: number[]) {
+    return values.reduce((acc, curr) => acc + curr, 0) / values.length;
+  }
+
+  private calculateStandardDeviation(values: number[]) {
+    const avg = this.calculateMean(values);
+    const variance = values.reduce(
+      (acc, curr) => acc + Math.pow(curr - avg, 2),
+      0
+    );
+    return Math.sqrt(variance / values.length);
+  }
+
+  private calculateZScore(value: number, mean: number, stdDev: number) {
+    return (value - mean) / stdDev;
   }
 }
 

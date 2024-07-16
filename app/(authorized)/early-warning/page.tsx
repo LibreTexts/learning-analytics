@@ -8,7 +8,7 @@ export default async function EarlyWarning() {
     <GenericPageContainer>
       <PageHeader
         title="Early Warning"
-        subtitle="Use predictive analysis to identify students at-risk based on their academic performance."
+        subtitle="Use predictive analysis to identify students at-risk based on their academic performance. A final passing score of 70% is assumed."
       />
       <EarlyWarningResults getData={getEWSResults} />
     </GenericPageContainer>
