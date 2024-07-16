@@ -10,7 +10,18 @@ import { useGlobalContext } from "@/state/globalContext";
 import classNames from "classnames";
 import useAssignments from "@/hooks/useAssignmentName";
 
-const InstructorDashboardControls = ({ className }: { className?: string }) => {
+interface DashboardControlsProps {
+  context: "student" | "instructor";
+  className?: string;
+}
+
+const DashboardControls: React.FC<DashboardControlsProps> = ({
+  context,
+  className,
+}: {
+  context: "student" | "instructor";
+  className?: string;
+}) => {
   const [globalState, setGlobalState] = useGlobalContext();
   const { assignments, assignmentsStatus } = useAssignments();
   const elementRef = useRef<HTMLDivElement>(null);
@@ -20,6 +31,7 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
     queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
+    enabled: !!globalState.courseID && context === "instructor",
   });
 
   useEffect(() => {
@@ -132,13 +144,18 @@ const InstructorDashboardControls = ({ className }: { className?: string }) => {
       </p>
       <div className="tw-flex tw-flex-col">
         <p className="tw-text-sm tw-text-gray-500 tw-mt-0 tw-mb-2">
-          Select a student and assignment to view their respective data.
+          {context === "instructor"
+            ? "Select a student and assignment to view their respective data."
+            : "Select an assignment to view your data."}
         </p>
-        <StudentDropdown />
+        {
+          // Only show the student dropdown if the context is instructor
+          context === "instructor" && <StudentDropdown />
+        }
         <AssignmentDropdown />
       </div>
     </Card>
   );
 };
 
-export default InstructorDashboardControls;
+export default DashboardControls;

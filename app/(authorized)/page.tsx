@@ -16,7 +16,7 @@ export default function Dashboard() {
           letter_grades_released={globalState.courseLetterGradesReleased}
         />
       ) : (
-        <StudentDashboard course_id={globalState?.courseID ?? ""} />
+        <StudentDashboard course_id={globalState?.courseID ?? ""} student_id={globalState.student.id}/>
       )}
     </Suspense>
   );
