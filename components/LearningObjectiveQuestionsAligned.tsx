@@ -14,9 +14,9 @@ const LearningObjectiveQuestionsAligned: React.FC<
     <>
       <a
         onClick={() => setOpen(true)}
-        className="tw-underline tw-blue-500 tw-cursor-pointer"
+        className="tw-blue-500 tw-cursor-pointer tw-no-underline"
       >
-        {questions.length ?? 0} questions aligned
+        {questions.length ?? 0}
       </a>
       <Modal
         show={open}
