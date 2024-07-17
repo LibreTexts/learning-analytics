@@ -31,7 +31,6 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [viewingSubobjectives, setViewingSubobjectives] = useState(false);
-  const [questionsModalOpen, setQuestionsModalOpen] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -65,8 +64,6 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
   function drawChart() {
     setLoading(true);
     const svg = d3.select(svgRef.current);
-    console.log("main svg");
-    console.log(svg);
     svg.selectAll("*").remove();
 
     const x = d3
