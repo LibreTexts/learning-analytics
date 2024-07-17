@@ -114,10 +114,7 @@ const AssignmentExclusions: React.FC<AssignmentExclusionsProps> = ({
                 availableItems={availableItems}
                 selectedItems={selectedItems}
                 setAvailableItems={setAvailableItems}
-                setSelectedItems={(items) => {
-                  console.log("setSelectedItems", items);
-                  setSelectedItems(items);
-                }}
+                setSelectedItems={setSelectedItems}
               />
               <Form>
                 <div className="tw-flex tw-justify-end tw-items-center">

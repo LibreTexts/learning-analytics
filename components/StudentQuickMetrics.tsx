@@ -13,12 +13,7 @@ const StudentQuickMetrics = ({
 }) => {
   const { data, status } = useQuery<StudentQuickMetricsType>({
     queryKey: ["student-quick-metrics", course_id, student_id],
-    queryFn: async () => {
-      console.log("RUNNING");
-      console.log("COURSE_ID: ", course_id);
-      console.log("STUDENT_ID: ", student_id);
-      return await getStudentQuickMetrics(course_id, student_id);
-    },
+    queryFn: async () => await getStudentQuickMetrics(course_id, student_id),
     enabled: !!student_id && !!course_id,
   });
 

@@ -87,7 +87,6 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   async function fetchData() {
     if (!globalState.courseID) return;
     const _data = await getData(globalState.courseID, globalState.ferpaPrivacy);
-    console.log(_data)
     setData(_data);
   }
 

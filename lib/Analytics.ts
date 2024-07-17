@@ -716,8 +716,6 @@ class Analytics {
     try {
       await connectDB();
 
-      console.log(newSettings);
-
       const res = await CourseAnalyticsSettings.updateOne(
         {
           courseID: this.adaptID.toString(),

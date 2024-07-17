@@ -399,13 +399,11 @@ class AnalyticsDataCollector {
       }[] = [];
 
       for (const course of knownCourses) {
-        console.log("Collecting submission timestamps for course", course);
         try {
           const adaptConn = new ADAPTInstructorConnector(course.instructor_id);
           const courseAssignments = allAssignments.filter(
             (assignment) => assignment.course_id === course.course_id
           );
-          console.log("COurse Assignments", courseAssignments);
           for (const assignment of courseAssignments) {
             const submissionData = await adaptConn.getSubmissionTimestamps(
               assignment.assignment_id

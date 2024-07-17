@@ -114,8 +114,6 @@ class EarlyWarningSystem {
         this.calculateMean(allPredicted).toPrecision(2)
       );
 
-      console.log(courseMean)
-
       // Only return at-risk students
       const results = students.filter(
         (student) =>
