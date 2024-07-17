@@ -4,7 +4,7 @@ import classNames from "classnames";
 interface SmallMetricCardProps {
   title: string;
   value?: number | string;
-  unit: string;
+  unit?: string;
   className?: string;
   loading?: boolean;
 }
@@ -40,7 +40,7 @@ const SmallMetricCard: React.FC<SmallMetricCardProps> = ({
             : new Intl.NumberFormat().format(value)}
         </p>
       )}
-      <p className="tw-text-sm tw-mb-0 tw-text-slate-400">{unit}</p>
+      {unit && <p className="tw-text-sm tw-mb-0 tw-text-slate-400">{unit}</p>}
     </Card>
   );
 };

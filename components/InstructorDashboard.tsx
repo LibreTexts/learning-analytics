@@ -30,11 +30,11 @@ const InstructorDashboard = ({
     <GenericPageContainer>
       <PageHeader
         title="Instructor Dashboard"
-        subtitle="View analytics and data visualizations for your course. Click on a visualization to view more details."
+        subtitle="View analytics and data visualizations for your course."
       />
       <InstructorQuickMetrics course_id={course_id} />
       <VisualizationContainer
-        title="Performance"
+        title="Performance per Assignment"
         description="Class average vs. selected student's scores"
         tooltipDescription="Performance per assignment is the student's score on each assignment, compared to the class average."
       >
@@ -45,8 +45,8 @@ const InstructorDashboard = ({
         />
       </VisualizationContainer>
       <VisualizationContainer
-        title="Student Activity Per Assignment"
-        description="Comparison of student activity on the selected assignment"
+        title="Student Activity on Assignment"
+        description="Submitted vs. unsubmitted questions for selected student"
       >
         <ActivityAccessed
           getData={(student_id, assignment_id) =>
@@ -63,7 +63,7 @@ const InstructorDashboard = ({
       </VisualizationContainer> */}
       <VisualizationContainer
         title="Time on Task"
-        description="Class average vs. selected student's cumulative time on task"
+        description="Class average vs. selected student's cumulative time on task per question"
         tooltipDescription="Time on task is the student's time spent working on a question before they submit it."
       >
         <TimeOnTask
@@ -74,7 +74,7 @@ const InstructorDashboard = ({
       </VisualizationContainer>
       <VisualizationContainer
         title="Time in Review"
-        description="Class average vs. selected student's cumulative time in review"
+        description="Class average vs. selected student's cumulative time in review per question"
         tooltipDescription="Time in review is the student's time spent reviewing questions after they have been submitted."
       >
         <TimeInReview
@@ -90,7 +90,7 @@ const InstructorDashboard = ({
         <NoData width={1200} height={400} />
       </VisualizationContainer> */}
       <VisualizationContainer
-        title="Submission Activity"
+        title="Submission Activity (All Students)"
         description="Timeline of student submissions for selected assignment"
         tooltipDescription="A histogram of student submissions over time for the selected assignment."
       >

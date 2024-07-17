@@ -25,14 +25,14 @@ const Metric = ({
   unit: string;
   percent: boolean;
   absolute?: boolean;
-  color?: "red" | "green";
+  color?: "red" | "dark-red" | "black";
 }) => {
   const textColorClass =
     color === "red"
       ? "tw-text-red-500"
-      : color === "green"
-      ? "tw-text-black"
-      : "";
+      : color === "dark-red"
+      ? "tw-text-red-700"
+      : "tw-text-black";
 
   return (
     <div className="tw-rounded-md tw-border tw-border-slate-300 tw-border-solid tw-w-52 xl:tw-w-72 tw-p-1 xl:tw-p-2 tw-shadow-sm">
@@ -93,18 +93,20 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({
               value={data.estimated_final}
               unit="Predicted Final Score"
               percent={true}
-              color={data.estimated_final > 70 ? "green" : "red"}
+              color={
+                data.estimated_final < 50
+                  ? "dark-red"
+                  : data.estimated_final < 70
+                  ? "red"
+                  : "black"
+              }
             />
             <Metric
               value={data.course_avg_diff}
               unit={`${direction} Class Average`}
               percent={true}
             />
-            <Metric
-              value={data.z_score}
-              unit="Z-Score"
-              percent={false}
-            />
+            <Metric value={data.z_score} unit="Z-Score" percent={false} />
           </div>
         </Card.Body>
       </Card.Body>

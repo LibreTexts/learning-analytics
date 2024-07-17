@@ -17,13 +17,13 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
       <SmallMetricCard
         title="Assignments"
         value={data?.assignments}
-        unit="Assignments in Course"
+        //unit="Assignments in Course"
         loading={isFetching}
       />
       <SmallMetricCard
         title="Total Questions"
         value={data?.totalQuestions}
-        unit="Questions in Course"
+        // unit="Questions in Course"
         className="tw-ml-4"
         loading={isFetching}
       />
@@ -31,7 +31,7 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
         <SmallMetricCard
           title="Textbook Page Views"
           value={data?.totalPageViews}
-          unit="Textbook Total Page Views"
+          // unit="Textbook Total Page Views"
           className="tw-ml-4"
           loading={isFetching}
         />
@@ -39,7 +39,7 @@ const InstructorQuickMetrics = ({ course_id }: { course_id: string }) => {
       <SmallMetricCard
         title="Enrolled Students"
         value={data?.enrolled}
-        unit="Active Students in Course"
+        // unit="Active Students in Course"
         className="tw-ml-4"
         loading={isFetching}
       />
