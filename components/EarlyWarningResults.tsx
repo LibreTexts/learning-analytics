@@ -26,7 +26,6 @@ const EarlyWarningResults: React.FC<EarlyWarningResultsProps> = ({
       const res = await getData(globalState.courseID, globalState.ferpaPrivacy);
 
       if (!res) return;
-      console.log(res)
       setData(res);
     } catch (err) {
       console.error(err);
