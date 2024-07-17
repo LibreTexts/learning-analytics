@@ -40,8 +40,8 @@ const StudentDashboard = ({
         studentMode
       >
         <ActivityAccessed
-          getData={(student_id, assignment_id) =>
-            getActivityAccessed(course_id, student_id, assignment_id)
+          getData={(student_id) =>
+            getActivityAccessed(course_id, student_id)
           }
         />
       </VisualizationContainer>

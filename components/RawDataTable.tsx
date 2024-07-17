@@ -22,6 +22,8 @@ import { AnalyticsRawData } from "@/lib/types";
 import { truncateString } from "@/utils/text-helpers";
 import { useGlobalContext } from "@/state/globalContext";
 import { Alert } from "react-bootstrap";
+import { useQuery } from "@tanstack/react-query";
+import LoadingComponent from "./LoadingComponent";
 
 // declare module '@tanstack/react-table' {
 //   //add fuzzy filter to the filterFns
@@ -74,21 +76,14 @@ const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
 
 const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   const [globalState] = useGlobalContext();
+  const { data, isFetching } = useQuery<AnalyticsRawData[]>({
+    queryKey: ["raw-data", globalState.courseID, globalState.ferpaPrivacy],
+    queryFn: () => getData(globalState.courseID, globalState.ferpaPrivacy),
+    enabled: !!globalState.courseID,
+  });
+
   const columnHelper = createColumnHelper<AnalyticsRawData>();
-
-  const [data, setData] = useState<AnalyticsRawData[]>([]);
   const [searchInput, setSearchInput] = useState<string>("");
-
-  useEffect(() => {
-    if (!globalState.courseID) return;
-    fetchData();
-  }, [globalState.courseID, globalState.ferpaPrivacy]);
-
-  async function fetchData() {
-    if (!globalState.courseID) return;
-    const _data = await getData(globalState.courseID, globalState.ferpaPrivacy);
-    setData(_data);
-  }
 
   const transformQuartile = (quartile: number) => {
     switch (quartile) {
@@ -157,7 +152,7 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
   ];
 
   const table = useReactTable({
-    data: data,
+    data: data ?? [],
     columns: defaultColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -175,71 +170,82 @@ const RawDataTable: React.FC<RawDataTableProps> = ({ getData }) => {
 
   return (
     <div className="">
-      {!globalState.courseLetterGradesReleased && (
-        <Alert variant="warning">
-          Final grades have not been released for this course. The data
-          displayed here may not be accurate.
-        </Alert>
-      )}
-      <div className="tw-flex tw-flex-row tw-w-1/3 tw-mb-2">
-        <DebouncedInput
-          value={searchInput}
-          onChange={(val) => setSearchInput(val)}
-          placeholder={"Search by name or email..."}
-          delay={250}
-          prefix
-          prefixElement={<Search />}
-        />
-      </div>
-      <table className="tw-border-solid tw-border tw-border-slate-200 tw-shadow-sm tw-bg-white tw-w-full">
-        <thead className="tw-border-b tw-border-solid">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th key={header.id} className="tw-p-3 tw-text-sm tw-border-r">
-                  <div
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="!tw-cursor-pointer"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                    {header.column.getIsSorted()
-                      ? header.column.getIsSorted() === "desc"
-                        ? " 🔽"
-                        : " 🔼"
-                      : ""}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowCount() === 0 && (
-            <tr>
-              <td
-                colSpan={table.getAllColumns().length}
-                className="tw-text-center tw-p-3"
-              >
-                No data available
-              </td>
-            </tr>
+      {isFetching && <LoadingComponent />}
+      {!isFetching && (
+        <>
+          {!globalState.courseLetterGradesReleased && (
+            <Alert variant="warning">
+              Final grades have not been released for this course. The data
+              displayed here may not be accurate.
+            </Alert>
           )}
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="hover:tw-bg-slate-100">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="tw-p-3 tw-border">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
+          <div className="tw-flex tw-flex-row tw-w-1/3 tw-mb-2">
+            <DebouncedInput
+              value={searchInput}
+              onChange={(val) => setSearchInput(val)}
+              placeholder={"Search by name or email..."}
+              delay={250}
+              prefix
+              prefixElement={<Search />}
+            />
+          </div>
+          <table className="tw-border-solid tw-border tw-border-slate-200 tw-shadow-sm tw-bg-white tw-w-full">
+            <thead className="tw-border-b tw-border-solid">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="tw-p-3 tw-text-sm tw-border-r"
+                    >
+                      <div
+                        onClick={header.column.getToggleSortingHandler()}
+                        className="!tw-cursor-pointer"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                        {header.column.getIsSorted()
+                          ? header.column.getIsSorted() === "desc"
+                            ? " 🔽"
+                            : " 🔼"
+                          : ""}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {table.getRowCount() === 0 && (
+                <tr>
+                  <td
+                    colSpan={table.getAllColumns().length}
+                    className="tw-text-center tw-p-3"
+                  >
+                    No data available
+                  </td>
+                </tr>
+              )}
+              {table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="hover:tw-bg-slate-100">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="tw-p-3 tw-border">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 };
