@@ -8,6 +8,7 @@ export interface IQuestionScoreData {
   first_submitted_at: string | null;
   last_submitted_at: string | null;
   max_score: string;
+  submission_count: number;
 }
 
 export interface IAssignmentScoresRaw {
@@ -36,6 +37,7 @@ const AssignmentScoresSchema = new Schema<IAssignmentScores>(
         first_submitted_at: { type: String, default: null},
         last_submitted_at: { type: String, default: null},
         max_score: String,
+        submission_count: { type: Number, default: 0 },
       },
     ],
   },

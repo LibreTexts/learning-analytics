@@ -2,6 +2,7 @@ import axios, { AxiosInstance, Method } from "axios";
 import * as jose from "jose";
 import {
   ADAPTAssignmentScoresRes,
+  ADAPTAutoGradedSubmissionRes,
   ADAPTCourseAssignmentsRes,
   ADAPTEnrollmentDetailsRes,
   ADAPTFrameworkQuestionSyncRes,
@@ -92,6 +93,13 @@ class ADAPTInstructorConnector {
       "/scores/assignment/get-assignment-questions-scores-by-user/" +
         assignmentID +
         "/on_task/0",
+      "GET"
+    );
+  }
+
+  public async getAssignmentAutoGradedSubmissions(assignmentID: string, questionID: string) {
+    return this.makeRequest<ADAPTAutoGradedSubmissionRes>(
+      "/auto-graded-and-file-submissions/" + assignmentID + "/" + questionID + "/get-auto-graded-and-file-submissions-by-assignment-and-question-and-student",
       "GET"
     );
   }
