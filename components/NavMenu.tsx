@@ -92,7 +92,7 @@ const NavMenu = () => {
             </ListGroup.Item>
           )}
         </ListGroup>
-        {isActive("dashboard") && (
+        {isActive("dashboard") && globalState.role === "instructor" && (
           <DashboardControls context={globalState.viewAs} />
         )}
       </div>

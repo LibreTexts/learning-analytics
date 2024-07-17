@@ -40,7 +40,9 @@ import assignmentScores, {
 } from "./models/assignmentScores";
 import assignments from "./models/assignments";
 import calcTimeOnTask from "./models/calcTimeOnTask";
-import calcADAPTStudentActivity from "./models/calcADAPTStudentActivity";
+import calcADAPTStudentActivity, {
+  ICalcADAPTStudentActivity_Raw,
+} from "./models/calcADAPTStudentActivity";
 import framework, { IFramework_Raw } from "./models/framework";
 import frameworkLevels, {
   IFrameworkLevel_Raw,
@@ -938,11 +940,63 @@ class Analytics {
         avg_review_time: number;
       }[];
 
-      const allCourseActivity = await calcADAPTStudentActivity
-        .find({
-          course_id: this.adaptID.toString(),
-        })
-        .lean();
+      const allCourseQuestions = await assignments.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $unwind: "$questions",
+        },
+        {
+          $group: {
+            _id: null,
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+      ]);
+
+      // Need to group by student_id
+      const allCourseActivity = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $group: {
+            _id: "$student_id",
+            seen: {
+              $push: "$seen",
+            },
+            unseen: {
+              $push: "$unseen",
+            },
+          },
+        },
+        {
+          $project: {
+            student_id: "$_id",
+            seen: {
+              $reduce: {
+                input: "$seen",
+                initialValue: [],
+                in: { $concatArrays: ["$$value", "$$this"] },
+              },
+            },
+            unseen: {
+              $reduce: {
+                input: "$unseen",
+                initialValue: [],
+                in: { $concatArrays: ["$$value", "$$this"] },
+              },
+            },
+          },
+        },
+      ]);
 
       const data = res.map((d) => {
         const timeOnTask = avgTimeOnTask.find(
@@ -961,14 +1015,17 @@ class Analytics {
 
         const activity = allCourseActivity.find(
           (a) => a.student_id === d.actor_id
-        );
+        ) as ICalcADAPTStudentActivity_Raw | undefined;
+
+        const submitted = activity?.seen.length ?? 0;
+        const unsubmitted = allCourseQuestions[0].questions.length - submitted ?? 0;
 
         return {
           actor_id: d.actor_id,
           name: d.actor_id,
           pages_accessed: 0,
           unique_interaction_days: 0,
-          not_submitted: activity?.unseen.length ?? 0,
+          not_submitted: unsubmitted,
           submitted: activity?.seen.length ?? 0,
           avg_time_on_task: onTaskToMinutes,
           avg_time_in_review: reviewTimeRounded,
