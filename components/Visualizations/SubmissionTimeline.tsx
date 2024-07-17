@@ -30,9 +30,6 @@ import {
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
 import { DATE_ONLY_FORMAT } from "@/utils/misc";
-import CustomDropdown from "../CustomDropdown";
-import { Dropdown } from "react-bootstrap";
-import { truncateString } from "@/utils/text-helpers";
 import useAssignments from "@/hooks/useAssignmentName";
 
 const MARGIN = DEFAULT_MARGINS;
@@ -69,7 +66,7 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
   const [loading, setLoading] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [finalSubDate, setFinalSubDate] = useState<Date | null>(null);
-  const { getName} = useAssignments();
+  const { getName } = useAssignments();
 
   const columnHelper = createColumnHelper<SubmissionTimelineTypeFlat>();
   const table = useReactTable<SubmissionTimelineTypeFlat>({
@@ -185,6 +182,8 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
       .range([MARGIN.left, width - MARGIN.right])
       .padding(0.05);
 
+    const halfBucket = x.bandwidth() / 2;
+
     const y = d3
       .scaleLinear()
       .range([height - MARGIN.bottom, MARGIN.top])
@@ -226,12 +225,16 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
         .attr("y2", height - MARGIN.bottom)
         .style("stroke", "green")
         .style("stroke-dasharray", "4")
-        .style("stroke-width", 2);
+        .style("stroke-width", 2)
+        .attr(
+          "transform",
+          `translate(${halfBucket}, 0)` // Position the line in the middle of the bucket (at the tick mark)
+        );
 
       // Add label for the due date
       svg
         .append("text")
-        .attr("x", (x(dueDateFormatted) ?? 0) + 25) // Adjust the x position slightly for the label
+        .attr("x", (x(dueDateFormatted) ?? 0) + halfBucket + 10) // Adjust the x position slightly for the label
         .attr("y", MARGIN.top - 5) // Position above the line
         .attr("text-anchor", "start")
         .style("fill", "green")
@@ -248,12 +251,16 @@ const SubmissionTimeline: React.FC<SubmissionTimelineProps> = ({
         .attr("y1", MARGIN.top)
         .attr("y2", height - MARGIN.bottom)
         .style("stroke", "red")
-        .style("stroke-width", 2);
+        .style("stroke-width", 2)
+        .attr(
+          "transform",
+          `translate(${halfBucket}, 0)` // Position the line in the middle of the bucket (at the tick mark)
+        );
 
       // Add label for the final submission deadline
       svg
         .append("text")
-        .attr("x", x(finalSubDateFormatted) ?? 0 + x.bandwidth() + 5) // Adjust the x position slightly for the label
+        .attr("x", x(finalSubDateFormatted) ?? 0 + x.bandwidth() + 15) // Adjust the x position slightly for the label
         .attr("y", MARGIN.top - 5) // Position above the line
         .attr("text-anchor", "middle")
         .style("fill", "red")
