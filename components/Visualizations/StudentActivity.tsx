@@ -130,6 +130,11 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .scaleOrdinal()
       .domain(subgroups)
       .range(["#1f77b4", "#ff7f0e"]);
+    
+    const labelScale = d3
+      .scaleOrdinal()
+      .domain(subgroups)
+      .range([0, 1]);
 
     const pie = d3.pie().value((d: any) => {
       return d[1];
@@ -142,6 +147,10 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       ) as any
     );
     const arcGenerator = d3.arc().innerRadius(0).outerRadius(radius);
+    const labelArcGenerator = d3
+      .arc()
+      .innerRadius(radius * 0.5)
+      .outerRadius(radius * 0.5);
 
     svg
       .selectAll("slices")
@@ -156,6 +165,27 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
       .style("stroke-width", "2px")
       .style("opacity", 0.7)
       .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    // Add labels
+    svg
+      .selectAll("slices")
+      .data(dataReady)
+      .enter()
+      .append("text")
+      // @ts-ignore
+      .text((d) => labelScale(d.data) === 0 ? "Submitted" : unsubmitted.length > 0 ? "Not Submitted" : "") // Only show "Not Submitted" if there are unsubmitted questions
+      // @ts-ignore
+      .attr("transform", (d) => `translate(${labelArcGenerator.centroid(d)})`)
+      .style("text-anchor", "middle")
+      .style("font-size", "12px")
+      .style("font-weight", "semibold")
+      .attr("transform", (d) => {
+        // @ts-ignore
+        const pos = labelArcGenerator.centroid(d);
+        pos[0] = pos[0] * 2; // Change the 1.5 to another value to move the label further or closer
+        pos[1] = pos[1] * 1.5;
+        return `translate(${pos}) translate(${width / 2}, ${height / 2})`;
+      });
 
     if (unsubmitted.length > 0) {
       // Add "Not Submitted" to the legend

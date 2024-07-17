@@ -10,15 +10,13 @@ const EarlyWarningCourseMetrics = ({
   return (
     <div className="tw-flex tw-flex-row tw-justify-center">
       <SmallMetricCard
-        title="Course Avg"
+        title="Average of Predicted Scores"
         value={`${course_avg ?? 0}%`}
-        unit="By Predicted Scores"
         loading={false}
       />
       <SmallMetricCard
-        title="Course Std Dev"
+        title="Std. Dev. of Predicted Scores"
         value={course_std_dev ?? 0}
-        unit="By Predicted Scores"
         loading={false}
         className="tw-ml-36"
       />

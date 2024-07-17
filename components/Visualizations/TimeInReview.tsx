@@ -199,7 +199,7 @@ const TimeInReview: React.FC<TimeInReviewProps> = ({
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "semibold")
-      .text(`Assignment: ${getName(selectedAssignmentId)}`);
+      .text(`Questions in Assignment: ${getName(selectedAssignmentId)}`);
 
     // Add one dot in the legend for each name.
     svg

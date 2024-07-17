@@ -64,14 +64,17 @@ const LearningCurveDescriptor: React.FC<LearningCurveDescriptorProps> = ({
       return calculated > DEFAULT_MAX ? calculated : DEFAULT_MAX;
     };
 
+    const xMax = maxAttempts();
+    const yMax = maxScore();
+
     const x = d3
       .scaleLinear()
-      .domain([0, maxAttempts()])
+      .domain([0, xMax])
       .range([MARGIN.left, width - MARGIN.right]);
 
     const y = d3
       .scaleLinear()
-      .domain([0, maxScore()])
+      .domain([0, yMax])
       .range([height - MARGIN.bottom, MARGIN.top]);
 
     svg
@@ -96,6 +99,36 @@ const LearningCurveDescriptor: React.FC<LearningCurveDescriptorProps> = ({
       .append("g")
       .attr("transform", `translate(${MARGIN.left}, 0)`)
       .call(d3.axisLeft(y));
+
+    // Calculate the regression line
+    const n = cleaned.length;
+    const sumX = cleaned.reduce((sum, d) => sum + d.num_attempts, 0);
+    const sumY = cleaned.reduce((sum, d) => sum + d.score, 0);
+    const sumXY = cleaned.reduce((sum, d) => sum + d.num_attempts * d.score, 0);
+    const sumXX = cleaned.reduce(
+      (sum, d) => sum + d.num_attempts * d.num_attempts,
+      0
+    );
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    // Define the regression line data
+    const regressionLine = [
+      { num_attempts: 0, score: intercept },
+      { num_attempts: xMax, score: slope * xMax + intercept },
+    ];
+
+    // Add the regression line to the SVG
+    svg
+      .append("line")
+      .datum(regressionLine)
+      .attr("x1", (d) => x(d[0].num_attempts))
+      .attr("y1", (d) => y(d[0].score))
+      .attr("x2", (d) => x(d[1].num_attempts))
+      .attr("y2", (d) => y(d[1].score))
+      .attr("stroke", "red")
+      .attr("stroke-width", 2);
 
     setLoading(false);
   }

@@ -11,7 +11,10 @@ import {
 } from "react-bootstrap-icons";
 import LearningObjectiveQuestionsAligned from "./LearningObjectiveQuestionsAligned";
 
-const MARGIN = DEFAULT_MARGINS;
+const MARGIN = {
+  ...DEFAULT_MARGINS,
+  bottom: 50,
+};
 const DEFAULT_HEIGHT = 150;
 
 interface LearningObjectiveLevelProps {
@@ -144,9 +147,6 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
         .append("g")
         .call(d3.axisBottom(x).ticks(5))
         .attr("transform", `translate(0, 0)`);
-
-      // remove the text from the axis
-      group.append("g").call(d3.axisLeft(y)).selectAll("text").remove();
     });
 
     setLoading(false);
