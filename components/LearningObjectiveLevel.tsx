@@ -1,21 +1,16 @@
 import { LOCData } from "@/lib/types";
 import { createRef, useEffect, useRef, useState } from "react";
-import { Accordion, Card } from "react-bootstrap";
+import { Card } from "react-bootstrap";
 import * as d3 from "d3";
 import { DEFAULT_MARGINS, DEFAULT_WIDTH } from "@/utils/visualization-helpers";
-import {
-  ChevronRight,
-  ChevronDown,
-  ArrowRight,
-  ArrowLeft,
-} from "react-bootstrap-icons";
+import { ArrowRight, ArrowLeft } from "react-bootstrap-icons";
 import LearningObjectiveQuestionsAligned from "./LearningObjectiveQuestionsAligned";
 
 const MARGIN = {
   ...DEFAULT_MARGINS,
   bottom: 50,
 };
-const DEFAULT_HEIGHT = 150;
+const DEFAULT_HEIGHT = 75;
 
 interface LearningObjectiveLevelProps {
   data: LOCData;
@@ -48,8 +43,6 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
 
   useEffect(() => {
     if (!data || !width || !height) return;
-    if (viewingSubobjectives) return;
-    drawChart(); // Need to redraw the main chart when no longer viewing subobjectives
 
     // Ensure svgRefs array has the correct length
     setSubRefs((subRefs) =>
@@ -57,6 +50,9 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
         .fill(undefined)
         .map((_, i) => subRefs[i] || createRef())
     );
+
+    if (viewingSubobjectives) return;
+    drawChart(); // Need to redraw the main chart when no longer viewing subobjectives
   }, [data, width, viewingSubobjectives]);
 
   useEffect(() => {
@@ -69,6 +65,8 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
+    const barHeight = 25;
+
     const x = d3
       .scaleLinear()
       .domain([0, 100])
@@ -77,7 +75,7 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
     const y = d3
       .scaleBand()
       .domain([data.framework_level.text])
-      .range([0, height - MARGIN.bottom - MARGIN.top])
+      .range([0, barHeight])
       .padding(0.1);
 
     svg
@@ -95,8 +93,8 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
     // Add x-axis
     svg
       .append("g")
-      .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
-      .call(d3.axisBottom(x).ticks(2))
+      .attr("transform", `translate(0, ${height - barHeight})`)
+      .call(d3.axisBottom(x).ticks(10))
       .selectAll("text")
       .text((d) => `${d as string}%`);
 
@@ -145,7 +143,7 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
 
       group
         .append("g")
-        .call(d3.axisBottom(x).ticks(5))
+        .call(d3.axisBottom(x).ticks(10))
         .attr("transform", `translate(0, 0)`);
     });
 
@@ -154,25 +152,28 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
 
   return (
     <Card
-      className="tw-mt-4 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-max-w-[96%]"
+      className="tw-mt-6 tw-rounded-lg tw-shadow-sm tw-px-4 tw-pt-4 tw-pb-2 tw-max-w-[96%]"
       ref={containerRef}
     >
       <div className="tw-flex tw-flex-row tw-justify-between">
         <div className="tw-flex tw-flex-col">
           <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">
             <h3 className="tw-text-2xl tw-font-semibold">
-              {data.framework_level.text}
+              {data.framework_level.text}{" "}
+              <span className="tw-text-lg">
+                (
+                <LearningObjectiveQuestionsAligned
+                  questions={data.framework_level.questions}
+                />
+                )
+              </span>
             </h3>
           </div>
-          {!viewingSubobjectives && (
+          {/* {!viewingSubobjectives && (
             <p className="tw-text-xs tw-text-gray-500 tw-mt-0">
-              Average performance across associated questions (
-              <LearningObjectiveQuestionsAligned
-                questions={data.framework_level.questions}
-              />
-              )
+              Average performance across associated questions
             </p>
-          )}
+          )} */}
         </div>
       </div>
       {!viewingSubobjectives && (
@@ -219,21 +220,23 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
             <div
               key={crypto.randomUUID()}
               className={`${
-                index < data.framework_descriptors.length - 1 && "tw-mb-4"
+                index < data.framework_descriptors.length - 1 && "tw-mb-2"
               }`}
             >
               <div className="tw-flex tw-flex-row tw-justify-between">
                 <div className="tw-flex tw-flex-col">
                   <div className="tw-flex tw-flex-row tw-mb-0 tw-items-center">
-                    <h3 className="tw-text-lg tw-font-semibold">{d.text}</h3>
+                    <h3 className="tw-text-lg tw-font-semibold">
+                      {d.text}{" "}
+                      <span className="tw-text-sm">
+                        (
+                        <LearningObjectiveQuestionsAligned
+                          questions={d.questions}
+                        />
+                        )
+                      </span>
+                    </h3>
                   </div>
-                  <p className="tw-text-xs tw-text-gray-500 tw-mt-0">
-                    Average performance across associated questions (
-                    <LearningObjectiveQuestionsAligned
-                      questions={d.questions}
-                    />
-                    )
-                  </p>
                 </div>
               </div>
               <div className="tw-rounded-md tw-min-h-[75px]">

@@ -10,6 +10,7 @@ import { LOCData, VisualizationBaseProps } from "@/lib/types";
 import { useGlobalContext } from "@/state/globalContext";
 import LearningObjectiveLevel from "./LearningObjectiveLevel";
 import LoadingComponent from "./LoadingComponent";
+import { Button } from "react-bootstrap";
 
 type LOCProps = VisualizationBaseProps & {
   getData: (course_id: string) => Promise<LOCData[]>;
@@ -25,10 +26,10 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
 
   const [globalState] = useGlobalContext();
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartsRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
   const [data, setData] = useState<LOCData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [allOpen, setAllOpen] = useState(false);
 
   const noFrameworkAlignment = useMemo(() => {
     if (data.length === 0) return true;
@@ -54,6 +55,10 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
     }
   }
 
+  function handleToggleAll() {
+    setAllOpen(!allOpen);
+  }
+
   return (
     <div ref={containerRef}>
       {!loading && (
@@ -67,6 +72,11 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
           )}
           {!noFrameworkAlignment && (
             <div className="tw-flex tw-flex-col">
+              <div className="tw-flex tw-justify-end tw-max-w-[96%]">
+                <Button onClick={handleToggleAll} className="" size="sm">
+                  {allOpen ? "Collapse All" : "Expand All"}
+                </Button>
+              </div>
               {data.map((d, index) => (
                 <LearningObjectiveLevel key={crypto.randomUUID()} data={d} />
               ))}

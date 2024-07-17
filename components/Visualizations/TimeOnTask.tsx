@@ -103,7 +103,7 @@ const TimeOnTask: React.FC<TimeOnTaskProps> = ({
   }
 
   const getMax = useMemo(() => {
-    const DEFAULT = 20;
+    const DEFAULT = 10;
     let max = 0;
     if (data.length === 0) {
       return DEFAULT; //Default value (if no data is present)
