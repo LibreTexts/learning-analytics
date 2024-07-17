@@ -26,6 +26,11 @@ export const EWS_THRESHOLDS = {
   WARNING: 79,
 };
 
+export const EWS_Z_SCORE_THRESHOLDS = {
+  DANGER: -1.5,
+  WARNING: -1.0,
+};
+
 class EarlyWarningSystem {
   constructor() {}
 
@@ -114,14 +119,7 @@ class EarlyWarningSystem {
         this.calculateMean(allPredicted).toPrecision(2)
       );
 
-      // Only return at-risk students
-      const results = students.filter(
-        (student) =>
-          ![undefined, null].includes(student.latest_predicted_percent) &&
-          student.latest_predicted_percent <= EWS_THRESHOLDS.WARNING
-      );
-
-      const mapped: EWSResult[] = results.map((student) => {
+      const mapped: EWSResult[] = students.map((student) => {
         const courseAvgDiff =
           student.latest_predicted_percent - course.avg_course_percent;
         return {
@@ -142,20 +140,24 @@ class EarlyWarningSystem {
         };
       });
 
+      const filtered = mapped.filter(
+        (s) => s.z_score < EWS_Z_SCORE_THRESHOLDS.WARNING
+      ); // only show students with z-score less than warning threshold
+
       if (privacy) {
-        return mapped;
+        return filtered;
       }
 
-      const promises = mapped.map((s) => {
+      const promises = filtered.map((s) => {
         return decryptStudent(s.name);
       });
 
       const decrypted = await Promise.all(promises);
-      for (let i = 0; i < mapped.length; i++) {
-        mapped[i].name = decrypted[i];
+      for (let i = 0; i < filtered.length; i++) {
+        filtered[i].name = decrypted[i];
       }
 
-      return mapped;
+      return filtered;
     } catch (err) {
       console.error(err);
       return [];

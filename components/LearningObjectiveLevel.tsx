@@ -43,6 +43,8 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
 
   useEffect(() => {
     if (!data || !width || !height) return;
+    if (viewingSubobjectives) return;
+    drawChart(); // Need to redraw the main chart when no longer viewing subobjectives
 
     // Ensure svgRefs array has the correct length
     setSubRefs((subRefs) =>
@@ -50,9 +52,6 @@ const LearningObjectiveLevel: React.FC<LearningObjectiveLevelProps> = ({
         .fill(undefined)
         .map((_, i) => subRefs[i] || createRef())
     );
-
-    if (viewingSubobjectives) return;
-    drawChart(); // Need to redraw the main chart when no longer viewing subobjectives
   }, [data, width, viewingSubobjectives]);
 
   useEffect(() => {

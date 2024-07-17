@@ -72,11 +72,11 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
           )}
           {!noFrameworkAlignment && (
             <div className="tw-flex tw-flex-col">
-              <div className="tw-flex tw-justify-end tw-max-w-[96%]">
+              {/* <div className="tw-flex tw-justify-end tw-max-w-[96%]">
                 <Button onClick={handleToggleAll} className="" size="sm">
                   {allOpen ? "Collapse All" : "Expand All"}
                 </Button>
-              </div>
+              </div> */}
               {data.map((d, index) => (
                 <LearningObjectiveLevel key={crypto.randomUUID()} data={d} />
               ))}
