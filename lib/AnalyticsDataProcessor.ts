@@ -24,7 +24,7 @@ class AnalyticsDataProcessor {
       //await this.compressADAPTInteractionDays();
       // await this.compressADAPTGradeDistribution();
       //await this.compressADAPTSubmissions();
-      //await this.compressADAPTScores();
+      await this.compressADAPTScores();
       await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
       // await this.compressTextbookActivityTime();
       // await this.compressTexbookInteractionsByDate();
@@ -137,6 +137,31 @@ class AnalyticsDataProcessor {
 
       debugADP("[compressADAPTStudentActivity]: Starting aggregation...");
 
+      const courseAssignments = await assignmentScores.aggregate([
+        {
+          $unwind: "$questions",
+        },
+        {
+          $group: {
+            _id: {
+              course_id: "$course_id",
+              assignment_id: "$assignment_id",
+            },
+            unique_questions: {
+              $addToSet: "$questions.question_id",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            course_id: "$_id.course_id",
+            assignment_id: "$_id.assignment_id",
+            unique_questions: "$unique_questions",
+          },
+        },
+      ]);
+
       const hasScoreData = await assignmentScores.aggregate([
         {
           $unwind: "$questions",
@@ -181,23 +206,23 @@ class AnalyticsDataProcessor {
         },
       ]);
 
-      const allAssignments = await assignments.find({}).lean();
-
       // for each student in each course, find what questions they have seen and not seen (has a score vs no score)
       const studentActivityData: (ICalcADAPTStudentActivity_Raw | null)[] =
         hasScoreData.map((data) => {
           const { course_id, student_id, assignment_id, unique_questions } =
             data;
 
-          const foundAssignment = allAssignments.find(
-            (assignment) => assignment.assignment_id === assignment_id
+          const foundAssignment = courseAssignments.find(
+            (assignment) =>
+              assignment.course_id === course_id &&
+              assignment.assignment_id === assignment_id
           );
           if (!foundAssignment) {
             return null;
           }
 
           const assignmentQuestions =
-            (foundAssignment.questions as string[]) || [];
+            (foundAssignment.unique_questions as string[]) || [];
 
           const seenQuestions = unique_questions;
           const unseenQuestions = assignmentQuestions.filter(

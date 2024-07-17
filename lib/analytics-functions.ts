@@ -75,17 +75,10 @@ export async function getStudentQuickMetrics(
 
 export async function getActivityAccessed(
   course_id: string,
-  student_id: string,
-  assignment_id: string
-): Promise<ActivityAccessed> {
+  student_id: string
+): Promise<ActivityAccessed[]> {
   const analytics = new Analytics(course_id);
-
-  const activityAccessed = await analytics.getADAPTActivity(
-    student_id,
-    assignment_id
-  );
-
-  return activityAccessed;
+  return await analytics.getADAPTActivity(student_id);
 }
 
 export async function getADAPTPerformance(

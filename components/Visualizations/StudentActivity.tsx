@@ -9,6 +9,7 @@ import React, {
 import * as d3 from "d3";
 import VisualizationLoading from "../VisualizationLoading";
 import {
+  DEFAULT_BUCKET_PADDING,
   DEFAULT_HEIGHT,
   DEFAULT_MARGINS,
   DEFAULT_WIDTH,
@@ -19,7 +20,7 @@ import {
   Student,
   VisualizationBaseProps,
 } from "@/lib/types";
-import { capitalizeFirstLetter } from "@/utils/text-helpers";
+import { truncateString } from "@/utils/text-helpers";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -28,22 +29,15 @@ import {
 } from "@tanstack/react-table";
 import VisualizationTable from "../VisualizationTableView";
 import useAssignments from "@/hooks/useAssignmentName";
+import { LIBRE_BLUE } from "@/utils/colors";
 
-const MARGIN = { ...DEFAULT_MARGINS, bottom: 40 };
+const MARGIN = DEFAULT_MARGINS;
 const UNSUBMITTED_LIMIT = 10;
-
-type ActivityAccessedSingle = {
-  seen: number;
-  unseen: number;
-};
+const BUCKET_PADDING = DEFAULT_BUCKET_PADDING;
 
 type StudentActivityProps = VisualizationBaseProps & {
   selectedStudent?: Student;
-  selectedAssignmentId?: string;
-  getData: (
-    student_id: string,
-    assignment_id: string
-  ) => Promise<ActivityAccessedType>;
+  getData: (student_id: string) => Promise<ActivityAccessedType[]>;
 };
 
 const StudentActivity: React.FC<StudentActivityProps> = ({
@@ -51,7 +45,6 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   height = DEFAULT_HEIGHT,
   tableView = false,
   selectedStudent,
-  selectedAssignmentId,
   getData,
   innerRef,
 }) => {
@@ -60,18 +53,13 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
   }));
 
   const svgRef = useRef(null);
-  const [data, setData] = useState<ActivityAccessedSingle>({
-    seen: 0,
-    unseen: 0,
-  });
-  const [unsubmitted, setUnsubmitted] = useState<string[]>([]);
+  const [data, setData] = useState<ActivityAccessedType[]>([]);
   const [loading, setLoading] = useState(false);
-  const [radius, setRadius] = useState(0);
   const { getName } = useAssignments();
 
-  const columnHelper = createColumnHelper<ActivityAccessedSingle>();
+  const columnHelper = createColumnHelper<ActivityAccessedType>();
   const table = useReactTable({
-    data: [data],
+    data: data,
     columns: [
       columnHelper.accessor("seen", {
         cell: (info) => <div>{info.getValue()}</div>,
@@ -81,34 +69,34 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
         cell: (info) => <div>{info.getValue()}</div>,
         header: "Unseen",
       }),
+      columnHelper.accessor("course_avg_seen", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Course Average Seen",
+      }),
+      columnHelper.accessor("course_avg_unseen", {
+        cell: (info) => <div>{info.getValue()}</div>,
+        header: "Course Average Unseen",
+      }),
     ],
     getCoreRowModel: getCoreRowModel(),
   });
 
   useEffect(() => {
-    if (!selectedStudent?.id || !selectedAssignmentId) return;
+    if (!selectedStudent?.id) return;
     handleGetData();
-  }, [selectedStudent?.id, selectedAssignmentId]);
+  }, [selectedStudent?.id]);
 
   useLayoutEffect(() => {
     if (!data || tableView) return;
     drawChart();
-    setRadius(Math.min(width, height) / 2 - MARGIN.bottom);
   }, [width, height, tableView, data]);
 
   async function handleGetData() {
     try {
-      if (!selectedStudent?.id || !selectedAssignmentId) return;
+      if (!selectedStudent?.id) return;
       setLoading(true);
-      const initData = await getData(selectedStudent?.id, selectedAssignmentId);
-
-      const mapped = {
-        seen: initData.seen.length,
-        unseen: initData.unseen.length,
-      };
-
-      setData(mapped);
-      setUnsubmitted(initData.unseen.map((id) => id.toString()));
+      const _data = await getData(selectedStudent?.id);
+      setData(_data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -116,150 +104,132 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
     }
   }
 
+  function getStudentPercent(data?: ActivityAccessedType) {
+    if (!data) return 0;
+    if (!Array.isArray(data.seen) || !Array.isArray(data.unseen)) return 0;
+    if (data.seen.length === 0 && data.unseen.length === 0) return 0;
+    const total = data.seen.length + data.unseen.length;
+    return parseFloat(((data.seen.length / total) * 100).toFixed(2));
+  }
+
+  function getCourseAvgPercent(data: ActivityAccessedType[]) {
+    if (data.length === 0) return 0;
+    const total = data[0].course_avg_seen + data[0].course_avg_unseen;
+    return parseFloat(((data[0].course_avg_seen / total) * 100).toFixed(2));
+  }
+
   function drawChart() {
     setLoading(true);
+    const subgroups = ["class_avg", "student"];
+    const subgroupsPretty = ["Class Average", "Student"];
     const svg = d3.select(svgRef.current);
-    const subgroups = ["submitted", "not_submitted"];
-
-    // Truncate the unsubmitted questions to UNSUBMITTED_LIMIT
-    const unsubmittedTruncated = unsubmitted.slice(0, UNSUBMITTED_LIMIT);
 
     svg.selectAll("*").remove(); // Clear existing chart
 
-    const colorScale = d3
-      .scaleOrdinal()
+    const x = d3
+      .scaleBand()
+      .domain(data.map((d) => d.assignment_id))
+      .range([MARGIN.left, width - MARGIN.right])
+      .padding(0.1);
+
+    const xSubgroup = d3
+      .scaleBand()
       .domain(subgroups)
-      .range(["#1f77b4", "#ff7f0e"]);
-    
-    const labelScale = d3
-      .scaleOrdinal()
-      .domain(subgroups)
-      .range([0, 1]);
+      .range([0, x.bandwidth()])
+      .padding(-0.01);
 
-    const pie = d3.pie().value((d: any) => {
-      return d[1];
-    });
+    const y = d3
+      .scaleLinear()
+      .range([height - MARGIN.bottom, MARGIN.top])
+      .domain([0, 100]);
 
-    // Remove the course_avg_percent_seen key
-    const dataReady = pie(
-      Object.entries(data).filter(
-        (d) => d[0] !== "course_avg_percent_seen"
-      ) as any
-    );
-    const arcGenerator = d3.arc().innerRadius(0).outerRadius(radius);
-    const labelArcGenerator = d3
-      .arc()
-      .innerRadius(radius * 0.5)
-      .outerRadius(radius * 0.5);
-
+    // Add x-axis
     svg
-      .selectAll("slices")
-      .data(dataReady)
-      .enter()
-      .append("path")
-      //@ts-ignore
-      .attr("d", (d) => arcGenerator(d))
-      // @ts-ignore
-      .attr("fill", (d) => colorScale(d.data) as string)
-      .attr("stroke", "black")
-      .style("stroke-width", "2px")
-      .style("opacity", 0.7)
-      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+      .append("g")
+      .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end")
+      .style("font-size", "8px")
+      .text((d) => truncateString(getName(d as string), 15));
 
-    // Add labels
+    // Add y-axis
     svg
-      .selectAll("slices")
-      .data(dataReady)
-      .enter()
-      .append("text")
-      // @ts-ignore
-      .text((d) => labelScale(d.data) === 0 ? "Submitted" : unsubmitted.length > 0 ? "Not Submitted" : "") // Only show "Not Submitted" if there are unsubmitted questions
-      // @ts-ignore
-      .attr("transform", (d) => `translate(${labelArcGenerator.centroid(d)})`)
-      .style("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("font-weight", "semibold")
-      .attr("transform", (d) => {
-        // @ts-ignore
-        const pos = labelArcGenerator.centroid(d);
-        pos[0] = pos[0] * 2; // Change the 1.5 to another value to move the label further or closer
-        pos[1] = pos[1] * 1.5;
-        return `translate(${pos}) translate(${width / 2}, ${height / 2})`;
-      });
+      .append("g")
+      .call(d3.axisLeft(y))
+      .attr("transform", `translate(${MARGIN.left}, 0)`);
 
-    if (unsubmitted.length > 0) {
-      // Add "Not Submitted" to the legend
-      svg
-        .append("text")
-        .attr("x", width - 155 - (MARGIN.right + 10)) // 10 is space between dot and text
-        .attr("y", MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
-        .attr("text-anchor", "left")
-        .style("font-size", "14px")
-        .style("font-weight", "semibold")
-        .style("fill", "#ff7f0e") // orange
-        .text(
-          `Not Submitted (${
-            (data.unseen / (data.seen + data.unseen)) * 100
-          }%) :`
-        );
-
-      // Add one dot in the legend for each unseen question
-      svg
-        .selectAll("mydots")
-        .data(unsubmittedTruncated)
-        .enter()
-        .append("circle")
-        .attr("cx", width - 155 - (MARGIN.right + 10)) // Align dots vertically
-        .attr("cy", (d, i) => MARGIN.top / 2 + 15 * (i + 1)) // 15 is the distance between dots vertically
-        .attr("r", 3)
-        .style("fill", "#ff7f0e"); // orange
-
-      // Add text to the legend for each unseen question
-      svg
-        .selectAll("mylabels")
-        .data(unsubmittedTruncated)
-        .enter()
-        .append("text")
-        .attr("x", width - 145 - (MARGIN.right + 10)) // Align text next to the dots
-        .attr("y", (d, i) => MARGIN.top / 2 + 15 * (i + 1)) // Match the vertical position of the corresponding dot
-        .style("fill", "#ff7f0e") // orange
-        .text((d, i) => `Q: ${d}`)
-        .attr("text-anchor", "left")
-        .style("alignment-baseline", "middle");
-
-      if (unsubmitted.length > UNSUBMITTED_LIMIT) {
-        // Add "..." to the legend
-        svg
-          .append("text")
-          .attr("x", width - 145 - (MARGIN.right + 10)) // Align text next to the dots
-          .attr("y", MARGIN.top / 2 + 15 * (unsubmittedTruncated.length + 1)) // Match the vertical position of the corresponding dot
-          .style("fill", "#ff7f0e") // orange
-          .text(`+ ${unsubmitted.length - UNSUBMITTED_LIMIT} more...`)
-          .attr("text-anchor", "left")
-          .style("alignment-baseline", "middle");
-      }
-    } else {
-      // Add "All Questions Submitted" to the legend
-      svg
-        .append("text")
-        .attr("x", width - 155 - MARGIN.right)
-        .attr("y", MARGIN.top / 2 - 1) // -1 for slight vertical adjustment
-        .attr("text-anchor", "left")
-        .style("font-size", "14px")
-        .style("font-weight", "semibold")
-        .style("fill", "#1f77b4") // blue
-        .text("All Questions Submitted");
-    }
-
-    // Add selected assignment to the graph
+    // Add Y axis label:
     svg
       .append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
-      .attr("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("font-weight", "semibold")
-      .text(`Assignment: ${getName(selectedAssignmentId)}`);
+      .attr("text-anchor", "end")
+      .attr("x", `-${height / 3}`)
+      .attr("y", MARGIN.left / 2 - 10)
+      .attr("transform", "rotate(-90)")
+      .text("% of questions submitted")
+      .style("font-size", "12px");
+
+    const color = d3
+      .scaleOrdinal()
+      .domain(subgroups)
+      .range(["#e41a1c", LIBRE_BLUE]);
+
+    svg
+      .append("g")
+      .selectAll("g")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("transform", (d) => `translate(${x(d.assignment_id)}, 0)`)
+      .selectAll("rect")
+      // @ts-ignore
+      .data((d) => subgroups.map((key) => ({ key, value: d[key] })))
+      .enter()
+      .append("rect")
+      .attr("x", (d) => xSubgroup(d.key) ?? 0)
+      .attr("y", (d, idx) => {
+        return d.key === "class_avg"
+          ? y(getCourseAvgPercent(data))
+          : y(getStudentPercent(data[idx]));
+      })
+      .attr("width", xSubgroup.bandwidth() - BUCKET_PADDING)
+      .attr(
+        "height",
+        (d, idx) =>
+          height -
+          MARGIN.bottom -
+          y(
+            d.key === "class_avg"
+              ? getCourseAvgPercent(data)
+              : getStudentPercent(data[idx])
+          )
+      )
+      .attr("fill", (d) => color(d.key) as string);
+
+    // Add one dot in the legend for each name.
+    svg
+      .selectAll("mydots")
+      .data(subgroupsPretty)
+      .enter()
+      .append("circle")
+      .attr("cx", (d, i) => width - 155 - (MARGIN.right + i * 155)) // 155 is the distance between dots
+      .attr("cy", (d, i) => MARGIN.top / 2 - 5)
+      .attr("r", 7)
+      .style("fill", (d) => color(d) as string);
+
+    // Add one dot in the legend for each name.
+    svg
+      .selectAll("mylabels")
+      .data(subgroupsPretty)
+      .enter()
+      .append("text")
+      .attr("x", (d, i) => width - 155 - (MARGIN.right - 15 + i * 155)) // 155 is the distance between dots, 15 is space between dot and text
+      .attr("y", (d, i) => MARGIN.top / 2 - 5)
+      .style("fill", (d) => color(d) as string)
+      .text((d) => d)
+      .attr("text-anchor", "left")
+      .style("alignment-baseline", "middle");
 
     setLoading(false);
   }
@@ -268,7 +238,11 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
     <>
       {loading && <VisualizationLoading width={width} height={height} />}
       {!loading && data && (
-        <>
+        <div
+          className={`tw-w-full ${
+            tableView ? "tw-max-h-[500px] tw-overflow-y-auto" : ""
+          }`}
+        >
           {tableView ? (
             <VisualizationTable
               headRender={() =>
@@ -310,7 +284,7 @@ const StudentActivity: React.FC<StudentActivityProps> = ({
               <g className="tooltip-area"></g>
             </svg>
           )}
-        </>
+        </div>
       )}
       {!loading && !data && <NoData width={width} height={height} />}
     </>

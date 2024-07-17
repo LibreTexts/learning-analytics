@@ -147,35 +147,61 @@ class Analytics {
   }
 
   public async getADAPTActivity(
-    student_id: string,
-    assignment_id: string
-  ): Promise<ActivityAccessed> {
+    student_id: string
+  ): Promise<ActivityAccessed[]> {
     try {
       await connectDB();
 
-      const studentAssignment = await calcADAPTStudentActivity.findOne({
-        course_id: this.adaptID.toString(),
-        assignment_id: assignment_id,
-        student_id: student_id,
+      const courseAvgData = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $group: {
+            _id: "$assignment_id",
+            avg_seen: {
+              $avg: { $size: "$seen" },
+            },
+            avg_unseen: {
+              $avg: { $size: "$unseen" },
+            },
+          },
+        },
+      ]);
+
+      const studentAssignments = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+          },
+        },
+      ]);
+
+      const data: ActivityAccessed[] = courseAvgData.map((d) => {
+        const studentData = studentAssignments.find(
+          (a) => a.assignment_id === d._id
+        );
+
+        return {
+          assignment_id: d._id,
+          seen: studentData?.seen ?? 0,
+          unseen: studentData?.unseen ?? 0,
+          course_avg_seen: d.avg_seen,
+          course_avg_unseen: d.avg_unseen,
+        };
       });
 
-      if (!studentAssignment) {
-        return {
-          seen: [],
-          unseen: [],
-        };
-      }
+      const assignmentExclusions = await this._getAssignmentExclusions();
 
-      return {
-        seen: studentAssignment.seen,
-        unseen: studentAssignment.unseen,
-      };
+      return data.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.assignment_id)
+      );
     } catch (err) {
       console.error(err);
-      return {
-        seen: [],
-        unseen: [],
-      };
+      return [];
     }
   }
 
