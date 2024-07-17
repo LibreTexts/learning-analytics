@@ -2,6 +2,7 @@
 
 /***
  * This file contains server-side functions that are used to fetch data from the Analytics class.
+ * They contain minimal logic and are used to fetch data for the client-side components.
  */
 
 import Analytics from "@/lib/Analytics";
@@ -65,7 +66,7 @@ export async function getStudentQuickMetrics(
   const averageScore =
     averageResult.status === "fulfilled" ? averageResult.value : 0;
 
-    return {
+  return {
     textbookEngagement,
     assignmentsCount,
     averageScore,
@@ -220,4 +221,9 @@ export async function getLearningObjectiveCompletion(course_id: string) {
   const learningObjectiveCompletion =
     await analytics.getLearningObjectiveCompletion();
   return learningObjectiveCompletion;
+}
+
+export async function getLearningCurves(course_id: string) {
+  const analytics = new Analytics(course_id);
+  return await analytics.getLearningCurves();
 }

@@ -6,16 +6,21 @@ import {
   useRef,
   useState,
 } from "react";
-import { LOCData, VisualizationBaseProps } from "@/lib/types";
+import {
+  LOCData,
+  LearningCurveData,
+  VisualizationBaseProps,
+} from "@/lib/types";
 import { useGlobalContext } from "@/state/globalContext";
 import LearningObjectiveLevel from "./LearningObjectiveLevel";
 import LoadingComponent from "./LoadingComponent";
+import LearningCurveDescriptor from "./LearningCurveDescriptor";
 
-type LOCProps = VisualizationBaseProps & {
-  getData: (course_id: string) => Promise<LOCData[]>;
+type LearningCurvesProps = VisualizationBaseProps & {
+  getData: (course_id: string) => Promise<LearningCurveData[]>;
 };
 
-const LearningObjectiveCompletion: React.FC<LOCProps> = ({
+const LearningCurves: React.FC<LearningCurvesProps> = ({
   getData,
   innerRef,
 }) => {
@@ -27,7 +32,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef(null);
-  const [data, setData] = useState<LOCData[]>([]);
+  const [data, setData] = useState<LearningCurveData[]>([]);
   const [loading, setLoading] = useState(false);
 
   const noFrameworkAlignment = useMemo(() => {
@@ -46,6 +51,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
       if (!globalState.courseID) return;
 
       const _data = await getData(globalState.courseID);
+      console.log(_data);
       setData(_data);
     } catch (err) {
       console.error(err);
@@ -68,7 +74,7 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
           {!noFrameworkAlignment && (
             <div className="tw-flex tw-flex-col">
               {data.map((d, index) => (
-                <LearningObjectiveLevel key={crypto.randomUUID()} data={d} />
+                <LearningCurveDescriptor key={crypto.randomUUID()} data={d} />
               ))}
             </div>
           )}
@@ -79,4 +85,4 @@ const LearningObjectiveCompletion: React.FC<LOCProps> = ({
   );
 };
 
-export default LearningObjectiveCompletion;
+export default LearningCurves;

@@ -103,3 +103,17 @@ export type LOCData = {
     avg_performance: number;
   }[];
 };
+
+export type LearningCurveData = {
+  descriptor: {
+    id: string;
+    text: string;
+    questions: string[];
+    question_count: number;
+  };
+  score_data: {
+    question_id: string;
+    score: number;
+    num_attempts: number;
+  }[];
+};

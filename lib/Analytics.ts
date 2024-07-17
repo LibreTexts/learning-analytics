@@ -10,6 +10,7 @@ import {
   IDWithName,
   IDWithText,
   LOCData,
+  LearningCurveData,
   PerformancePerAssignment,
   Student,
   SubmissionTimeline,
@@ -29,7 +30,9 @@ import CourseAnalyticsSettings, {
 } from "./models/courseAnalyticsSettings";
 import ewsActorSummary from "./models/ewsActorSummary";
 import adaptCourses from "@/lib/models/adaptCourses";
-import frameworkQuestionAlignment from "./models/frameworkQuestionAlignment";
+import frameworkQuestionAlignment, {
+  IFrameworkQuestionAlignment_Raw,
+} from "./models/frameworkQuestionAlignment";
 import calcReviewTime from "./models/calcReviewTime";
 import calcADAPTScores from "./models/calcADAPTScores";
 import assignmentScores, {
@@ -1369,6 +1372,127 @@ class Analytics {
             sensitivity: "base",
           }
         );
+      });
+
+      return sorted;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getLearningCurves(): Promise<LearningCurveData[]> {
+    try {
+      await connectDB();
+      const courseAssignments = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const rawAlignment = await frameworkQuestionAlignment.find({
+        assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
+      });
+
+      const alignment = rawAlignment.map((d) => ({
+        question_id: d.question_id,
+        framework_descriptors: d.framework_descriptors,
+        framework_levels: d.framework_levels,
+      })) as IFrameworkQuestionAlignment_Raw[];
+
+      const uniqueDescriptorIDs = new Set<string>(
+        alignment
+          .map((a) => a.framework_descriptors.map((l: IDWithText) => l.id))
+          .flat()
+      );
+
+      const frameworkLevelData = (await frameworkLevels.find({
+        "descriptors.id": { $in: Array.from(uniqueDescriptorIDs) },
+      })) as IFrameworkLevel_Raw[];
+
+      const out: LearningCurveData[] = [];
+      for (const a of alignment) {
+        for (const d of a.framework_descriptors) {
+          const levelWDescriptor = frameworkLevelData.find((fd) =>
+            fd.descriptors.find((l) => l.id.toString() === d.id.toString())
+          );
+          if (!levelWDescriptor) continue;
+
+          const foundDescriptor = levelWDescriptor.descriptors.find(
+            (l) => l.id.toString() === d.id.toString()
+          );
+
+          if (!foundDescriptor) continue;
+
+          // If the descriptor is already in the output, add the question to the list of questions associated with the descriptor
+          const existing = out.find(
+            (o) => o.descriptor.id.toString() === d.id.toString()
+          );
+          if (existing) {
+            existing.descriptor.questions.push(a.question_id);
+            existing.descriptor.question_count++;
+            continue;
+          }
+
+          out.push({
+            descriptor: {
+              id: d.id.toString(),
+              text: foundDescriptor.descriptor,
+              questions: [a.question_id],
+              question_count: 1,
+            },
+            score_data: [],
+          });
+        }
+      }
+
+      const allQuestionIds = alignment.map((a) => a.question_id);
+      const allScores = await this._learningObjectivesGetScoreData(
+        allQuestionIds
+      );
+
+      // out is now a list of all descriptors
+      for (const o of out) {
+        const _scoreData: LearningCurveData["score_data"] = [];
+        const descriptorQuestionIds = alignment
+          .filter((a) =>
+            a.framework_descriptors.find(
+              (l: IDWithText) => l.id.toString() === o.descriptor.id.toString()
+            )
+          )
+          .map((a) => a.question_id);
+
+        if (descriptorQuestionIds.length === 0) continue; // Skip if no questions are associated with this descriptor
+
+        const descriptorScoreData = allScores.filter((d) =>
+          d.questions.find((q) => descriptorQuestionIds.includes(q.question_id))
+        );
+
+        descriptorScoreData.forEach((d) => {
+          d.questions.forEach((q) => {
+            _scoreData.push({
+              question_id: q.question_id,
+              score: parseFloat(q.score),
+              num_attempts: 1,
+            });
+          });
+        });
+
+        // Set the score data for this descriptor
+        o.score_data = _scoreData;
+      }
+
+      // Filter out exclusions
+      const frameworkExclusions = await this._getFrameworkExclusions();
+      const exclusionIDs = frameworkExclusions.map((d) => d.id);
+      const finalFiltered = out.filter((d) => {
+        return !exclusionIDs.includes(d.descriptor.id);
+      });
+
+      // Sort by descriptor text
+      const sorted = finalFiltered.sort((a, b) => {
+        return a.descriptor.text.localeCompare(b.descriptor.text, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
       });
 
       return sorted;
