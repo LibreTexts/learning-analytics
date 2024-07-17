@@ -43,7 +43,7 @@ export type ADAPTAssignmentQuestionField = {
   key: string;
   label: string;
   isRowHeader: boolean;
-}
+};
 export type ADAPTQuestionScoreData = {
   name: string;
   percent_correct: string;
@@ -56,6 +56,21 @@ export type ADAPTAssignmentScoresRes = {
   type: string;
   rows: ADAPTQuestionScoreData[];
   fields: ADAPTAssignmentQuestionField[];
+};
+
+// Auto Graded Submissions
+export type ADAPTAutoGradedSubmissionData = {
+  question_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  score: number;
+  submission_count: number;
+};
+
+export type ADAPTAutoGradedSubmissionRes = {
+  type: string;
+  auto_graded_submission_info_by_user: ADAPTAutoGradedSubmissionData[];
 };
 
 // Submission Timestamps

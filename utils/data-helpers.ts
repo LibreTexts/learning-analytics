@@ -1,3 +1,4 @@
+import { ADAPTQuestionScoreData } from "@/lib/types";
 import crypto from "crypto";
 import { isGeneratorFunction } from "util/types";
 
@@ -268,3 +269,22 @@ export const PARSE_TIME_ON_TASK_PIPELINE = [
     },
   },
 ];
+
+export function extractQuestionIdsFromScoreData(
+  scoreData: ADAPTQuestionScoreData[]
+): string[] {
+  const keysToExclude = [
+    "name",
+    "percent_correct",
+    "total_points",
+    "userId",
+    "override_score",
+  ];
+
+  const questionIds = Object.keys(scoreData[0]).filter(
+    (key) => !keysToExclude.includes(key)
+  );
+
+  // Return only items that can be parsed into an integer (question id)
+  return questionIds.filter((id) => !isNaN(parseInt(id, 10)));
+}

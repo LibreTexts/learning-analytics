@@ -1,4 +1,5 @@
 import {
+  ADAPTAutoGradedSubmissionData,
   ADAPTCourseAssignment,
   ADAPTFrameworkRes,
   ADAPTReviewTimeData,
@@ -13,6 +14,7 @@ import {
   QUESTION_SCORE_DATA_EXCLUSIONS,
   encryptStudent,
   extractScoreFromLabel,
+  extractQuestionIdsFromScoreData,
 } from "@/utils/data-helpers";
 import frameworkQuestionAlignment, {
   IFrameworkQuestionAlignment_Raw,
@@ -294,6 +296,16 @@ class AnalyticsDataCollector {
           const parsed: IAssignmentScoresRaw[] = [];
 
           for (const assignment of scoreData) {
+            const questionIds = extractQuestionIdsFromScoreData(
+              assignment.rows
+            );
+
+            const autoGradedData = await this._collectAutoGradedSubmissions(
+              adaptConn,
+              assignment.assignment_id,
+              questionIds
+            );
+
             for (const row of assignment.rows) {
               const student_id = row.userId;
               const reduced = Object.keys(row).reduce((acc, key) => {
@@ -316,6 +328,18 @@ class AnalyticsDataCollector {
                 return "-";
               };
 
+              const getSubmissionCount = (question_id: string) => {
+                const autoGraded = autoGradedData.find(
+                  (data) => data.question_id === question_id
+                );
+                if (autoGraded) {
+                  return autoGraded.data.find(
+                    (d) => d.user_id.toString() === student_id.toString()
+                  )?.submission_count ?? 0;
+                }
+                return 0;
+              };
+
               parsed.push({
                 student_id,
                 course_id: course.course_id,
@@ -335,6 +359,7 @@ class AnalyticsDataCollector {
                     first_submitted_at: null,
                     last_submitted_at: null,
                     max_score: getMaxScore(key),
+                    submission_count: getSubmissionCount(key)
                   };
                 }),
               });
@@ -788,6 +813,36 @@ class AnalyticsDataCollector {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  private async _collectAutoGradedSubmissions(
+    instructorConn: ADAPTInstructorConnector,
+    assignmentID: string,
+    questionIds: string[]
+  ): Promise<{ question_id: string; data: ADAPTAutoGradedSubmissionData[] }[]> {
+    const autoGradedPromises = questionIds.map((questionId) => {
+      return instructorConn.getAssignmentAutoGradedSubmissions(
+        assignmentID,
+        questionId
+      );
+    });
+
+    const autoGradedResponses = await Promise.allSettled(autoGradedPromises);
+
+    const autoGradedData = autoGradedResponses.map((response, idx) => {
+      if (response.status === "fulfilled" && response.value) {
+        return {
+          question_id: questionIds[idx],
+          data: response.value.data.auto_graded_submission_info_by_user,
+        };
+      }
+      return {
+        question_id: questionIds[idx],
+        data: [],
+      };
+    });
+
+    return autoGradedData;
   }
 
   private _extractScoreAndTimeOnTask(raw: string): {

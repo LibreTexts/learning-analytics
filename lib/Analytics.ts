@@ -1469,7 +1469,7 @@ class Analytics {
             _scoreData.push({
               question_id: q.question_id,
               score: parseFloat(q.score),
-              num_attempts: 1,
+              num_attempts: q.submission_count,
             });
           });
         });

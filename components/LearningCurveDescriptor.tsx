@@ -69,7 +69,7 @@ const LearningCurveDescriptor: React.FC<LearningCurveDescriptorProps> = ({
 
     const x = d3
       .scaleLinear()
-      .domain([0, xMax])
+      .domain([1, xMax])
       .range([MARGIN.left, width - MARGIN.right]);
 
     const y = d3
@@ -94,41 +94,55 @@ const LearningCurveDescriptor: React.FC<LearningCurveDescriptorProps> = ({
       .attr("transform", `translate(0, ${height - MARGIN.bottom})`)
       .call(d3.axisBottom(x));
 
+    // Add x-axis label
+    svg
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", width / 2)
+      .attr("y", height - 10)
+      .attr("font-size", "12px")
+      .attr("font-weight", "semibold")
+      .text("Number of Submission Attempts");
+
     // Add y-axis
     svg
       .append("g")
       .attr("transform", `translate(${MARGIN.left}, 0)`)
       .call(d3.axisLeft(y));
 
-    // Calculate the regression line
-    const n = cleaned.length;
-    const sumX = cleaned.reduce((sum, d) => sum + d.num_attempts, 0);
-    const sumY = cleaned.reduce((sum, d) => sum + d.score, 0);
-    const sumXY = cleaned.reduce((sum, d) => sum + d.num_attempts * d.score, 0);
-    const sumXX = cleaned.reduce(
-      (sum, d) => sum + d.num_attempts * d.num_attempts,
-      0
-    );
+    // Add y-axis label
+    svg
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", `translate(10, ${height / 2}) rotate(-90)`)
+      .attr("font-size", "12px")
+      .attr("font-weight", "semibold")
+      .text("Final Question Score");
+
+    // Calculate the slope and intercept for the line of best fit starting at x = 1
+    const filteredData = cleaned.filter((d) => d.num_attempts >= 1);
+    const n = filteredData.length;
+    const sumX = d3.sum(filteredData, (d) => d.num_attempts);
+    const sumY = d3.sum(filteredData, (d) => d.score);
+    const sumXY = d3.sum(filteredData, (d) => d.num_attempts * d.score);
+    const sumXX = d3.sum(filteredData, (d) => d.num_attempts * d.num_attempts);
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
-    // Define the regression line data
-    const regressionLine = [
-      { num_attempts: 0, score: intercept },
-      { num_attempts: xMax, score: slope * xMax + intercept },
-    ];
+    // Determine the y-value of the line at x = 1 and clamp it to the x-axis
+    let startY = intercept + slope * 1;
+    if (startY < 0) startY = 0;
 
-    // Add the regression line to the SVG
+    // Create the line of best fit starting at x = 1
     svg
       .append("line")
-      .datum(regressionLine)
-      .attr("x1", (d) => x(d[0].num_attempts))
-      .attr("y1", (d) => y(d[0].score))
-      .attr("x2", (d) => x(d[1].num_attempts))
-      .attr("y2", (d) => y(d[1].score))
-      .attr("stroke", "red")
-      .attr("stroke-width", 2);
+      .attr("x1", x(1))
+      .attr("y1", y(intercept + slope))
+      .attr("x2", x(xMax))
+      .attr("y2", y(Math.max(0, intercept + slope * xMax)))
+      .attr("stroke", "blue")
+      .attr("stroke-width", 1);
 
     setLoading(false);
   }
