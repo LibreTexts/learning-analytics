@@ -48,8 +48,11 @@ export type StudentQuickMetrics = {
 };
 
 export type ActivityAccessed = {
+  assignment_id: string;
   seen: number[];
   unseen: number[];
+  course_avg_seen: number;
+  course_avg_unseen: number;
 };
 
 export type AnalyticsRawData = {
