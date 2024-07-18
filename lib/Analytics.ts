@@ -11,6 +11,9 @@ import {
   IDWithText,
   LOCData,
   LearningCurveData,
+  LearningCurveRawData,
+  LearningCurveRawDataWPercent,
+  LearningCurveRawScoreDataWPercent,
   PerformancePerAssignment,
   Student,
   SubmissionTimeline,
@@ -1018,7 +1021,8 @@ class Analytics {
         ) as ICalcADAPTStudentActivity_Raw | undefined;
 
         const submitted = activity?.seen.length ?? 0;
-        const unsubmitted = allCourseQuestions[0].questions.length - submitted ?? 0;
+        const unsubmitted =
+          allCourseQuestions[0].questions.length - submitted ?? 0;
 
         return {
           actor_id: d.actor_id,
@@ -1489,7 +1493,7 @@ class Analytics {
         "descriptors.id": { $in: Array.from(uniqueDescriptorIDs) },
       })) as IFrameworkLevel_Raw[];
 
-      const out: LearningCurveData[] = [];
+      const out: LearningCurveRawData[] = [];
       for (const a of alignment) {
         for (const d of a.framework_descriptors) {
           const levelWDescriptor = frameworkLevelData.find((fd) =>
@@ -1532,7 +1536,7 @@ class Analytics {
 
       // out is now a list of all descriptors
       for (const o of out) {
-        const _scoreData: LearningCurveData["score_data"] = [];
+        const _scoreData: LearningCurveRawData["score_data"] = [];
         const descriptorQuestionIds = alignment
           .filter((a) =>
             a.framework_descriptors.find(
@@ -1548,23 +1552,80 @@ class Analytics {
         );
 
         descriptorScoreData.forEach((d) => {
-          d.questions.forEach((q) => {
+          for (const q of d.questions) {
+            if (!q.last_submitted_at) continue;
+
             _scoreData.push({
               question_id: q.question_id,
               score: parseFloat(q.score),
-              num_attempts: q.submission_count,
+              max_score: parseFloat(q.max_score),
+              last_submitted_at: q.last_submitted_at,
             });
-          });
+          }
         });
 
         // Set the score data for this descriptor
         o.score_data = _scoreData;
       }
 
+      // Calculate percent correct for each question
+      const withPercentCorrect: LearningCurveRawDataWPercent[] = out.map(
+        (d) => {
+          d.score_data = d.score_data.map((s) => {
+            return {
+              ...s,
+              percent_correct: parseFloat(
+                ((s.score / s.max_score) * 100).toPrecision(2)
+              ),
+            };
+          }) as LearningCurveRawScoreDataWPercent[];
+          return d as LearningCurveRawDataWPercent;
+        }
+      );
+
+      // Group the questions by last_submitted_at and calculate the average percent correct for each day
+      const groupedByDate: LearningCurveData[] = withPercentCorrect.map((d) => {
+        const grouped = d.score_data.reduce((acc, curr) => {
+          const date = new Date(curr.last_submitted_at).toLocaleDateString();
+          const existing = acc.find((a) => a.date === date);
+          if (existing) {
+            existing.percent_correct.push(curr.percent_correct);
+          } else {
+            acc.push({
+              date: date,
+              percent_correct: [curr.percent_correct],
+            });
+          }
+          return acc;
+        }, [] as { date: string; percent_correct: number[] }[]);
+
+        const mappedScoreData = grouped.map((g) => ({
+          submission_date: g.date,
+          avg_percent: parseFloat(
+            (
+              g.percent_correct.reduce((acc, curr) => acc + curr, 0) /
+              g.percent_correct.length
+            ).toPrecision(2)
+          ),
+        }));
+
+        const dateSorted = mappedScoreData.sort((a, b) => {
+          return (
+            new Date(a.submission_date).getTime() -
+            new Date(b.submission_date).getTime()
+          );
+        });
+
+        return {
+          descriptor: d.descriptor,
+          score_data: dateSorted,
+        };
+      });
+
       // Filter out exclusions
       const frameworkExclusions = await this._getFrameworkExclusions();
       const exclusionIDs = frameworkExclusions.map((d) => d.id);
-      const finalFiltered = out.filter((d) => {
+      const finalFiltered = groupedByDate.filter((d) => {
         return !exclusionIDs.includes(d.descriptor.id);
       });
 
@@ -1627,9 +1688,12 @@ class Analytics {
     }
   }
 
-  private _learningObjectivesParseScoreData(
-    data: IAssignmentScoresRaw[]
-  ): { question_id: string; score: number; max_score: number }[] {
+  private _learningObjectivesParseScoreData(data: IAssignmentScoresRaw[]): {
+    question_id: string;
+    score: number;
+    max_score: number;
+    last_submitted_at: string | null;
+  }[] {
     const results = [];
     for (const d of data) {
       for (const q of d.questions) {
@@ -1638,6 +1702,7 @@ class Analytics {
           question_id: q.question_id,
           score: parseFloat(q.score),
           max_score: parseFloat(q.max_score),
+          last_submitted_at: q.last_submitted_at,
         });
       }
     }

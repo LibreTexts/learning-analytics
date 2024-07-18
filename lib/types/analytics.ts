@@ -107,16 +107,36 @@ export type LOCData = {
   }[];
 };
 
-export type LearningCurveData = {
-  descriptor: {
-    id: string;
-    text: string;
-    questions: string[];
-    question_count: number;
-  };
+export type LearningCurveDescriptor = {
+  id: string;
+  text: string;
+  questions: string[];
+  question_count: number;
+}
+
+export type LearningCurveRawScoreData = {
+  question_id: string;
+  score: number;
+  max_score: number;
+  last_submitted_at: string;
+};
+
+export type LearningCurveRawScoreDataWPercent = LearningCurveRawScoreData & {
+  percent_correct: number;
+};
+
+export type LearningCurveRawData = {
+  descriptor: LearningCurveDescriptor;
+  score_data: LearningCurveRawScoreData[];
+};
+
+export type LearningCurveRawDataWPercent = Pick<LearningCurveRawData, "descriptor"> & {
+  score_data: LearningCurveRawScoreDataWPercent[];
+};
+
+export type LearningCurveData = Pick<LearningCurveRawData, "descriptor"> & {
   score_data: {
-    question_id: string;
-    score: number;
-    num_attempts: number;
+    submission_date: string;
+    avg_percent: number;
   }[];
 };
