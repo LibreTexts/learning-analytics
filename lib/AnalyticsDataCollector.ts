@@ -44,7 +44,7 @@ class AnalyticsDataCollector {
     //await this.collectAllAssignments();
     //await this.collectEnrollments();
     await this.collectAssignmentScores();
-    //await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
+    await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
     //await this.collectFrameworkData();
     //await this.collectQuestionFrameworkAlignment();
     //await this.collectReviewTimeData();

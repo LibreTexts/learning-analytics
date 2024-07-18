@@ -51,6 +51,7 @@ const LearningCurves: React.FC<LearningCurvesProps> = ({
       if (!globalState.courseID) return;
 
       const _data = await getData(globalState.courseID);
+      console.log(_data)
       setData(_data);
     } catch (err) {
       console.error(err);
