@@ -5,6 +5,7 @@ import { Form, type ActionResult } from "@/lib/form";
 import { getUser, verifyPassword } from "@/utils/auth";
 import IFrameResizer from "@/components/IFrameResizer";
 import connectDB from "@/lib/database";
+import AuthEventListener from "@/components/AuthEventListener";
 
 export default async function Page() {
   const { user } = await validateRequest();
@@ -15,6 +16,7 @@ export default async function Page() {
   const INPUT_CLASSES = "tw-mt-1 tw-rounded-md tw-border-slate-500";
   return (
     <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-align-center tw-w-full">
+      <AuthEventListener />
       <div className="!tw-border !tw-border-black tw-bg-white !tw-px-8 !tw-py-6 tw-rounded-md tw-shadow-md">
         <h1 className="tw-text-center">Sign in</h1>
         <Form action={login}>
