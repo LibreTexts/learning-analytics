@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Home</title>
+  </head>
+  <body>
+    <h1>Home</h1>
+    <p>Welcome to the home page.</p>
+    <button onclick="sendMessage()">Send Message</button>
+
+    <script>
+      function sendMessage() {
+        const iframe = document.querySelector("iframe");
+        if (iframe && iframe.contentWindow) {
+          console.log("Sending message to iframe.");
+          iframe.contentWindow.postMessage({
+            type: "AUTH_TOKEN",
+            token: "123456",
+          }, 'http://localhost:3000/');
+        } else {
+          console.error("Iframe not found or not loaded.");
+        }
+      }
+    </script>
+    <iframe src="http://localhost:3000/login" width="1000" height="700"></iframe>
+  </body>
+</html>

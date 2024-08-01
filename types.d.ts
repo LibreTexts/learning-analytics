@@ -11,6 +11,8 @@ declare global {
       EWS_API_KEY: string;
       AUTH_SECRET: string;
       DEV_LOCK_COURSE_ID: string;
+      CLIENT_AUTH_SECRET: string;
+      CLIENT_AUTH_ORIGIN_MATCH: string;
     }
   }
 }

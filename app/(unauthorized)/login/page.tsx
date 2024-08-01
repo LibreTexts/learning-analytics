@@ -1,11 +1,8 @@
-import { cookies } from "next/headers";
-import { lucia, validateRequest } from "@/lib/auth";
+import { validateRequest } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Form, type ActionResult } from "@/lib/form";
-import { getUser, verifyPassword } from "@/utils/auth";
-import IFrameResizer from "@/components/IFrameResizer";
-import connectDB from "@/lib/database";
+import { Form } from "@/lib/form";
 import AuthEventListener from "@/components/AuthEventListener";
+import { fallbackLogin } from "@/lib/auth-functions";
 
 export default async function Page() {
   const { user } = await validateRequest();
@@ -16,10 +13,13 @@ export default async function Page() {
   const INPUT_CLASSES = "tw-mt-1 tw-rounded-md tw-border-slate-500";
   return (
     <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-align-center tw-w-full">
-      <AuthEventListener />
+      <AuthEventListener
+        debug={process.env.NODE_ENV !== "production"}
+        originMatch={process.env.CLIENT_AUTH_ORIGIN_MATCH}
+      />
       <div className="!tw-border !tw-border-black tw-bg-white !tw-px-8 !tw-py-6 tw-rounded-md tw-shadow-md">
         <h1 className="tw-text-center">Sign in</h1>
-        <Form action={login}>
+        <Form action={fallbackLogin}>
           <div className="tw-flex tw-flex-col">
             <label htmlFor="email">Email</label>
             <input
@@ -48,48 +48,4 @@ export default async function Page() {
       </div>
     </div>
   );
-}
-
-async function login(_: any, formData: FormData): Promise<ActionResult> {
-  "use server";
-  const email = formData.get("email");
-  if (typeof email !== "string" || email.length < 3 || email.length > 31) {
-    return {
-      error: "Invalid email",
-    };
-  }
-  const password = formData.get("password");
-  if (
-    typeof password !== "string" ||
-    password.length < 6 ||
-    password.length > 255
-  ) {
-    return {
-      error: "Invalid password",
-    };
-  }
-
-  await connectDB();
-  const existingUser = await getUser(email);
-  if (!existingUser) {
-    return {
-      error: "Incorrect email or password",
-    };
-  }
-
-  const validPassword = await verifyPassword(password, existingUser.password);
-  if (!validPassword) {
-    return {
-      error: "Incorrect email or password",
-    };
-  }
-
-  const session = await lucia.createSession(existingUser.id, {});
-  const sessionCookie = lucia.createSessionCookie(session.id);
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes
-  );
-  return redirect("/");
 }

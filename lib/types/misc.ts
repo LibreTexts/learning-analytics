@@ -1,5 +1,9 @@
 import { ZodError, z } from "zod";
 
+export interface ActionResult {
+  error: string | null;
+}
+
 export type AnalyticsAPIResponse<T> = {
   data: T;
   error?: string;
@@ -15,7 +19,7 @@ export type Student = {
   id: string;
   email: string;
   name: string;
-}
+};
 
 export type ADAPT_CourseScoresAPIResponse = {
   body: string[][];
@@ -37,3 +41,8 @@ export type VisualizationInnerRef = {
 export type ZodSafeParseResult<T extends z.ZodTypeAny> =
   | { success: true; data: z.infer<T> }
   | { success: false; error: ZodError };
+
+export type ADAPTLoginJWT = {
+  id: string;
+  role: 2 | 3;
+};
