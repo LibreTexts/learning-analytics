@@ -6,6 +6,8 @@ import { cookies } from "next/headers";
 import { webcrypto } from "crypto";
 import session from "./models/session";
 import { Types } from "mongoose";
+import adaptCourses from "./models/adaptCourses";
+import ADAPTCourseConnector from "./ADAPTCourseConnector";
 globalThis.crypto = webcrypto as Crypto;
 
 // Initialize Lucia after adapter is available
@@ -131,9 +133,11 @@ export const getUser = async (email: string): Promise<IUser | null> => {
   }
 };
 
-export const getUserById = async (id: string): Promise<IUser | null> => {
+export const getUserById = async (
+  id: string | number
+): Promise<IUser | null> => {
   try {
-    const found = await user.findOne({ user_id: id });
+    const found = await user.findOne({ user_id: id.toString() });
     return found;
   } catch (err) {
     console.error(err);
@@ -160,6 +164,44 @@ export const createExternalUser = async (
   } catch (err) {
     console.error(err);
     return null;
+  }
+};
+
+export const createCourseIfNotExists = async (
+  course_id: number
+): Promise<void> => {
+  try {
+    const found = await adaptCourses.findOne({
+      course_id: course_id.toString(),
+    });
+    if (found) return;
+
+    const adaptConn = new ADAPTCourseConnector(course_id.toString());
+    const courseRes = await adaptConn.getCourseMiniSummary();
+    if (
+      !courseRes ||
+      courseRes.data.type !== "success" ||
+      !courseRes.data["mini-summary"]
+    ) {
+      throw new Error("Failed to fetch course data");
+    }
+
+    const courseData = courseRes.data["mini-summary"];
+    const _id = new Types.ObjectId();
+    const toCreate = new adaptCourses({
+      _id,
+      course_id: course_id.toString(),
+      instructor_id: courseData.user_id,
+      name: courseData.name,
+      start_date: courseData.start_date,
+      end_date: courseData.end_date,
+      textbook_url: courseData.textbook_url ?? "",
+      is_in_adapt: true,
+    });
+
+    await toCreate.save();
+  } catch (err) {
+    console.error(err);
   }
 };
 

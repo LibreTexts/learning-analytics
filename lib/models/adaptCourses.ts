@@ -4,7 +4,7 @@ export interface IAdaptCoursesRaw {
   course_id: string;
   instructor_id: string;
   name?: string;
-  textbook_url: string;
+  textbook_url?: string;
   is_in_adapt: boolean;
   letter_grades_released?: boolean;
   start_date?: string;
@@ -18,7 +18,7 @@ const AdaptCoursesSchema = new Schema<IAdaptCourses>(
     course_id: { type: String, required: true },
     instructor_id: { type: String, required: true },
     name: { type: String },
-    textbook_url: { type: String, required: true },
+    textbook_url: { type: String },
     is_in_adapt: { type: Boolean, required: true },
     letter_grades_released: { type: Boolean },
     start_date: { type: String },
