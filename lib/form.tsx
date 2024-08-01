@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormState } from "react-dom";
+import { ActionResult } from "./types";
 
 export function Form({
   children,
@@ -18,8 +19,4 @@ export function Form({
       <p style={{ color: "red", textAlign: 'center', marginTop: '10px' }}>{state.error}</p>
     </form>
   );
-}
-
-export interface ActionResult {
-  error: string | null;
 }
