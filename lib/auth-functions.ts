@@ -1,6 +1,6 @@
 "use server";
 import { verifyPassword } from "@/utils/auth";
-import { createExternalUser, getUser, getUserById } from "@/lib/auth";
+import { createCourseIfNotExists, createExternalUser, getUser, getUserById } from "@/lib/auth";
 import connectDB from "./database";
 import { ActionResult } from "./types";
 import { lucia } from "./auth";
@@ -31,7 +31,7 @@ export async function fallbackLogin(
 
   await connectDB();
   const existingUser = await getUser(email);
-  if (!existingUser) {
+  if (!existingUser || !existingUser.password || !existingUser.email) {
     return {
       error: "Incorrect email or password",
     };
@@ -61,9 +61,9 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     const secret = new TextEncoder().encode(process.env.CLIENT_AUTH_SECRET);
 
     const { payload, protectedHeader } = await jose.jwtVerify(raw, secret);
-    if (!payload.id || !payload.role) throw new Error("Invalid payload");
+    if (!payload.id || !payload.role || !payload.course_id) throw new Error("Invalid payload");
 
-    const { id, role } = payload as { id: string; role: 2 | 3 };
+    const { id, role, course_id } = payload as { id: number; role: 2 | 3, course_id: number};
 
     await connectDB();
 
@@ -75,6 +75,8 @@ export async function adaptLogin(raw: string): Promise<boolean> {
       );
       if (!existingUser) throw new Error("Failed to create user");
     }
+
+    await createCourseIfNotExists(course_id);
 
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);

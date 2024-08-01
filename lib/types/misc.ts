@@ -45,4 +45,5 @@ export type ZodSafeParseResult<T extends z.ZodTypeAny> =
 export type ADAPTLoginJWT = {
   id: string;
   role: 2 | 3;
+  course_id: number;
 };

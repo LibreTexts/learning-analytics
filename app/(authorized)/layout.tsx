@@ -35,7 +35,7 @@ export default async function RootLayout({
         <Providers>
           <SessionToContextProvider>
             <div className="tw-flex tw-flex-row tw-items-center tw-justify-center">
-              <DemoModeControls />
+              {process.env.NODE_ENV === "development" && <DemoModeControls />}
             </div>
             <div className="tw-grid tw-grid-flow-col tw-gap-6 tw-grid-cols-[208px_auto]">
               <NavMenu />

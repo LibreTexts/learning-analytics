@@ -1,9 +1,9 @@
 import { Document, Schema, model, models } from "mongoose";
 
 export interface IUser_Raw {
-  email: string;
+  email?: string;
   user_id: string;
-  password: string;
+  password?: string;
   role: "instructor" | "student";
   courses: string[];
 }
