@@ -4,6 +4,7 @@ import { useEffect } from "react";
 const AuthEventListener = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log('MESSAGE:', event.data)
       //   if (event.origin !== "https://parent-app-url.com") return;
       if (event.data.type === "AUTH_TOKEN") {
         const token = event.data.token;
