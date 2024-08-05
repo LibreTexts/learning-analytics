@@ -65,6 +65,21 @@ class Analytics {
     this.adaptID = parsed;
   }
 
+  public async checkHasData(): Promise<boolean> {
+    try {
+      await connectDB();
+
+      const res = await assignments.findOne({
+        course_id: this.adaptID.toString(),
+      });
+
+      return !!res;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
+
   public async getAssignments(ignoreExclusions = false): Promise<IDWithName[]> {
     try {
       await connectDB();

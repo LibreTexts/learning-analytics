@@ -71,7 +71,7 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     if (!existingUser) {
       existingUser = await createExternalUser(
         user_id,
-        role === 2 ? "student" : "instructor"
+        role === 2 ? "student" : "instructor",
       );
       if (!existingUser) throw new Error("Failed to create user");
     }

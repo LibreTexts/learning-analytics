@@ -14,6 +14,11 @@ import {
 } from "./types";
 import { ICourseAnalyticsSettings_Raw } from "./models/courseAnalyticsSettings";
 
+export async function getHasData(course_id: string): Promise<boolean> {
+  const analytics = new Analytics(course_id);
+  return await analytics.checkHasData();
+}
+
 export async function getInstructorQuickMetrics(
   course_id: string
 ): Promise<InstructorQuickMetrics> {
