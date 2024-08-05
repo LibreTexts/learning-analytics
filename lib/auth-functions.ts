@@ -1,6 +1,6 @@
 "use server";
 import { verifyPassword } from "@/utils/auth";
-import { createCourseIfNotExists, createExternalUser, getUser, getUserById } from "@/lib/auth";
+import { addCourseToUser, createCourseIfNotExists, createExternalUser, getUser, getUserById } from "@/lib/auth";
 import connectDB from "./database";
 import { ActionResult } from "./types";
 import { lucia } from "./auth";
@@ -63,7 +63,7 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     const { payload, protectedHeader } = await jose.jwtVerify(raw, secret);
     if (!payload.user_id || !payload.role || !payload.course_id) throw new Error("Invalid payload");
 
-    const { user_id, role, course_id } = payload as { user_id: number; role: 2 | 3, course_id: number};
+    const { user_id, role, course_id } = payload as { user_id: number; role: 2 | 3, course_id: number };
 
     await connectDB();
 
@@ -71,12 +71,16 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     if (!existingUser) {
       existingUser = await createExternalUser(
         user_id,
-        role === 2 ? "student" : "instructor",
+        role === 2 ? "instructor" : "student",
+        course_id
       );
       if (!existingUser) throw new Error("Failed to create user");
     }
 
     await createCourseIfNotExists(course_id);
+    if(existingUser.courses.indexOf(course_id.toString()) === -1) {
+      await addCourseToUser(existingUser.id, course_id);
+    }
 
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
