@@ -147,7 +147,8 @@ export const getUserById = async (
 
 export const createExternalUser = async (
   id: string | number,
-  role: "student" | "instructor"
+  role: "student" | "instructor",
+  course_id: string | number
 ): Promise<IUser | null> => {
   try {
     const _id = new Types.ObjectId();
@@ -155,7 +156,7 @@ export const createExternalUser = async (
       _id: _id,
       user_id: id.toString(),
       role,
-      courses: [],
+      courses: [course_id.toString()],
     });
 
     await toCreate.save();
@@ -204,6 +205,24 @@ export const createCourseIfNotExists = async (
     console.error(err);
   }
 };
+
+export const addCourseToUser = async (
+  user_id: string | number,
+  course_id: string | number
+): Promise<void> => {
+  try {
+    await user.updateOne(
+      { user_id: user_id.toString() },
+      {
+        $addToSet: {
+          courses: course_id.toString(),
+        },
+      }
+    );
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 declare module "lucia" {
   interface Register {
