@@ -26,12 +26,12 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
   const { assignments, assignmentsStatus } = useAssignments();
   const elementRef = useRef<HTMLDivElement>(null);
 
-  const { data: students, status: studentsStatus } = useQuery<Student[]>({
+  const { data: students, isFetching: fetchingStudents } = useQuery<Student[]>({
     queryKey: ["students", globalState.courseID, globalState.ferpaPrivacy],
     queryFn: fetchStudents,
     staleTime: 1000 * 60 * 15, // 15 minutes
     refetchOnWindowFocus: false,
-    enabled: !!globalState.courseID && context === "instructor",
+    enabled: globalState.courseID && context === "instructor" ? true : false,
   });
 
   useEffect(() => {
@@ -92,7 +92,7 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({
     <CustomDropdown
       icon="person"
       label={globalState.student.id ? selectedStudentPretty : "Select Student"}
-      loading={studentsStatus === "pending"}
+      loading={fetchingStudents}
       drop="down"
       labelLength={12}
       toggleClassName="!tw-w-44 !tw-p-1 !tw-overflow-x-hidden"

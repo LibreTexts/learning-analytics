@@ -19,6 +19,7 @@ const DEFAULT_GLOBAL_STATE: GlobalState = {
   },
   assignmentId: "",
   courseID: "",
+  hasData: false,
   shareGradeDistribution: false,
   courseLetterGradesReleased: false,
 };

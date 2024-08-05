@@ -9,6 +9,7 @@ export type GlobalState = {
     email: string;
     name: string;
   };
+  hasData: boolean;
   assignmentId: string;
   courseLetterGradesReleased: boolean;
 } & ICourseAnalyticsSettings_Raw;
