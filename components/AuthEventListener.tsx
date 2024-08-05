@@ -15,11 +15,12 @@ const AuthEventListener = ({ debug = false, originMatch }: { debug?: boolean, or
   }, []);
 
   async function handleMessage(event: MessageEvent) {
+    console.log("Received message from parent window: ", event);
     if (originMatch && event.origin !== originMatch) {
       console.error(`Origin ${event.origin} does not match expected value: ${originMatch}`);
     }
 
-    if (event.data.type !== "AUTH_TOKEN") return
+    if (event.data.type !== "AUTH_TOKEN") return;
     const token = event.data.token;
 
     if (debug) console.log("Received token from parent window: ", token);
