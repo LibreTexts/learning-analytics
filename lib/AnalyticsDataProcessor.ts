@@ -21,19 +21,19 @@ class AnalyticsDataProcessor {
 
   public async runProcessors() {
     try {
-      //await this.compressADAPTInteractionDays();
-      // await this.compressADAPTGradeDistribution();
-      //await this.compressADAPTSubmissions();
+      await this.compressADAPTInteractionDays();
+      await this.compressADAPTGradeDistribution();
+      await this.compressADAPTSubmissions();
       await this.compressADAPTScores();
       await this.compressADAPTStudentActivity(); // this must be ran after compressADAPTScores
-      // await this.compressTextbookActivityTime();
-      // await this.compressTexbookInteractionsByDate();
-      // await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
-      //await this.compressReviewTime();
-      //await this.compressTimeOnTask();
+      await this.compressTextbookActivityTime();
+      await this.compressTexbookInteractionsByDate();
+      await this.compressTextbookNumInteractions(); // Should be ran after compressing textbookInteractionsByDate
+      await this.compressReviewTime();
+      await this.compressTimeOnTask();
 
-      //const ews = new EarlyWarningSystem(); // This should always be the last one
-      //await ews.updateEWSData();
+      const ews = new EarlyWarningSystem(); // This should always be the last one
+      await ews.updateEWSData();
     } catch (err: any) {
       debugADP(err.message ?? "Unknown error occured while running processors");
     }

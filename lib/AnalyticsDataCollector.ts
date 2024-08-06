@@ -28,6 +28,7 @@ import assignmentScores, {
 import assignments, { IAssignmentRaw } from "./models/assignments";
 import framework, { IFramework_Raw } from "./models/framework";
 import frameworkLevels, { IFrameworkLevel_Raw } from "./models/frameworkLevels";
+import { parse } from "date-fns";
 
 class AnalyticsDataCollector {
   constructor() {
@@ -40,14 +41,14 @@ class AnalyticsDataCollector {
   }
 
   async runCollectors() {
-    //await this.updateCourseData();
-    //await this.collectAllAssignments();
-    //await this.collectEnrollments();
+    await this.updateCourseData();
+    await this.collectAllAssignments();
+    await this.collectEnrollments();
     await this.collectAssignmentScores();
     await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
-    //await this.collectFrameworkData();
-    //await this.collectQuestionFrameworkAlignment();
-    //await this.collectReviewTimeData();
+    await this.collectFrameworkData();
+    await this.collectQuestionFrameworkAlignment();
+    await this.collectReviewTimeData();
   }
 
   async updateCourseData() {
@@ -213,7 +214,7 @@ class AnalyticsDataCollector {
               email: encryptedEmails[index],
               student_id: encryptedIds[index],
               course_id: course.course_id,
-              created_at: enrollment.enrollment_date,
+              created_at: parse(enrollment.enrollment_date, 'MMMM dd, yyyy', new Date()).toISOString(),
             });
           });
         } catch (e) {

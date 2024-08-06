@@ -433,7 +433,7 @@ class EarlyWarningSystem {
             interaction.course_id === summary.course_id
         );
 
-        summary.interaction_days = interaction.days_count || 0;
+        summary.interaction_days = interaction?.days_count || 0;
 
         // Set data for each assignment
         for (const assignment of summary.assignments) {
