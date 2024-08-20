@@ -1,6 +1,6 @@
 import EarlyWarningSystem from "@/lib/EarlyWarningSystem";
 
-export async function GET() {
+export async function POST() {
   try {
     const ews = new EarlyWarningSystem();
 

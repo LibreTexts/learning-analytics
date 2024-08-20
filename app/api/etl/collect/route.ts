@@ -1,6 +1,6 @@
 import AnalyticsDataCollector from "@/lib/AnalyticsDataCollector";
 
-export async function GET() {
+export async function POST() {
   try {
     const adc = new AnalyticsDataCollector();
 
