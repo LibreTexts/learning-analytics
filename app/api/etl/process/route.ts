@@ -1,6 +1,6 @@
 import AnalyticsDataProcessor from "@/lib/AnalyticsDataProcessor";
 
-export async function GET() {
+export async function POST() {
   try {
     const adp = new AnalyticsDataProcessor();
 
