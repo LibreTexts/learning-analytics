@@ -2,6 +2,7 @@ import {
   ADAPTAutoGradedSubmissionData,
   ADAPTCourseAssignment,
   ADAPTFrameworkRes,
+  ADAPTFrameworkSyncWebhookData,
   ADAPTReviewTimeData,
 } from "./types";
 import enrollments, { IEnrollmentsRaw } from "./models/enrollments";
@@ -214,7 +215,11 @@ class AnalyticsDataCollector {
               email: encryptedEmails[index],
               student_id: encryptedIds[index],
               course_id: course.course_id,
-              created_at: parse(enrollment.enrollment_date, 'MMMM dd, yyyy', new Date()).toISOString(),
+              created_at: parse(
+                enrollment.enrollment_date,
+                "MMMM dd, yyyy",
+                new Date()
+              ).toISOString(),
             });
           });
         } catch (e) {
@@ -334,9 +339,11 @@ class AnalyticsDataCollector {
                   (data) => data.question_id === question_id
                 );
                 if (autoGraded) {
-                  return autoGraded.data.find(
-                    (d) => d.user_id.toString() === student_id.toString()
-                  )?.submission_count ?? 0;
+                  return (
+                    autoGraded.data.find(
+                      (d) => d.user_id.toString() === student_id.toString()
+                    )?.submission_count ?? 0
+                  );
                 }
                 return 0;
               };
@@ -360,7 +367,7 @@ class AnalyticsDataCollector {
                     first_submitted_at: null,
                     last_submitted_at: null,
                     max_score: getMaxScore(key),
-                    submission_count: getSubmissionCount(key)
+                    submission_count: getSubmissionCount(key),
                   };
                 }),
               });
@@ -805,6 +812,83 @@ class AnalyticsDataCollector {
               course_id: doc.course_id,
               assignment_id: doc.assignment_id,
               student_id: doc.student_id,
+            },
+            update: { $set: doc },
+            upsert: true,
+          },
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  public async ingestFrameworkSyncWebhookData(
+    data: ADAPTFrameworkSyncWebhookData
+  ) {
+    try {
+      await connectDB();
+
+      if (data.type === "error") {
+        console.error(
+          `An error was sent by the ADAPT framework sync webhook with message: ${data.message}`
+        );
+        return;
+      }
+
+      const { results } = data;
+
+      const stringifiedQuestionIDs = results.map((result) =>
+        result.question_id.toString()
+      );
+
+      // Find all assignments where the questions array contains any of the question IDs
+      const affectedAssignments = (await assignments.find({
+        questions: { $in: stringifiedQuestionIDs },
+      })) as IAssignmentRaw[];
+
+      const toUpdate: IFrameworkQuestionAlignment_Raw[] =
+        affectedAssignments.reduce(
+          (acc: IFrameworkQuestionAlignment_Raw[], curr) => {
+            const matchingQuestions = curr.questions.filter((q) =>
+              stringifiedQuestionIDs.includes(q)
+            );
+            matchingQuestions.forEach((question) => {
+              const resultMatch = results.find(
+                (r) => r.question_id.toString() === question
+              );
+              if (!resultMatch) return;
+
+              const descriptors = resultMatch.descriptors_levels.descriptors;
+              const levels = resultMatch.descriptors_levels.levels;
+
+              acc.push({
+                course_id: curr.course_id,
+                assignment_id: curr.assignment_id,
+                question_id: question,
+                framework_descriptors: descriptors.map((d) => ({
+                  id: d.id.toString(),
+                  text: d.text,
+                })),
+                framework_levels: levels.map((l) => ({
+                  id: l.id.toString(),
+                  text: l.text,
+                })),
+              });
+            });
+            return acc;
+          },
+          []
+        );
+
+      // Bulk upsert the framework alignment data
+      await frameworkQuestionAlignment.bulkWrite(
+        toUpdate.map((doc) => ({
+          updateOne: {
+            filter: {
+              course_id: doc.course_id,
+              assignment_id: doc.assignment_id,
+              question_id: doc.question_id,
             },
             update: { $set: doc },
             upsert: true,

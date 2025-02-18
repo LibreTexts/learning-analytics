@@ -164,3 +164,16 @@ export type ADAPTMiniSummaryRes = {
     textbook_url: string;
   };
 };
+
+export type ADAPTFrameworkSyncWebhookData =
+  | {
+      type: "success";
+      results: {
+        question_id: number;
+        descriptors_levels: {
+          descriptors: IDWithText<number>[];
+          levels: IDWithText<number>[];
+        };
+      }[];
+    }
+  | { type: "error"; message: string };
