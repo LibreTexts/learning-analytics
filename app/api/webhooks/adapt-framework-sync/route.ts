@@ -18,17 +18,28 @@ export async function POST(request: NextRequest, res: NextResponse) {
     // Get the authorization header
     const authHeader = request.headers.get("Authorization");
     const bearer = authHeader?.split("Bearer ")[1];
-    if (!authHeader || !bearer) {
-      return errors.unauthorized(res, "No authorization header provided");
-    }
+    console.log("AUTH HEADER:", authHeader);
+    console.log("BEARER:", bearer);
+    // if (!authHeader || !bearer) {
+    //   return errors.unauthorized(res, "No authorization header provided");
+    // }
 
     // Verify the bearer token (should be empty JWT signed with the API key)
-    const secret = new TextEncoder().encode(process.env.ADAPT_API_KEY);
-    const verified = await jose.jwtVerify(bearer, secret);
-    if (!verified.payload) {
-      return errors.unauthorized(res, "Invalid authorization header provided");
+    if (bearer) {
+      const secret = new TextEncoder().encode(process.env.ADAPT_API_KEY);
+      const verified = await jose.jwtVerify(bearer, secret).catch((err) => {
+        console.error(err);
+      });
+      console.log("VERIFIED:", verified);
+      // if (!verified.payload) {
+      //   return errors.unauthorized(
+      //     res,
+      //     "Invalid authorization header provided"
+      //   );
+      // }
     }
 
+    console.log("REQ DATA:", reqData);
     const data = reqData as ADAPTFrameworkSyncWebhookData;
 
     const dataCollector = new AnalyticsDataCollector();
