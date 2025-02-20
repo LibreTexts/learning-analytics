@@ -125,13 +125,6 @@ class ADAPTInstructorConnector {
   public async getFramework(frameworkID: string){
     return this.makeRequest<ADAPTFrameworkRes>('/frameworks/' + frameworkID, 'GET')
   }
-
-  public async getFrameworkQuestionSync(questionID: string) {
-    return this.makeRequest<ADAPTFrameworkQuestionSyncRes>(
-      "/framework-item-sync-question/question/" + questionID,
-      "GET"
-    );
-  }
 }
 
 export default ADAPTInstructorConnector;

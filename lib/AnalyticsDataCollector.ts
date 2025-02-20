@@ -48,7 +48,6 @@ class AnalyticsDataCollector {
     await this.collectAssignmentScores();
     await this.collectSubmissionTimestamps(); // this should only run after collectAssignmentScores
     await this.collectFrameworkData();
-    await this.collectQuestionFrameworkAlignment();
     await this.collectReviewTimeData();
   }
 
@@ -577,112 +576,6 @@ class AnalyticsDataCollector {
         levelsToUpsert.map((doc) => ({
           updateOne: {
             filter: { level_id: doc.level_id },
-            update: { $set: doc },
-            upsert: true,
-          },
-        }))
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async collectQuestionFrameworkAlignment() {
-    try {
-      await connectDB();
-
-      // const assignmentIds = await gradebook.distinct("assignment_id");
-
-      const assignmentData = await assignments.find(
-        process.env.DEV_LOCK_COURSE_ID
-          ? { course_id: process.env.DEV_LOCK_COURSE_ID }
-          : {}
-      );
-
-      // Spread the question_ids into individual documents
-      const questionDocs = assignmentData.reduce(
-        (
-          acc: {
-            course_id: string;
-            assignment_id: string;
-            question_id: string;
-          }[],
-          assignment
-        ) => {
-          const questions = assignment.questions.map((question: string) => ({
-            course_id: assignment.course_id,
-            assignment_id: assignment.assignment_id,
-            question_id: question,
-          }));
-          acc.push(...questions);
-          return acc;
-        },
-        []
-      );
-
-      // Get a random instructor_id to use for the API calls
-      const randomInstructor = await adaptCourses.findOne({
-        instructor_id: { $exists: true },
-      });
-
-      const adaptConn = new ADAPTInstructorConnector(
-        randomInstructor.instructor_id
-      );
-
-      // Get the framework alignment for each question
-      const frameworkPromises = questionDocs.map((doc) => {
-        return adaptConn.getFrameworkQuestionSync(doc.question_id);
-      });
-
-      const frameworkResponses = await Promise.allSettled(frameworkPromises);
-
-      const frameworkData: (IFrameworkQuestionAlignment_Raw | undefined)[] =
-        frameworkResponses.map((response, idx) => {
-          if (response.status === "fulfilled" && response.value) {
-            return {
-              course_id: questionDocs[idx].course_id,
-              assignment_id: questionDocs[idx].assignment_id,
-              question_id: questionDocs[idx].question_id,
-              framework_descriptors:
-                response.value.data.framework_item_sync_question?.descriptors.map(
-                  (d) => ({
-                    id: d.id.toString(),
-                    text: d.text,
-                  })
-                ) ?? [],
-              framework_levels:
-                response.value.data.framework_item_sync_question?.levels.map(
-                  (l) => ({
-                    id: l.id.toString(),
-                    text: l.text,
-                  })
-                ) ?? [],
-            };
-          }
-          return undefined;
-        });
-
-      // Filter out any undefined documents
-      const noUndefined = frameworkData.filter(
-        (data) => data !== undefined
-      ) as IFrameworkQuestionAlignment_Raw[];
-
-      // Don't save question alignment if there are no framework descriptors or levels
-      const noEmpties = noUndefined.filter(
-        (data) =>
-          data.framework_descriptors.length > 0 &&
-          data.framework_levels.length > 0
-      );
-
-      // Bulk upsert the framework alignment data
-      await frameworkQuestionAlignment.bulkWrite(
-        noEmpties.map((doc) => ({
-          updateOne: {
-            filter: {
-              course_id: doc.course_id,
-              assignment_id: doc.assignment_id,
-              question_id: doc.question_id,
-            },
             update: { $set: doc },
             upsert: true,
           },
