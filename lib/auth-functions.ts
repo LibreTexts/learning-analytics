@@ -1,9 +1,15 @@
 "use server";
 import { verifyPassword } from "@/utils/auth";
-import { addCourseToUser, createCourseIfNotExists, createExternalUser, getUser, getUserById } from "@/lib/auth";
+import {
+  addCourseToUser,
+  createCourseIfNotExists,
+  createExternalUser,
+  getUser,
+  getUserById,
+} from "@/lib/auth";
 import connectDB from "./database";
 import { ActionResult } from "./types";
-import { lucia } from "./auth";
+import { createLuciaSession, createLuciaSessionCookie } from "./auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import * as jose from "jose";
@@ -44,8 +50,11 @@ export async function fallbackLogin(
     };
   }
 
-  const session = await lucia.createSession(existingUser.id, {});
-  const sessionCookie = lucia.createSessionCookie(session.id);
+  const session = await createLuciaSession({
+    userId: existingUser.id,
+    attributes: {},
+  });
+  const sessionCookie = await createLuciaSessionCookie(session.id);
 
   cookies().set(
     sessionCookie.name,
@@ -61,9 +70,14 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     const secret = new TextEncoder().encode(process.env.CLIENT_AUTH_SECRET);
 
     const { payload, protectedHeader } = await jose.jwtVerify(raw, secret);
-    if (!payload.user_id || !payload.role || !payload.course_id) throw new Error("Invalid payload");
+    if (!payload.user_id || !payload.role || !payload.course_id)
+      throw new Error("Invalid payload");
 
-    const { user_id, role, course_id } = payload as { user_id: number; role: 2 | 3, course_id: number };
+    const { user_id, role, course_id } = payload as {
+      user_id: number;
+      role: 2 | 3;
+      course_id: number;
+    };
 
     await connectDB();
 
@@ -78,12 +92,15 @@ export async function adaptLogin(raw: string): Promise<boolean> {
     }
 
     await createCourseIfNotExists(course_id);
-    if(existingUser.courses.indexOf(course_id.toString()) === -1) {
+    if (existingUser.courses.indexOf(course_id.toString()) === -1) {
       await addCourseToUser(existingUser.id, course_id);
     }
 
-    const session = await lucia.createSession(existingUser.id, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
+    const session = await createLuciaSession({
+      userId: existingUser.id,
+      attributes: {},
+    });
+    const sessionCookie = await createLuciaSessionCookie(session.id);
 
     cookies().set(
       sessionCookie.name,

@@ -1,3 +1,4 @@
+"use server";
 import { Lucia, TimeSpan, type Session, type User } from "lucia";
 import { MongodbAdapter } from "@lucia-auth/adapter-mongodb";
 import connectDB from "./database";
@@ -8,10 +9,15 @@ import session from "./models/session";
 import { Types } from "mongoose";
 import adaptCourses from "./models/adaptCourses";
 import ADAPTCourseConnector from "./ADAPTCourseConnector";
-globalThis.crypto = webcrypto as Crypto;
+
+type CreateLuciaSessionProps = {
+  userId: string;
+  attributes: {};
+  options?: { sessionId?: string | undefined };
+};
 
 // Initialize Lucia after adapter is available
-export const lucia = new Lucia(
+const lucia = new Lucia(
   // @ts-ignore
   new MongodbAdapter(session.collection, user.collection),
   {
@@ -32,6 +38,15 @@ export const lucia = new Lucia(
     },
   }
 );
+
+export async function createLuciaSession(props: CreateLuciaSessionProps) {
+  await connectDB();
+  return lucia.createSession(props.userId, props.attributes, props.options);
+}
+
+export async function createLuciaSessionCookie(sessionId: string) {
+  return lucia.createSessionCookie(sessionId);
+}
 
 export const validateRequest = async (): Promise<
   { user: User; session: Session } | { user: null; session: null }
@@ -222,7 +237,7 @@ export const addCourseToUser = async (
   } catch (err) {
     console.error(err);
   }
-}
+};
 
 declare module "lucia" {
   interface Register {
