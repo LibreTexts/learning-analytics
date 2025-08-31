@@ -28,7 +28,7 @@
     "jose": "^5.4.0",
     "lucia": "^3.2.0",
     "mongoose": "^8.9.5",
-    "next": "14.2.24",
+    "next": "14.2.32",
     "next-auth": "^5.0.0-beta.23",
     "react": "^18",
     "react-bootstrap": "^2.10.1",
