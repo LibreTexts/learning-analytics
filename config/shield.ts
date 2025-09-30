@@ -6,8 +6,21 @@ const shieldConfig = defineConfig({
    * to learn more
    */
   csp: {
-    enabled: false,
-    directives: {},
+    enabled: true,
+    directives: {
+      'default-src': ["'self'"],
+      'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com'],
+      'frame-ancestors': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net'],
+      'connect-src': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com'],
+      'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      'img-src': ["'self'", 'data:', 'blob:', 'https://*.libretexts.org', 'https://*.libretexts.net'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
+      'object-src': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"],
+      'block-all-mixed-content': [],
+      'upgrade-insecure-requests': [],
+    },
     reportOnly: false,
   },
 
@@ -27,8 +40,8 @@ const shieldConfig = defineConfig({
    * iFrames
    */
   xFrame: {
-    enabled: true,
-    action: 'DENY',
+    enabled: false,
+    action: undefined,
   },
 
   /**
