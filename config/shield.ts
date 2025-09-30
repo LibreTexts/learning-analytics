@@ -11,7 +11,7 @@ const shieldConfig = defineConfig({
       'default-src': ["'self'"],
       'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com', 'https://cdn.jsdelivr.net/npm/iframe-resizer@4.4.5/js/iframeResizer.contentWindow.min.js'],
       'frame-ancestors': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net'],
-      'connect-src': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com'],
+      'connect-src': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com', 'https://cdn.jsdelivr.net/npm/iframe-resizer@4.4.5/js/iframeResizer.contentWindow.map'],
       'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       'img-src': ["'self'", 'data:', 'blob:', 'https://*.libretexts.org', 'https://*.libretexts.net'],
       'font-src': ["'self'", 'https://fonts.gstatic.com'],
