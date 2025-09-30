@@ -145,7 +145,11 @@ export const PARSE_TIME_ON_TASK_PIPELINE = [
       minutes: {
         $cond: {
           if: {
-            $eq: ["$time_parts", null],
+            $or: [
+              { $eq: ["$time_parts", null] },
+              { $eq: [{ $type: "$time_parts" }, "missing"] },
+              { $not: { $isArray: "$time_parts" } }
+            ]
           },
           then: 0,
           else: {
@@ -163,7 +167,11 @@ export const PARSE_TIME_ON_TASK_PIPELINE = [
       seconds: {
         $cond: {
           if: {
-            $eq: ["$time_parts", null],
+            $or: [
+              { $eq: ["$time_parts", null] },
+              { $eq: [{ $type: "$time_parts" }, "missing"] },
+              { $not: { $isArray: "$time_parts" } }
+            ]
           },
           then: 0,
           else: {
