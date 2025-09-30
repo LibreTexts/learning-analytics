@@ -9,7 +9,7 @@ const shieldConfig = defineConfig({
     enabled: true,
     directives: {
       'default-src': ["'self'"],
-      'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com'],
+      'script-src': ["'self'", "'unsafe-eval'", "'unsafe-inline'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com', 'https://cdn.jsdelivr.net/npm/iframe-resizer@4.4.5/js/iframeResizer.contentWindow.min.js'],
       'frame-ancestors': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net'],
       'connect-src': ["'self'", 'https://*.libretexts.org', 'https://*.libretexts.net', 'https://*.cloudflare.com'],
       'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
