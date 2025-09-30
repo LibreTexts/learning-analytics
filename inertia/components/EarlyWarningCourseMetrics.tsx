@@ -8,7 +8,7 @@ const EarlyWarningCourseMetrics = ({
   course_std_dev: number;
 }) => {
   return (
-    <div className="tw:flex tw:flex-row tw:justify-center">
+    <div className="tw:flex tw:flex-row tw:justify-center tw:max-w-full tw:mb-12">
       <SmallMetricCard
         title="Average of Predicted Scores"
         value={`${course_avg ?? 0}%`}

@@ -20,7 +20,7 @@ const SmallMetricCard: React.FC<SmallMetricCardProps> = ({
     <Card
       className={classNames(
         className,
-        "tw:p-4 tw:rounded-lg tw:shadow-sm tw:w-72"
+        "tw:!p-4 tw:!rounded-lg tw:!shadow-sm tw:!w-72"
       )}
     >
       <h3 className="tw:text-lg tw:font-semibold">{title}</h3>

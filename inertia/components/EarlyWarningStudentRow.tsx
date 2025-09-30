@@ -31,8 +31,8 @@ const Metric = ({
     color === 'red' ? 'tw:text-red-500' : color === 'dark-red' ? 'tw:text-red-700' : 'tw:text-black'
 
   return (
-    <div className="tw:rounded-md tw:border tw:border-slate-300 tw:border-solid tw:w-52 xl:tw:w-72 tw:p-1 xl:tw:p-2 tw:shadow-sm">
-      <p className={`tw:text-4xl xl:tw:text-5xl tw:font-semibold tw:text-center ${textColorClass}`}>
+    <div className="tw:!rounded-md tw:!border tw:!border-slate-400 tw:!border-solid tw:w-full tw:!p-1 tw:xl:!p-2 tw:!shadow-none">
+      <p className={`tw:text-4xl tw:xl:text-5xl tw:!font-semibold tw:!text-center ${textColorClass}`}>
         {!value
           ? 0
           : typeof value === 'string'
@@ -68,7 +68,7 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({ data })
   }
 
   return (
-    <Card className="tw:my-4 tw:shadow-sm">
+    <Card className="tw:!my-4 tw:!shadow-sm">
       <Card.Body>
         <Card.Title className="tw:font-semibold tw:text-2xl tw:flex tw:flex-row tw:justify-between">
           <p>{truncateString(data.name, 30)}</p>
@@ -77,8 +77,8 @@ const EarlyWarningStudentRow: React.FC<EarlyWarningStudentRowProps> = ({ data })
             <p className="tw:ml-1 tw:text-xs tw:text-slate-400">{ewsStatusHeader(data.status)}</p>
           </div>
         </Card.Title>
-        <Card.Body className="!tw:p-0">
-          <div className="tw:flex tw:flex-row tw:justify-between tw:items-center !tw:mt-4">
+        <Card.Body className="tw:!p-0">
+          <div className="tw:!flex tw:!flex-row tw:!justify-between tw:!items-center tw:!mt-4 tw:space-x-8">
             <Metric
               value={data.estimated_final}
               unit="Predicted Final Score"
