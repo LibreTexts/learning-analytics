@@ -11,6 +11,7 @@ import {
   ADAPTSubmissionTimestampDataRes,
 } from "#types/index";
 import env from "#start/env";
+import logger from "@adonisjs/core/services/logger";
 
 export class InstructorConnectorService {
   private axiosInstance: AxiosInstance | null = null;
@@ -58,6 +59,7 @@ export class InstructorConnectorService {
         },
       }
     );
+    logger.info("Auto login response: " + JSON.stringify(res.data));
     if (!res.data || !res.data.token) throw new Error("Failed to auto login");
     this.instructorJWT = res.data.token;
   }
