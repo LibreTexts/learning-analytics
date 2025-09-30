@@ -44,7 +44,7 @@ const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({ chi
     const toSet = {
       ...globalState,
       role: res.data.user.role,
-      courseID: res.data.user.courses[0] ?? '',
+      courseID: res.data.user.courses[res.data.user.courses.length - 1] ?? '',
       viewAs: role,
       ...(role === 'student' && {
         student: {

@@ -68,12 +68,26 @@ export class AuthService {
 
   async addCourseToUser(user_id: string, course_id: string) {
     try {
+
+      const existing = await user.findOne({
+        user_id: user_id.toString(),
+      })
+      if (!existing) {
+        throw new Error(`User with ID ${user_id} not found`);
+      }
+
+      // Always place the current course_id at the end of the list
+      const coursesSet = new Set<string>(existing.courses);
+      if (coursesSet.has(course_id.toString())) {
+        coursesSet.delete(course_id.toString());
+      }
+
+      coursesSet.add(course_id.toString());
+
       await user.updateOne(
         { user_id: user_id.toString() },
         {
-          $addToSet: {
-            courses: course_id.toString(),
-          },
+          $set: { courses: Array.from(coursesSet) },
         }
       );
     } catch (err) {
