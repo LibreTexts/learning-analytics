@@ -1,8 +1,5 @@
 FROM node:22.16.0-alpine3.22 AS base
 
-# Install bash & curl for entrypoint script compatibility
-RUN apk add --no-cache bash curl
-
 # All deps stage
 FROM base AS deps
 WORKDIR /app
@@ -28,6 +25,5 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=production-deps /app/node_modules /app/node_modules
 COPY --from=build /app/build /app
-COPY ./docs /app/docs
 EXPOSE 3000
 CMD ["node", "./bin/server.js"]
