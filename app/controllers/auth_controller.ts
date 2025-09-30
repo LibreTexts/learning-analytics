@@ -77,6 +77,8 @@ export default class AuthController {
             await this.authService.ensureAdaptCourse(course_id);
             await this.authService.addCourseToUser(user_id.toString(), course_id.toString());
 
+            logger.info(`User ${user_id} logged in with role ${role} and course ${course_id}`);
+
             await auth.use('web').login(existingUser);
             return response.redirect('/');
         } catch (err) {
