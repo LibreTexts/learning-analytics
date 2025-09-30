@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+//import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
 import { ReactQueryStreamedHydration } from "@tanstack/react-query-next-experimental";
 import { GlobalContextProvider } from "~/state/globalContext";
@@ -24,7 +24,7 @@ const Providers = (props: { children: React.ReactNode }) => {
           <ReactQueryStreamedHydration>
             {props.children}
           </ReactQueryStreamedHydration>
-          <ReactQueryDevtools initialIsOpen={false} />
+          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </QueryClientProvider>
       </GlobalContextProvider>
   );
