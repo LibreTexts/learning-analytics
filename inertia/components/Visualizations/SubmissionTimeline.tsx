@@ -30,7 +30,7 @@ type SubmissionTimelineTypeFlat = {
   count: number
 }
 
-type SubmissionTimelineProps = VisualizationBaseProps<SubmissionTimelineType | undefined> & {
+type SubmissionTimelineProps = VisualizationBaseProps<SubmissionTimelineType | undefined | null> & {
   selectedAssignmentId?: string
   studentMode?: boolean
 }

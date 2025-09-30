@@ -52,14 +52,14 @@ const useInstructorAnalytics = (course_id: string, student_id: string | null, as
         enabled: !!course_id && !!student_id && !!assignment_id
     })
 
-    const { data: submissionTimeline, isLoading: submissionTimelineLoading } = useQuery<SubmissionTimeline | undefined>({
+    const { data: submissionTimeline, isLoading: submissionTimelineLoading } = useQuery<SubmissionTimeline | null>({
         queryKey: ["submissionTimeline", course_id, assignment_id],
         queryFn: async () => {
             if (!assignment_id) {
-                return undefined
+                return null
             }
             const res = await api.getSubmissionTimeline(course_id, assignment_id)
-            return res.data.data;
+            return res.data.data || null;
         },
         enabled: !!course_id && !!assignment_id
     })
@@ -76,14 +76,14 @@ const useInstructorAnalytics = (course_id: string, student_id: string | null, as
         enabled: !!course_id && !!assignment_id
     })
 
-    const { data: gradeDistribution, isLoading: gradeDistributionLoading } = useQuery<GradeDistribution | undefined>({
+    const { data: gradeDistribution, isLoading: gradeDistributionLoading } = useQuery<GradeDistribution | null>({
         queryKey: ["gradeDistribution", course_id],
         queryFn: async () => {
             if (!assignment_id) {
-                return undefined
+                return null
             }
             const res = await api.getGradeDistribution(course_id)
-            return res.data.data;
+            return res.data.data || null;
         },
         enabled: !!course_id
     })

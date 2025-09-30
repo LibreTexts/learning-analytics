@@ -26,7 +26,7 @@ type GradeBucket = {
   count: number
 }
 
-const GradeDistribution: React.FC<VisualizationBaseProps<GradeDistributionType | undefined>> = ({
+const GradeDistribution: React.FC<VisualizationBaseProps<GradeDistributionType | undefined | null>> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   tableView = false,
