@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import env from "#start/env";
+import logger from "@adonisjs/core/services/logger";
 
 const DATABASE_URL = env.get("MONGOOSE_URI");
 
@@ -22,12 +23,12 @@ async function connectDB() {
     cached.promise = mongoose
       .connect(DATABASE_URL, {})
       .then((mongoose) => {
-        console.log("Connected to MongoDB");
-        mongoose.set("debug", process.env.NODE_ENV === "development")
+        logger.info("Connected to MongoDB");
+        mongoose.set("debug", env.get("NODE_ENV") === "development");
         return mongoose.connection;
       })
       .catch((err) => {
-        console.error("Error connecting to MongoDB:", err);
+        logger.error("Error connecting to MongoDB:", err);
         throw err; // Rethrow the error to be handled by the caller
       });
   }

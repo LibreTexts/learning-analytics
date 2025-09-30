@@ -33,14 +33,17 @@ new Ignitor(APP_ROOT, { importer: IMPORTER })
   .tap((app) => {
     app.booting(async () => {
       await import('#start/env')
-      const connectDB = (await import('#mongodb/db_client')).default
-      await connectDB()
     })
     app.listen('SIGTERM', () => app.terminate())
     app.listenIf(app.managedByPm2, 'SIGINT', () => app.terminate())
   })
   .httpServer()
   .start()
+  .then(async () => {
+    // MongoDB connection must be after the server has started to use logger
+    const connectDB = (await import('#mongodb/db_client')).default
+    await connectDB()
+  })
   .catch((error) => {
     process.exitCode = 1
     prettyPrintError(error)
