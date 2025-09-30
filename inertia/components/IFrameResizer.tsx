@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { useEffect } from "react";
-import "iframe-resizer/js/iframeResizer.contentWindow";
 
 export default function IFrameResizer() {
   useEffect(() => {
