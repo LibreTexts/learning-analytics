@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import api from '~/api'
 
@@ -8,6 +9,8 @@ const AuthEventListener = ({
   debug?: boolean
   originMatch?: string
 }) => {
+  const queryClient = useQueryClient()
+
   useEffect(() => {
     window.addEventListener('message', handleMessage)
 
@@ -27,10 +30,16 @@ const AuthEventListener = ({
 
     if (debug) console.log('Received token from parent window: ', token)
 
-    const success = await api.adaptLogin(token).catch((err) => {
-      console.error('Adapt login error:', err)
-      return false
-    })
+    const success = await api
+      .adaptLogin(token)
+      .then(async () => {
+        // Invalidate any stored session data
+        queryClient.invalidateQueries({ queryKey: ['session'] })
+      })
+      .catch((err) => {
+        console.error('Adapt login error:', err)
+        return false
+      })
     if (success) {
       window.location.href = '/' // Redirect to home page after successful login
     }

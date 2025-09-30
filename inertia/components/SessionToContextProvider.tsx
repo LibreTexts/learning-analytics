@@ -1,7 +1,9 @@
 import LoadingComponent from './LoadingComponent'
 import { useGlobalContext } from '~/state/globalContext'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect } from 'react'
 import api from '~/api'
+import { useQuery } from '@tanstack/react-query'
+import { Session } from '#types/auth'
 
 interface SessionToContextProviderProps {
   children: React.ReactNode
@@ -9,23 +11,25 @@ interface SessionToContextProviderProps {
 
 const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({ children }) => {
   const [globalState, setGlobalState] = useGlobalContext()
-  const [validSession, setValidSession] = useState<boolean>(false)
+
+  const { data: session, isLoading: sessionLoading } = useQuery<Session>({
+    queryKey: ['session'],
+    queryFn: async () => {
+      const res = await api.getUserSession()
+      return res.data
+    },
+    retry: 1,
+  })
 
   useEffect(() => {
-    fetchUserData()
-  }, [])
+    if (sessionLoading || !session?.user?.id) return
+    updateGlobalStateWithSession()
+  }, [session])
 
   useEffect(() => {
-    if (!validSession) return
+    if (!session?.user?.id) return
     fetchCourseData()
-  }, [globalState.courseID, validSession])
-
-  async function fetchUserData() {
-    const sessionData = await fetchSessionData()
-    if (sessionData) {
-      setValidSession(true)
-    }
-  }
+  }, [globalState.courseID, session])
 
   async function fetchCourseData() {
     const hasData = await fetchCourseHasData()
@@ -34,29 +38,26 @@ const SessionToContextProvider: React.FC<SessionToContextProviderProps> = ({ chi
     fetchCourseSettings()
   }
 
-  async function fetchSessionData() {
-    const res = await api.getUserSession()
-    if (!res.data?.user) return
-
+  async function updateGlobalStateWithSession() {
+    if (!session?.user) return
     const role =
-      res.data.user.role === 'instructor' ? 'instructor' : ('student' as 'instructor' | 'student')
+      session.user.role === 'instructor' ? 'instructor' : ('student' as 'instructor' | 'student')
 
     const toSet = {
       ...globalState,
-      role: res.data.user.role,
-      courseID: res.data.user.courses[res.data.user.courses.length - 1] ?? '',
+      role: session.user.role,
+      courseID: session.user.courses[session.user.courses.length - 1] ?? '', // use last accessed course
       viewAs: role,
       ...(role === 'student' && {
         student: {
-          id: res.data.user.id,
-          email: res.data.user.email || '',
+          id: session.user.id,
+          email: session.user.email || '',
           name: '',
         },
       }),
     }
 
     setGlobalState(toSet)
-    return toSet
   }
 
   async function fetchCourseHasData(): Promise<boolean> {

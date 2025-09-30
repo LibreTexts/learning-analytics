@@ -14,14 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <>
-      {import.meta.env.VITE_CLIENT_AUTH_ORIGIN_MATCH && (
-        <AuthEventListener
-          debug={import.meta.env.VITE_CLIENT_AUTH_DEBUG?.toString() === 'true'}
-          originMatch={import.meta.env.VITE_CLIENT_AUTH_ORIGIN_MATCH}
-        />
-      )}
       <IFrameResizer />
       <Providers>
+        <AuthEventListener debug={true} originMatch={'https://adapt.libretexts.org'} />
         <SessionToContextProvider>
           <div className="tw:flex tw:flex-row tw:items-center tw:justify-center">
             {import.meta.env.VITE_DEMO_MODE === 'true' && <DemoModeControls />}
