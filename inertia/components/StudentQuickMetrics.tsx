@@ -1,0 +1,41 @@
+import SmallMetricCard from './SmallMetricCard'
+import { useQuery } from '@tanstack/react-query'
+import { StudentQuickMetrics as StudentQuickMetricsType } from '#types/index'
+import api from '~/api'
+
+const StudentQuickMetrics = ({
+  student_id,
+  course_id,
+}: {
+  student_id: string
+  course_id: string
+}) => {
+  const { data, status } = useQuery<StudentQuickMetricsType>({
+    queryKey: ['student-quick-metrics', course_id, student_id],
+    queryFn: async () => {
+      const res = await api.getStudentQuickMetrics(course_id, student_id)
+      return res.data
+    },
+    enabled: !!student_id && !!course_id,
+  })
+
+  return (
+    <div className="tw:flex tw:flex-row tw:justify-start">
+      <SmallMetricCard
+        title="Assignments Completed"
+        value={data?.assignmentsCount ?? 0}
+        unit="To Date"
+        loading={status === 'pending'}
+      />
+      <SmallMetricCard
+        title="Average Score"
+        value={`${data?.averageScore ?? 0}%`}
+        unit="Per Assignment"
+        loading={status === 'pending'}
+        className="tw:ml-36"
+      />
+    </div>
+  )
+}
+
+export default StudentQuickMetrics

@@ -1,0 +1,1617 @@
+import Enrollments from "#mongodb/enrollments";
+import TextbookInteractionsByDate from "#mongodb/textbookInteractionsByDate";
+import {
+  ActivityAccessed,
+  AnalyticsRawData,
+  GradeDistribution,
+  IDWithName,
+  IDWithText,
+  LOCData,
+  LearningCurveData,
+  LearningCurveRawData,
+  LearningCurveRawDataWPercent,
+  LearningCurveRawScoreDataWPercent,
+  PerformancePerAssignment,
+  Student,
+  SubmissionTimeline,
+  TextbookInteractionsCount,
+  TimeInReview,
+  TimeOnTask,
+} from "#types/index";
+import { getPaginationOffset } from "#utils/misc";
+import calcADAPTSubmissionsByDate, {
+  ICalcADAPTSubmissionsByDate_Raw,
+} from "#mongodb/calcADAPTSubmissionsByDate";
+import calcTextbookActivityTime from "#mongodb/calcTextbookActivityTime";
+import { decryptStudent } from "#utils/crypto";
+import { mmssToSeconds } from "#utils/data-helpers";
+import calcADAPTGradeDistribution from "#mongodb/calcADAPTGradeDistribution";
+import CourseAnalyticsSettings, {
+  ICourseAnalyticsSettings_Raw,
+} from "#mongodb/courseAnalyticsSettings";
+import ewsActorSummary from "#mongodb/ewsActorSummary";
+import adaptCourses from "#mongodb/adaptCourses";
+import frameworkQuestionAlignment, {
+  IFrameworkQuestionAlignment_Raw,
+} from "#mongodb/frameworkQuestionAlignment";
+import calcReviewTime from "#mongodb/calcReviewTime";
+import calcADAPTScores from "#mongodb/calcADAPTScores";
+import assignmentScores, {
+  IAssignmentScoresRaw,
+} from "#mongodb/assignmentScores";
+import assignments, { IAssignmentRaw } from "#mongodb/assignments";
+import calcTimeOnTask from "#mongodb/calcTimeOnTask";
+import calcADAPTStudentActivity, {
+  ICalcADAPTStudentActivity_Raw,
+} from "#mongodb/calcADAPTStudentActivity";
+import frameworkLevels, {
+  IFrameworkLevel_Raw,
+} from "#mongodb/frameworkLevels";
+
+export class AnalyticsService {
+  private adaptID: number;
+  constructor(_adaptID?: string) {
+    if (!_adaptID) {
+      throw new Error("ADAPT ID is required");
+    }
+    const parsed = parseInt(_adaptID.toString().trim());
+    if (isNaN(parsed)) {
+      throw new Error("Invalid ADAPT ID");
+    }
+    this.adaptID = parsed;
+  }
+
+  public async checkHasData(): Promise<boolean> {
+    try {
+      const res = await assignments.findOne({
+        course_id: this.adaptID.toString(),
+      });
+
+      return !!res;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  public async getAssignments(ignoreExclusions = false): Promise<IDWithName[]> {
+    try {
+      // find all assignments with the courseId = this.adaptID and count the unique assignment_id 's
+      const res = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      // sort the assignments by name
+      res.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
+      const mapped =
+        res.map((d) => ({
+          id: d.assignment_id.toString(),
+          name: d.name,
+        })) ?? [];
+
+      if (ignoreExclusions) {
+        return mapped;
+      }
+
+      // Filter out assignments that are excluded
+      const assignmentExclusions = await this._getAssignmentExclusions();
+      return mapped.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.id)
+      );
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async countEnrolledStudents(): Promise<number> {
+    try {
+      const res = await Enrollments.countDocuments({
+        course_id: this.adaptID.toString(),
+      });
+
+      return res ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getTotalQuestionsCount(): Promise<number> {
+    try {
+      const res = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const total = res.reduce((acc: number, curr: IAssignmentRaw) => {
+        return isNaN(curr.num_questions) ? acc : acc + curr.num_questions;
+      }, 0);
+
+      return total ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getCourseId(): Promise<string | undefined> {
+    try {
+      const res = await adaptCourses.findOne({
+        course_id: this.adaptID.toString(),
+      }).lean();
+
+      return res?.course_id ?? undefined;
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  }
+
+  public async getADAPTActivity(
+    student_id: string
+  ): Promise<ActivityAccessed[]> {
+    try {
+      const courseAvgData = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $group: {
+            _id: "$assignment_id",
+            avg_seen: {
+              $avg: { $size: "$seen" },
+            },
+            avg_unseen: {
+              $avg: { $size: "$unseen" },
+            },
+          },
+        },
+      ]);
+
+      const studentAssignments = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+          },
+        },
+      ]);
+
+      const data: ActivityAccessed[] = courseAvgData.map((d) => {
+        const studentData = studentAssignments.find(
+          (a) => a.assignment_id === d._id
+        );
+
+        return {
+          assignment_id: d._id,
+          seen: studentData?.seen ?? 0,
+          unseen: studentData?.unseen ?? 0,
+          course_avg_seen: d.avg_seen,
+          course_avg_unseen: d.avg_unseen,
+        };
+      });
+
+      const assignmentExclusions = await this._getAssignmentExclusions();
+
+      return data.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.assignment_id)
+      );
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getADAPTPerformance(assignment_id: string): Promise<number[]> {
+    try {
+      const assignment = await assignmentScores.findOne({
+        assignment_id: assignment_id,
+      });
+
+      if (!assignment || !assignment.assignment_id) {
+        throw new Error("Assignment not found");
+      }
+
+      const res = await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            assignment_id: assignment.assignment_id,
+          },
+        },
+        {
+          $group: {
+            _id: "$assignment_id",
+            scores: {
+              $push: "$assignment_percent",
+            },
+          },
+        },
+      ]);
+
+      const scores = res[0].scores as number[];
+
+      return scores;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getGradeDistribution(): Promise<GradeDistribution> {
+    try {
+      const courseData = await adaptCourses.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      if (!courseData?.letter_grades_released) {
+        return {
+          grades: [],
+          letter_grades_released: false,
+        };
+      }
+
+      const res = await calcADAPTGradeDistribution.find({
+        courseID: this.adaptID.toString(),
+      });
+
+      const grades = (res[0].grades as string[]) || [];
+      return {
+        grades: grades,
+        letter_grades_released: true,
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        grades: [],
+        letter_grades_released: false,
+      };
+    }
+  }
+
+  public async getPerformancePerAssignment(
+    emailToCompare?: string
+  ): Promise<PerformancePerAssignment[]> {
+    try {
+      if (!emailToCompare) {
+        return [];
+      }
+
+      const classAvgPromise = calcADAPTScores.aggregate([
+        { $match: { course_id: this.adaptID.toString() } },
+        { $unwind: "$scores" },
+        {
+          $group: {
+            _id: "$assignment_id",
+            avg_score: { $avg: "$scores" },
+          },
+        },
+      ]);
+
+      const studentScorePromise = assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: emailToCompare,
+            percent_correct: {
+              $regex: "^[0-9]+(\\.[0-9]+)?%$",
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_stripped: {
+              $substr: [
+                "$percent_correct",
+                0,
+                {
+                  $subtract: [{ $strLenCP: "$percent_correct" }, 1],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_float: {
+              $convert: {
+                input: "$percent_correct_stripped",
+                to: "double",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            percent_correct_float: { $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: "$assignment_id",
+            avg_score: {
+              $avg: "$percent_correct_float",
+            },
+          },
+        },
+      ]);
+
+      const [classAvg, studentScore] = await Promise.all([
+        classAvgPromise,
+        studentScorePromise,
+      ]);
+
+      const classAvgMap = new Map<string, number>();
+      classAvg.forEach((d) => {
+        classAvgMap.set(d._id, d.avg_score);
+      });
+
+      const studentScoreMap = new Map<string, number>();
+      studentScore.forEach((d) => {
+        studentScoreMap.set(d._id, d.avg_score);
+      });
+
+      const res: PerformancePerAssignment[] = [];
+      classAvgMap.forEach((v, k) => {
+        res.push({
+          assignment_id: k,
+          class_avg: v,
+          student_score: studentScoreMap.get(k) ?? 0,
+        });
+      });
+
+      res.sort((a, b) => a.assignment_id.localeCompare(b.assignment_id));
+
+      const truncated = res.map((d) => ({
+        assignment_id: d.assignment_id,
+        class_avg: Math.round(d.class_avg * 100) / 100, // round to two decimal places
+        student_score: Math.round(d.student_score * 100) / 100, // round to two decimal places
+      }));
+
+      truncated.sort((a, b) =>
+        a.assignment_id.localeCompare(b.assignment_id, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
+      // Filter out assignments that are excluded
+      const assignmentExclusions = await this._getAssignmentExclusions();
+      return truncated.filter(
+        (d) => !assignmentExclusions.find((a) => a.id === d.assignment_id)
+      );
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getTextbookEngagement(): Promise<TextbookInteractionsCount[]> {
+    try {
+      const courseId = await this.getCourseId();
+      if (!courseId) {
+        throw new Error("Course ID not found");
+      }
+
+      const res = await TextbookInteractionsByDate.aggregate([
+        {
+          $match: {
+            textbookID: courseId,
+          },
+        },
+        {
+          $addFields: {
+            parsedTimestamp: {
+              $toDate: "$date",
+            },
+          },
+        },
+        {
+          $match: {
+            parsedTimestamp: {
+              $gte: new Date("2023-01-01"),
+              $lt: new Date("2023-01-31"),
+            },
+          },
+        },
+      ]);
+
+      // res.sort((a, b) => a.date.localeCompare(b.date));
+
+      return res.map((d) => ({
+        date: d.date,
+        numInteractions: d.numInteractions,
+      }));
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getSubmissionTimeline(
+    assignment_id: string
+  ): Promise<SubmissionTimeline | undefined> {
+    try {
+      const res = (await calcADAPTSubmissionsByDate.find({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id,
+      })) as ICalcADAPTSubmissionsByDate_Raw[];
+
+      const assignmentInfo = await assignments.findOne({
+        course_id: this.adaptID.toString(),
+        assignment_id: assignment_id,
+      });
+
+      // for each question, count the number of occurrences of each date, without regard to the time (date only)
+      const data = res.map((d) => {
+        return d.questions.map((q) => {
+          return {
+            question_id: q.question_id,
+            data: q.submissions.reduce((acc, curr) => {
+              const date = new Date(curr).toLocaleDateString();
+              const existing = acc.find((a) => a.date === date);
+              if (existing) {
+                existing.count++;
+              } else {
+                acc.push({ date: date, count: 1 });
+              }
+              return acc;
+            }, [] as { date: string; count: number }[]),
+          };
+        });
+      });
+
+      // return the data with respect to the assignment as a whole, not individual questions
+      // so for each date, sum the counts of all questions
+      // const flattened = data.reduce((acc, curr) => {
+      //   curr.data.forEach((d) => {
+      //     const existing = acc.find((a) => a.date === d.date);
+      //     if (existing) {
+      //       existing.count += d.count;
+      //     } else {
+      //       acc.push({ date: d.date, count: d.count });
+      //     }
+      //   });
+      //   return acc;
+      // }, [] as { date: string; count: number }[]);
+
+      return {
+        assignment_id: assignment_id,
+        due_date: assignmentInfo?.due_date ?? null,
+        final_submission_deadline: assignmentInfo?.final_submission_deadline ?? null,
+        questions: data.flat(),
+      };
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  }
+
+  public async getStudents(
+    page = 1,
+    limit = 100,
+    privacyMode = true
+  ): Promise<Student[]> {
+    try {
+      const offset = getPaginationOffset(page, limit);
+
+      const res = await Enrollments.find({
+        course_id: this.adaptID.toString(),
+      })
+        .skip(offset)
+        .limit(limit);
+
+      if (privacyMode) {
+        return res.map((d) => ({
+          id: d.student_id,
+          email: d.email,
+          name: d.email,
+        }));
+      }
+
+      return await Promise.all(
+        res.map(async (d) => ({
+          id: d.student_id,
+          email: d.email,
+          name: await decryptStudent(d.email),
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getStudentTextbookEngagement(
+    student_id: string
+  ): Promise<number> {
+    try {
+      const courseId = await this.getCourseId();
+      if (!courseId) {
+        throw new Error("Course ID not found");
+      }
+
+      const res = await calcTextbookActivityTime.findOne({
+        actor: student_id,
+        textbookID: courseId,
+      });
+
+      if (!res?.activity_time) return 0;
+
+      return Math.ceil(res?.activity_time / 60) ?? 0; // Convert seconds to minutes
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getStudentAssignmentsCount(student_id: string): Promise<number> {
+    try {
+      const res = await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+          },
+        },
+        { $group: { _id: "$assignment_id" } },
+        { $count: "unique_assignments" },
+      ]);
+
+      return res[0]?.unique_assignments ?? 0;
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getStudentAverageScore(student_id: string): Promise<number> {
+    try {
+      const studentScoreCalc = await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+            student_id: student_id,
+            percent_correct: {
+              $regex: "^[0-9]+(\\.[0-9]+)?%$",
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_stripped: {
+              $substr: [
+                "$percent_correct",
+                0,
+                {
+                  $subtract: [
+                    {
+                      $strLenCP: "$percent_correct",
+                    },
+                    1,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $addFields: {
+            percent_correct_float: {
+              $convert: {
+                input: "$percent_correct_stripped",
+                to: "double",
+                onError: null,
+                onNull: null,
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            percent_correct_float: {
+              $ne: null,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            avg_score: {
+              $avg: "$percent_correct_float",
+            },
+          },
+        },
+      ]);
+
+      const result = studentScoreCalc[0]?.avg_score ?? 0;
+      return parseFloat(result.toPrecision(2));
+    } catch (err) {
+      console.error(err);
+      return 0;
+    }
+  }
+
+  public async getCourseFrameworkData(): Promise<{
+    descriptors: IDWithText[];
+    levels: IDWithText[];
+  }> {
+    try {
+      // need to get all course assignments first
+      const courseAssignments = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const res = await frameworkQuestionAlignment.find({
+        assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
+      });
+
+      const frameworkDescriptors = res.reduce((acc, curr) => {
+        curr.framework_descriptors.forEach((d: IDWithText<number>) => {
+          if (
+            !acc.find((f: IDWithText<number>) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText<number>[]);
+
+      const frameworkLevels = res.reduce((acc, curr) => {
+        curr.framework_levels.forEach((d: IDWithText<number>) => {
+          if (
+            !acc.find((f: IDWithText<number>) => f.id === d.id && f.text === d.text)
+          ) {
+            acc.push(d);
+          }
+        });
+        return acc;
+      }, [] as IDWithText<number>[]);
+
+      frameworkDescriptors.sort((a: IDWithText<number>, b: IDWithText<number>) =>
+        a.text.localeCompare(b.text)
+      );
+      frameworkLevels.sort((a: IDWithText<number>, b: IDWithText<number>) =>
+        a.text.localeCompare(b.text)
+      );
+
+      // Stringify id before returning
+      return {
+        descriptors: frameworkDescriptors.map((d: IDWithText<number>) => ({
+          id: d.id.toString(),
+          text: d.text,
+        })),
+        levels: frameworkLevels.map((d: IDWithText<number>) => ({
+          id: d.id.toString(),
+          text: d.text,
+        })),
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        descriptors: [],
+        levels: [],
+      };
+    }
+  }
+
+  public async getCourseAnalyticsSettings(): Promise<ICourseAnalyticsSettings_Raw | null> {
+    try {
+      const res = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      if (!res) {
+        return null;
+      }
+
+      return JSON.parse(JSON.stringify(res));
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  }
+
+  public async updateCourseAnalyticsSettings(
+    newSettings: Partial<ICourseAnalyticsSettings_Raw>
+  ): Promise<boolean> {
+    try {
+      const res = await CourseAnalyticsSettings.updateOne(
+        {
+          courseID: this.adaptID.toString(),
+        },
+        newSettings,
+        { upsert: true } // if course settings do not exist, create a new doc
+      );
+
+      return res.modifiedCount === 1;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  public async getRawData(privacy_mode: boolean): Promise<AnalyticsRawData[]> {
+    try {
+      const res = await ewsActorSummary.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      // Calculate course percentile and quartile
+      const allScores = res.map((d) => d.course_percent);
+      const sortedScores = allScores.sort((a, b) => a - b);
+
+      const getQuartile = (score: number) => {
+        const quartile = Math.floor(
+          (sortedScores.indexOf(score) / allScores.length) * 4
+        );
+        return quartile === 4 ? 3 : quartile;
+      };
+
+      const avgTimeOnTask = (await assignmentScores.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $unwind: "$questions",
+        },
+        {
+          $addFields: {
+            time_parts: {
+              $cond: {
+                if: {
+                  $eq: ["$questions.time_on_task", "-"],
+                },
+                then: null,
+                else: {
+                  $split: ["$questions.time_on_task", ":"],
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            minutes: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 0],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+            seconds: {
+              $cond: {
+                if: {
+                  $eq: ["$time_parts", null],
+                },
+                then: 0,
+                else: {
+                  $convert: {
+                    input: {
+                      $arrayElemAt: ["$time_parts", 1],
+                    },
+                    to: "int",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            total_seconds: {
+              $add: [
+                {
+                  $multiply: ["$minutes", 60],
+                },
+                "$seconds",
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            total_seconds: {
+              $type: "number",
+            },
+          },
+        },
+        {
+          $project: {
+            assignment_id: "$assignment_id",
+            student_id: "$student_id",
+            questions: {
+              question_id: "$questions.question_id",
+              score: "$questions.score",
+              time_on_task: "$questions.time_on_task",
+              total_seconds: "$total_seconds",
+            },
+          },
+        },
+        {
+          $match: {
+            "questions.total_seconds": {
+              $ne: 0,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
+            },
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            student_id: "$_id.student_id",
+            assignment_id: "$_id.assignment_id",
+            avg_time_on_task: {
+              $avg: "$questions.total_seconds",
+            },
+          },
+        },
+      ])) as {
+        student_id: string;
+        assignment_id: string;
+        avg_time_on_task: number;
+      }[];
+
+      const avgReviewTime = (await calcReviewTime.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID,
+          },
+        },
+        {
+          $group: {
+            _id: {
+              student_id: "$student_id",
+              assignment_id: "$assignment_id",
+            },
+            avg_review_time: {
+              $avg: "$total_review_time",
+            },
+          },
+        },
+        {
+          $project: {
+            student_id: "$_id.student_id",
+            assignment_id: {
+              $toString: "$_id.assignment_id",
+            },
+            avg_review_time: 1,
+            _id: 0,
+          },
+        },
+      ])) as {
+        student_id: string;
+        assignment_id: string;
+        avg_review_time: number;
+      }[];
+
+      const allCourseQuestions = await assignments.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $unwind: "$questions",
+        },
+        {
+          $group: {
+            _id: null,
+            questions: {
+              $push: "$questions",
+            },
+          },
+        },
+      ]);
+
+      // Need to group by student_id
+      const allCourseActivity = await calcADAPTStudentActivity.aggregate([
+        {
+          $match: {
+            course_id: this.adaptID.toString(),
+          },
+        },
+        {
+          $group: {
+            _id: "$student_id",
+            seen: {
+              $push: "$seen",
+            },
+            unseen: {
+              $push: "$unseen",
+            },
+          },
+        },
+        {
+          $project: {
+            student_id: "$_id",
+            seen: {
+              $reduce: {
+                input: "$seen",
+                initialValue: [],
+                in: { $concatArrays: ["$$value", "$$this"] },
+              },
+            },
+            unseen: {
+              $reduce: {
+                input: "$unseen",
+                initialValue: [],
+                in: { $concatArrays: ["$$value", "$$this"] },
+              },
+            },
+          },
+        },
+      ]);
+
+      const data = res.map((d) => {
+        const timeOnTask = avgTimeOnTask.find(
+          (a) => a.student_id === d.actor_id
+        );
+        const onTaskToMinutes = parseFloat(
+          ((timeOnTask?.avg_time_on_task ?? 0) / 60).toPrecision(2)
+        );
+
+        const reviewTime = avgReviewTime.find(
+          (a) => a.student_id === d.actor_id
+        );
+        const reviewTimeRounded = parseFloat(
+          (reviewTime?.avg_review_time ?? 0).toPrecision(2)
+        );
+
+        const activity = allCourseActivity.find(
+          (a) => a.student_id === d.actor_id
+        ) as ICalcADAPTStudentActivity_Raw | undefined;
+
+        const submitted = activity?.seen.length ?? 0;
+        const unsubmitted = allCourseQuestions[0].questions.length - submitted
+
+        return {
+          actor_id: d.actor_id,
+          name: d.actor_id,
+          pages_accessed: 0,
+          unique_interaction_days: 0,
+          not_submitted: unsubmitted,
+          submitted: activity?.seen.length ?? 0,
+          avg_time_on_task: onTaskToMinutes,
+          avg_time_in_review: reviewTimeRounded,
+          course_percent: d.course_percent,
+          class_quartile: getQuartile(d.course_percent),
+        };
+      });
+
+      if (privacy_mode) {
+        return data;
+      }
+
+      const decrypted = await Promise.all(
+        data.map(async (d) => ({
+          ...d,
+          name: await decryptStudent(d.actor_id),
+        }))
+      );
+
+      return decrypted.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async checkFinalGradesReleased(): Promise<boolean> {
+    try {
+      const res = await adaptCourses.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return res?.letter_grades_released ?? false;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
+
+  public async getTimeInReview(
+    student_id: string,
+    assignment_id: string
+  ): Promise<TimeInReview[]> {
+    try {
+      type _StudentData = {
+        question_id: number;
+        total_review_time: number;
+      };
+
+      type _QuestionData = {
+        question_id: number;
+        total_review_time: number;
+      };
+
+      const studentRes = await calcReviewTime.find({
+        course_id: this.adaptID,
+        student_id,
+        assignment_id: parseInt(assignment_id),
+      });
+
+      const courseRes = await calcReviewTime.find({
+        course_id: this.adaptID,
+        assignment_id: parseInt(assignment_id),
+      });
+
+      const studentData = studentRes.map((d) => ({
+        question_id: d.question_id,
+        total_review_time: d.total_review_time,
+      })) as _StudentData[];
+
+      // calculate the grand total review time for each question
+      const courseData = courseRes.reduce((acc, curr) => {
+        const existing = acc.find(
+          (a: _QuestionData) => a.question_id === curr.question_id
+        );
+        if (existing) {
+          existing.total_review_time += curr.total_review_time;
+        } else {
+          acc.push({
+            question_id: curr.question_id,
+            total_review_time: curr.total_review_time,
+          });
+        }
+        return acc;
+      }, [] as _QuestionData[]);
+
+      // Calculate the average review time for each question
+      const courseDataAvg = courseData.map((d: _QuestionData) => {
+        const totalStudents = courseRes.length || 0;
+
+        const avg = totalStudents > 0 ? d.total_review_time / totalStudents : 0;
+
+        return {
+          question_id: d.question_id,
+          total_review_time: avg,
+        };
+      }) as _QuestionData[];
+
+      const mapped = studentData.map((d) => ({
+        question_id: d.question_id,
+        student_time: d.total_review_time,
+        course_avg:
+          courseDataAvg.find(
+            (c: _QuestionData) => c.question_id === d.question_id
+          )?.total_review_time ?? 0, // find the corresponding course avg
+      }));
+
+      if (mapped.length === 0) {
+        return courseDataAvg.map((d: any) => ({
+          question_id: d.question_id,
+          student_time: 0,
+          course_avg: d.total_review_time,
+        }));
+      }
+
+      return mapped;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  async getTimeOnTask(
+    student_id: string,
+    assignment_id: string
+  ): Promise<TimeOnTask[]> {
+    try {
+      const enrollments = await Enrollments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const courseTotals = await calcTimeOnTask.find({
+        course_id: this.adaptID,
+        assignment_id,
+      });
+
+      //for each question, divide the total review time by the number of students
+      const courseAvg = courseTotals.map((d) => {
+        if (!isNaN(d.total_time_seconds) && enrollments.length > 0) {
+          return {
+            question_id: d.question_id,
+            avg_time_seconds: d.total_time_seconds / enrollments.length,
+          };
+        }
+
+        return {
+          question_id: d.question_id,
+          avg_time_seconds: 0,
+        };
+      });
+
+      const studentData = await assignmentScores.find({
+        course_id: this.adaptID.toString(),
+        student_id,
+        assignment_id,
+      });
+
+      const studentQuestions = studentData.map((d) => {
+        if (Array.isArray(d.questions)) {
+          return d.questions.flat();
+        }
+        return [];
+      });
+
+      const flattened = studentQuestions.flat();
+
+      const studentTime = flattened.map((d) => ({
+        question_id: d.question_id,
+        time_seconds: mmssToSeconds(d.time_on_task) ?? 0,
+      }));
+
+      const mapped = studentTime.map((d) => ({
+        question_id: d.question_id,
+        student_time: d.time_seconds,
+        course_avg:
+          courseAvg.find((c) => c.question_id === d.question_id)
+            ?.avg_time_seconds ?? 0,
+      }));
+
+      const toMinutes = mapped.map((d) => ({
+        question_id: parseInt(d.question_id.toString()),
+        student_time: parseFloat((d.student_time / 60).toPrecision(2)),
+        course_avg: parseFloat((d.course_avg / 60).toPrecision(2)),
+      }));
+
+      if (toMinutes.length === 0) {
+        return courseAvg.map((d) => ({
+          question_id: parseInt(d.question_id.toString()),
+          student_time: 0,
+          course_avg: parseFloat((d.avg_time_seconds / 60).toPrecision(2)),
+        }));
+      }
+
+      return toMinutes;
+    } catch (err: any) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getLearningObjectiveCompletion(): Promise<LOCData[]> {
+    try {
+      const courseAssignments = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const rawAlignment = await frameworkQuestionAlignment.find({
+        assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
+      });
+
+      const alignment = rawAlignment.map((d) => ({
+        question_id: d.question_id,
+        framework_descriptors: d.framework_descriptors,
+        framework_levels: d.framework_levels,
+      }));
+
+      const uniqueLevelIDs = new Set<number>(
+        alignment
+          .map((a) => a.framework_levels.map((l: IDWithText<number>) => l.id))
+          .flat()
+      );
+
+      const frameworkLevelData = await frameworkLevels.find({
+        level_id: { $in: Array.from(uniqueLevelIDs) },
+      });
+
+      const out: IFrameworkLevel_Raw[] = [];
+      for (const a of alignment) {
+        // for all levels of alignment, gather all the associated descriptors
+        for (const l of a.framework_levels) {
+          // Skip if the level is already in the output
+          const existing = out.find((o) => o.level_id === l.id);
+          if (existing) continue;
+
+          const foundLevel = frameworkLevelData.find(
+            (d) => d.level_id.toString() === l.id.toString()
+          );
+          if (!foundLevel) continue;
+
+          out.push(foundLevel);
+        }
+      }
+
+      // out is now a list of all levels and each level has its associated descriptors in this alignment
+      const final: LOCData[] = [];
+
+      const allQuestionIds = alignment.map((a) => a.question_id);
+      const allScores = await this._learningObjectivesGetScoreData(
+        allQuestionIds
+      );
+
+      for (const o of out) {
+        const descriptors = new Set<LOCData["framework_descriptors"][0]>();
+
+        for (const d of o.descriptors) {
+          const found = Array.from(descriptors).find(
+            (a) => a.id.toString() === d.id.toString()
+          );
+          if (!found) {
+            const descriptorQuestionIds = alignment
+              .filter((a) =>
+                a.framework_descriptors.find(
+                  (l: IDWithText<number>) => l.id === d.id
+                )
+              )
+              .map((a) => a.question_id);
+
+            if (descriptorQuestionIds.length === 0) continue; // Skip if no questions are associated with this descriptor
+
+            descriptors.add({
+              id: d.id.toString(),
+              text: d.descriptor,
+              avg_performance: this._learningObjectivesGetAvgScore(
+                descriptorQuestionIds,
+                allScores
+              ),
+              questions: descriptorQuestionIds,
+              question_count: descriptorQuestionIds.length,
+            });
+          }
+        }
+
+        const levelQuestionIds = alignment
+          .filter((a) =>
+            a.framework_levels.find(
+              (l: IDWithText<number>) => l.id === o.level_id
+            )
+          )
+          .map((a) => a.question_id);
+
+        const existing = final.find(
+          (f) => f.framework_level.id === o.level_id.toString()
+        );
+        if (existing) {
+          const existingDescriptors = new Set(
+            existing.framework_descriptors.map((d) => d.id)
+          );
+          const newDescriptors = Array.from(descriptors).filter(
+            (d) => !existingDescriptors.has(d.id)
+          );
+
+          // Add any new descriptors to the existing framework level
+          existing.framework_descriptors = Array.from([
+            ...existing.framework_descriptors,
+            ...newDescriptors,
+          ]);
+          continue;
+        }
+
+        final.push({
+          framework_level: {
+            id: o.level_id.toString(),
+            text: o.title,
+            questions: levelQuestionIds,
+            question_count: levelQuestionIds.length ?? 0,
+            avg_performance: this._learningObjectivesGetAvgScore(
+              levelQuestionIds,
+              allScores
+            ),
+          },
+          framework_descriptors: Array.from(descriptors),
+        });
+      }
+
+      // Filter out exclusions
+      const frameworkExclusions = await this._getFrameworkExclusions();
+      const exclusionIDs = frameworkExclusions.map((d) => d.id);
+      const finalFiltered = final.filter((d) => {
+        return !exclusionIDs.includes(d.framework_level.id);
+      });
+
+      // Sort by framework level
+      const sorted = finalFiltered.sort((a, b) => {
+        return a.framework_level.text.localeCompare(
+          b.framework_level.text,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base",
+          }
+        );
+      });
+
+      return sorted;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  public async getLearningCurves(): Promise<LearningCurveData[]> {
+    try {
+      const courseAssignments = await assignments.find({
+        course_id: this.adaptID.toString(),
+      });
+
+      const rawAlignment = await frameworkQuestionAlignment.find({
+        assignment_id: { $in: courseAssignments.map((d) => d.assignment_id) },
+      });
+
+      const alignment = rawAlignment.map((d) => ({
+        question_id: d.question_id,
+        framework_descriptors: d.framework_descriptors,
+        framework_levels: d.framework_levels,
+      })) as IFrameworkQuestionAlignment_Raw[];
+
+      const uniqueDescriptorIDs = new Set<number>(
+        alignment
+          .map((a) => a.framework_descriptors.map((l: IDWithText<number>) => l.id))
+          .flat()
+      );
+
+      const frameworkLevelData = (await frameworkLevels.find({
+        "descriptors.id": { $in: Array.from(uniqueDescriptorIDs) },
+      })) as IFrameworkLevel_Raw[];
+
+      const out: LearningCurveRawData[] = [];
+      for (const a of alignment) {
+        for (const d of a.framework_descriptors) {
+          const levelWDescriptor = frameworkLevelData.find((fd) =>
+            fd.descriptors.find((l) => l.id.toString() === d.id.toString())
+          );
+          if (!levelWDescriptor) continue;
+
+          const foundDescriptor = levelWDescriptor.descriptors.find(
+            (l) => l.id.toString() === d.id.toString()
+          );
+
+          if (!foundDescriptor) continue;
+
+          // If the descriptor is already in the output, add the question to the list of questions associated with the descriptor
+          const existing = out.find(
+            (o) => o.descriptor.id.toString() === d.id.toString()
+          );
+          if (existing) {
+            existing.descriptor.questions.push(a.question_id);
+            existing.descriptor.question_count++;
+            continue;
+          }
+
+          out.push({
+            descriptor: {
+              id: d.id.toString(),
+              text: foundDescriptor.descriptor,
+              questions: [a.question_id],
+              question_count: 1,
+            },
+            score_data: [],
+          });
+        }
+      }
+
+      const allQuestionIds = alignment.map((a) => a.question_id);
+      const allScores = await this._learningObjectivesGetScoreData(
+        allQuestionIds
+      );
+
+      // out is now a list of all descriptors
+      for (const o of out) {
+        const _scoreData: LearningCurveRawData["score_data"] = [];
+        const descriptorQuestionIds = alignment
+          .filter((a) =>
+            a.framework_descriptors.find(
+              (l: IDWithText<number>) => !isNaN(parseInt(o.descriptor.id)) && l.id === parseInt(o.descriptor.id)
+            )
+          )
+          .map((a) => a.question_id);
+
+        if (descriptorQuestionIds.length === 0) continue; // Skip if no questions are associated with this descriptor
+
+        const descriptorScoreData = allScores.filter((d) =>
+          d.questions.find((q) => descriptorQuestionIds.includes(q.question_id))
+        );
+
+        descriptorScoreData.forEach((d) => {
+          for (const q of d.questions) {
+            if (!q.last_submitted_at) continue;
+
+            _scoreData.push({
+              question_id: q.question_id,
+              score: parseFloat(q.score),
+              max_score: parseFloat(q.max_score),
+              last_submitted_at: q.last_submitted_at,
+            });
+          }
+        });
+
+        // Set the score data for this descriptor
+        o.score_data = _scoreData;
+      }
+
+      // Calculate percent correct for each question
+      const withPercentCorrect: LearningCurveRawDataWPercent[] = out.map(
+        (d) => {
+          d.score_data = d.score_data.map((s) => {
+            return {
+              ...s,
+              percent_correct: parseFloat(
+                ((s.score / s.max_score) * 100).toPrecision(2)
+              ),
+            };
+          }) as LearningCurveRawScoreDataWPercent[];
+          return d as LearningCurveRawDataWPercent;
+        }
+      );
+
+      // Group the questions by last_submitted_at and calculate the average percent correct for each day
+      const groupedByDate: LearningCurveData[] = withPercentCorrect.map((d) => {
+        const grouped = d.score_data.reduce((acc, curr) => {
+          const date = new Date(curr.last_submitted_at).toLocaleDateString();
+          const existing = acc.find((a) => a.date === date);
+          if (existing) {
+            existing.percent_correct.push(curr.percent_correct);
+          } else {
+            acc.push({
+              date: date,
+              percent_correct: [curr.percent_correct],
+            });
+          }
+          return acc;
+        }, [] as { date: string; percent_correct: number[] }[]);
+
+        const mappedScoreData = grouped.map((g) => ({
+          submission_date: g.date,
+          avg_percent: parseFloat(
+            (
+              g.percent_correct.reduce((acc, curr) => acc + curr, 0) /
+              g.percent_correct.length
+            ).toPrecision(2)
+          ),
+        }));
+
+        const dateSorted = mappedScoreData.sort((a, b) => {
+          return (
+            new Date(a.submission_date).getTime() -
+            new Date(b.submission_date).getTime()
+          );
+        });
+
+        return {
+          descriptor: d.descriptor,
+          score_data: dateSorted,
+        };
+      });
+
+      // Filter out exclusions
+      const frameworkExclusions = await this._getFrameworkExclusions();
+      const exclusionIDs = frameworkExclusions.map((d) => d.id);
+      const finalFiltered = groupedByDate.filter((d) => {
+        return !exclusionIDs.includes(d.descriptor.id);
+      });
+
+      // Sort by descriptor text
+      const sorted = finalFiltered.sort((a, b) => {
+        return a.descriptor.text.localeCompare(b.descriptor.text, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+
+      return sorted;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private async _getAssignmentExclusions(): Promise<IDWithName[]> {
+    try {
+      const courseSettings = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return courseSettings?.assignmentExclusions ?? [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private async _getFrameworkExclusions(): Promise<IDWithText[]> {
+    try {
+      const courseSettings = await CourseAnalyticsSettings.findOne({
+        courseID: this.adaptID.toString(),
+      });
+
+      return courseSettings?.frameworkExclusions ?? [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private async _learningObjectivesGetScoreData(question_ids: string[]) {
+    try {
+      const data = (await assignmentScores.find({
+        course_id: this.adaptID.toString(),
+        "questions.question_id": { $in: question_ids },
+      })) as IAssignmentScoresRaw[];
+
+      return data;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  private _learningObjectivesParseScoreData(data: IAssignmentScoresRaw[]): {
+    question_id: string;
+    score: number;
+    max_score: number;
+    last_submitted_at: string | null;
+  }[] {
+    const results = [];
+    for (const d of data) {
+      for (const q of d.questions) {
+        if (!q.score || q.score === "-") continue;
+        results.push({
+          question_id: q.question_id,
+          score: parseFloat(q.score),
+          max_score: parseFloat(q.max_score),
+          last_submitted_at: q.last_submitted_at,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private _learningObjectivesGetAvgScore(
+    question_ids: string[],
+    scoreData: IAssignmentScoresRaw[]
+  ) {
+    if (question_ids.length === 0) return 0;
+    const parsed = this._learningObjectivesParseScoreData(scoreData);
+    const questionScores = parsed.filter(
+      (s) => s && question_ids.includes(s.question_id)
+    );
+    if (questionScores.length === 0) return 0;
+
+    // each question has a max_score and the score the student received. for each question, calculate the percentage. then, average all the percentages
+    const avg = questionScores.reduce((acc, curr) => {
+      if (!curr) return acc;
+      return acc + (curr.score / curr.max_score) * 100;
+    }, 0);
+
+    return parseFloat((avg / questionScores.length).toPrecision(2));
+  }
+}

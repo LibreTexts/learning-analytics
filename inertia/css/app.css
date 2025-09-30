@@ -1,0 +1,16 @@
+@import 'tailwindcss' prefix(tw);
+
+@theme {
+  --color-background: #f8f9fa;
+  --color-primary: #0a58ca;
+  --color-text: #343a40;
+  --color-dark-gray: #212529;
+  --color-light-gray: #dee2e6;
+  --color-ultra-light-gray: #f8f9fa;
+  --color-link-blue: #0058e6;
+  --color-libre-blue: #127bc4;
+}
+
+.default-layout {
+  background-color: #fff;
+}

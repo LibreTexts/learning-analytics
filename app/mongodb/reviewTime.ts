@@ -1,0 +1,39 @@
+import { Document, Schema, model } from "mongoose";
+
+export interface IReviewTime_Raw {
+  course_id: number;
+  assignment_id: number;
+  student_id: string;
+  questions: {
+    question_id: number;
+    review_time_start: string;
+    review_time_end: string;
+  }[];
+}
+
+export interface IReviewTime extends IReviewTime_Raw, Document { }
+
+const ReviewTimeSchema = new Schema<IReviewTime>(
+  {
+    course_id: { type: Number, required: true },
+    assignment_id: { type: Number, required: true },
+    student_id: { type: String, required: true },
+    questions: [
+      {
+        question_id: { type: Number, required: true },
+        review_time_start: { type: String, required: true },
+        review_time_end: { type: String, required: true },
+      },
+    ],
+  },
+  {
+    collection: "reviewTime",
+  }
+);
+
+ReviewTimeSchema.index(
+  { course_id: 1, assignment_id: 1, student_id: 1 },
+  { unique: true }
+);
+
+export default model<IReviewTime>("ReviewTime", ReviewTimeSchema, "reviewTime");
