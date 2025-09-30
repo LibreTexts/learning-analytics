@@ -1,4 +1,3 @@
-import env from '#start/env'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class InertiaController {
@@ -7,10 +6,7 @@ export default class InertiaController {
     }
 
     public async login({ inertia }: HttpContext) {
-        return inertia.render('login', {
-            debug: env.get('NODE_ENV') !== 'production',
-            originMatch: env.get('CLIENT_AUTH_ORIGIN_MATCH') || "",
-        })
+        return inertia.render('login')
     }
 
     public async courseSettings({ inertia }: HttpContext) {

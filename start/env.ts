@@ -24,7 +24,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   EWS_API_BASE_URL: Env.schema.string(),
   EWS_API_KEY: Env.schema.string(),
   CLIENT_AUTH_SECRET: Env.schema.string(),
-  CLIENT_AUTH_ORIGIN_MATCH: Env.schema.string(),
+  VITE_CLIENT_AUTH_ORIGIN_MATCH: Env.schema.string(),
+  VITE_CLIENT_AUTH_DEBUG: Env.schema.boolean(),
   /*
   |----------------------------------------------------------
   | Variables for configuring session package

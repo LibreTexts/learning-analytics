@@ -17,7 +17,7 @@ const AuthEventListener = ({
   }, [])
 
   async function handleMessage(event: MessageEvent) {
-    console.log('Received message from parent window: ', event)
+    if (debug) console.log('Received message event: ', event, event.data)
     if (originMatch && event.origin !== originMatch) {
       console.error(`Origin ${event.origin} does not match expected value: ${originMatch}`)
     }

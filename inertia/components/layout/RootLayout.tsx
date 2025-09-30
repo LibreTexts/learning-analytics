@@ -5,6 +5,7 @@ import NavMenu from '~/components/layout/NavMenu'
 import DemoModeControls from '~/components/DemoModeControls'
 import SessionToContextProvider from '~/components/SessionToContextProvider'
 import IFrameResizer from '../IFrameResizer'
+import AuthEventListener from '../AuthEventListener'
 
 export default function RootLayout({
   children,
@@ -13,6 +14,12 @@ export default function RootLayout({
 }>) {
   return (
     <>
+      {import.meta.env.VITE_CLIENT_AUTH_ORIGIN_MATCH && (
+        <AuthEventListener
+          debug={import.meta.env.VITE_CLIENT_AUTH_DEBUG?.toString() === 'true'}
+          originMatch={import.meta.env.VITE_CLIENT_AUTH_ORIGIN_MATCH}
+        />
+      )}
       <IFrameResizer />
       <Providers>
         <SessionToContextProvider>

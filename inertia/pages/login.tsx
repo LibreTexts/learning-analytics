@@ -1,11 +1,10 @@
 import 'bootstrap/dist/css/bootstrap.css'
 import { useState } from 'react'
 import api from '~/api'
-import AuthEventListener from '~/components/AuthEventListener'
 
 const INPUT_CLASSES = 'tw:mt-1 tw:rounded-md tw:border-slate-500'
 
-export default function Login({ debug, originMatch }: { debug?: boolean; originMatch?: string }) {
+export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -25,7 +24,6 @@ export default function Login({ debug, originMatch }: { debug?: boolean; originM
 
   return (
     <div className="tw:flex tw:flex-col tw:justify-center tw:items-center tw:align-center tw:w-full">
-      {originMatch && <AuthEventListener debug={debug} originMatch={originMatch} />}
       <div className="!tw:border !tw:border-black tw:bg-white !tw:px-8 !tw:py-6 tw:rounded-md tw:shadow-md">
         <h1 className="tw:text-center">Sign in</h1>
         <div className="tw:flex tw:flex-col">
